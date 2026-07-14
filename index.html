@@ -8,18 +8,18 @@
     <style>
         :root {
             --bg-dark: #0a0e17;
-            --card-bg: rgba(16, 22, 36, 0.8);
+            --card-bg: rgba(16, 22, 36, 0.9);
             --neon-blue: #00f0ff;
             --neon-pink: #ff00ff;
             --text-primary: #e0e0e0;
             --text-secondary: #8a9ba8;
             --success: #00ff88;
+            --error: #ff0055;
             --border-color: rgba(0, 240, 255, 0.2);
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background: var(--bg-dark);
             color: var(--text-primary);
             min-height: 100vh;
@@ -31,290 +31,94 @@
                 linear-gradient(rgba(0, 240, 255, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
             background-size: 20px 20px;
-            overflow-x: hidden;
         }
-
-        .container {
-            width: 100%;
-            max-width: 420px;
-            padding: 20px;
-            position: relative;
-            z-index: 10;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            position: relative;
-        }
-
-        .logo {
-            font-size: 28px;
-            font-weight: bold;
-            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .tagline {
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
-        /* 卡片通用样式 */
+        .container { width: 100%; max-width: 420px; padding: 20px; z-index: 10; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 26px; font-weight: bold; background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .tagline { color: var(--text-secondary); font-size: 13px; margin-top: 8px; }
         .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 30px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-            position: relative;
-            overflow: hidden;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 30px; backdrop-filter: blur(10px); box-shadow: 0 0 40px rgba(0,0,0,0.5);
         }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.1), transparent);
-            transition: 0.5s;
-        }
-
-        .card:hover::before { left: 100%; }
-
-        /* 表单样式 */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
-
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: var(--text-secondary); font-size: 14px; }
         input, select {
-            width: 100%;
-            padding: 12px 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 15px;
-            outline: none;
+            width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+            border-radius: 8px; color: var(--text-primary); font-size: 15px; outline: none;
             transition: all 0.3s;
         }
-
-        input:focus, select:focus {
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
-        }
-
-        /* 按钮样式 */
+        input:focus, select:focus { border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(0,240,255,0.2); }
         .btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
+            width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 16px;
+            font-weight: bold; cursor: pointer; transition: all 0.3s; position: relative;
         }
-
-        .btn-primary {
-            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
-            color: #fff;
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
-        }
-
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 30px rgba(0, 240, 255, 0.6); }
+        .btn-primary { background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink)); color: #fff; box-shadow: 0 0 20px rgba(0,240,255,0.4); }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 30px rgba(0,240,255,0.6); }
         .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
-
-        /* 链接切换 */
-        .switch-link {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
-        }
-
-        .switch-link a {
-            color: var(--neon-blue);
-            text-decoration: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
+        .switch-link { text-align: center; margin-top: 20px; font-size: 14px; color: var(--text-secondary); }
+        .switch-link a { color: var(--neon-blue); cursor: pointer; font-weight: bold; text-decoration: none; }
         .switch-link a:hover { text-decoration: underline; }
-
-        /* 隐藏类 */
         .hidden { display: none !important; }
-
-        /* 页脚栏 */
-        .footer-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: var(--card-bg);
-            border-top: 1px solid var(--border-color);
-            padding: 10px 0;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-            transform: translateY(100%);
-            transition: transform 0.3s;
-        }
-
-        .footer-bar.show { transform: translateY(0); }
-
-        .footer-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text-secondary);
-            font-size: 12px;
-            cursor: pointer;
-            padding: 5px;
-        }
-
-        .footer-item.active { color: var(--neon-blue); }
-        .footer-item i { font-size: 20px; margin-bottom: 3px; }
-
-        /* 主内容区 */
-        .main-content { display: none; padding-bottom: 80px; width: 100%; max-width: 600px; }
-        
-        /* 状态标签 */
         .status-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 255, 136, 0.1);
-            color: var(--success);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            border: 1px solid var(--success);
+            position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 4px;
+            font-size: 12px; border: 1px solid;
         }
-
-        /* 管理员面板 */
-        .admin-panel {
-            background: rgba(255, 0, 255, 0.05);
-            border: 1px solid rgba(255, 0, 255, 0.2);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .admin-title {
-            color: var(--neon-pink);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .audit-list { list-style: none; }
-        .audit-item {
-            background: rgba(0,0,0,0.2);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 3px solid var(--neon-blue);
-        }
-
-        .audit-info h4 { color: #fff; margin-bottom: 5px; }
-        .audit-info p { color: var(--text-secondary); font-size: 13px; }
-
-        /* Toast 提示 */
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .toast {
-            padding: 12px 24px;
-            border-radius: 8px;
-            color: #fff;
-            font-weight: 500;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s ease-out forwards, fadeOut 0.3s ease-in 2.7s forwards;
-            max-width: 90vw;
-            text-align: center;
-            word-break: break-all;
-        }
-
-        .toast.success { background: rgba(0, 255, 136, 0.9); }
-        .toast.error { background: rgba(255, 0, 85, 0.9); }
-        
-        @keyframes slideIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @keyframes fadeOut { to { opacity: 0; transform: translate(-50%, -20px); } }
-
-        /* Loading Spinner */
+        .status-success { background: rgba(0,255,136,0.1); color: var(--success); border-color: var(--success); }
+        .status-error { background: rgba(255,0,85,0.1); color: var(--error); border-color: var(--error); }
+        .status-warning { background: rgba(255,165,0,0.1); color: orange; border-color: orange; }
+        /* 加载动画 */
         .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 8px;
-            vertical-align: middle;
+            display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite;
+            margin-right: 8px; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* 订单列表 */
-        .order-list { margin-top: 20px; }
-        .order-card {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
+        /* Toast提示 */
+        .toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        .toast { padding: 12px 24px; border-radius: 8px; color: #fff; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 90vw; text-align: center; animation: slideIn 0.3s ease-out forwards, fadeOut 0.3s ease-in 2.7s forwards; }
+        .toast-success { background: rgba(0,255,136,0.9); }
+        .toast-error { background: rgba(255,0,85,0.9); }
+        @keyframes slideIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: translate(-50%, -20px); } }
+        /* 主应用页 */
+        .main-app { display: none; width: 100%; max-width: 600px; padding: 20px; padding-bottom: 80px; }
+        .footer-bar {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card-bg); border-top: 1px solid var(--border-color);
+            padding: 10px 0; display: none; justify-content: space-around; align-items: center; z-index: 100;
         }
+        .footer-bar.show { display: flex; }
+        .footer-item { display: flex; flex-direction: column; align-items: center; color: var(--text-secondary); font-size: 12px; cursor: pointer; padding: 5px; }
+        .footer-item.active { color: var(--neon-blue); }
+        .footer-item i { font-size: 20px; margin-bottom: 3px; }
+        /* 订单样式 */
+        .order-card { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 10px; }
         .order-title { font-weight: bold; margin-bottom: 8px; color: #fff; }
         .order-meta { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
         .order-actions { display: flex; gap: 10px; margin-top: 10px; }
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 13px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            background: var(--neon-blue);
-            color: #000;
-            font-weight: bold;
-        }
+        .btn-small { padding: 6px 12px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: var(--neon-blue); color: #000; }
+        .btn-green { background: var(--success); color: #000; }
+        .btn-red { background: var(--error); color: #fff; }
+        .admin-panel { background: rgba(255,0,255,0.05); border: 1px solid rgba(255,0,255,0.2); border-radius: 8px; padding: 20px; margin-top: 20px; }
+        .admin-title { color: var(--neon-pink); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .audit-item { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid var(--neon-blue); }
+        .audit-info h4 { color: #fff; margin-bottom: 5px; }
+        .audit-info p { color: var(--text-secondary); font-size: 13px; }
     </style>
 </head>
 <body>
+    <!-- 配置校验提示（没换配置直接弹窗） -->
+    <script>
+        if (window.location.href.includes('file://')) {
+            alert('⚠️ 请通过GitHub Pages或Web服务器打开本文件，直接双击打开会有跨域问题！');
+        }
+    </script>
 
-    <!-- 登录/注册容器 -->
-    <div class="container" id="authContainer">
+    <!-- Toast容器 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 登录/注册页 -->
+    <div class="container" id="authPage">
         <div class="header">
             <div class="logo">卡了电竞欢迎您</div>
             <div class="tagline">By Re_Star</div>
@@ -322,21 +126,17 @@
 
         <!-- 登录卡片 -->
         <div class="card" id="loginCard">
-            <div class="status-badge" id="loginStatus">准备就绪</div>
+            <div class="status-badge status-success" id="loginStatus">准备就绪</div>
             <h2 style="text-align:center; margin-bottom:20px; color: var(--neon-blue);">账号登录</h2>
-            
             <div class="form-group">
-                <label for="loginEmail">邮箱</label>
+                <label>邮箱</label>
                 <input type="email" id="loginEmail" placeholder="请输入邮箱">
             </div>
-            
             <div class="form-group">
-                <label for="loginPassword">密码</label>
+                <label>密码</label>
                 <input type="password" id="loginPassword" placeholder="请输入密码">
             </div>
-            
             <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">登录账号</button>
-            
             <div class="switch-link">
                 还没有账号？<a onclick="showRegister()">点击注册</a>
             </div>
@@ -344,71 +144,62 @@
 
         <!-- 注册卡片 -->
         <div class="card hidden" id="registerCard">
-            <div class="status-badge" style="background:rgba(255,165,0,0.1);border-color:orange;color:orange;" id="registerStatus">请填写信息</div>
+            <div class="status-badge status-warning" id="registerStatus">请填写注册信息</div>
             <h2 style="text-align:center; margin-bottom:20px; color: var(--neon-pink);">账号注册</h2>
-            
             <div class="form-group">
-                <label for="regEmail">邮箱</label>
+                <label>邮箱</label>
                 <input type="email" id="regEmail" placeholder="请输入邮箱">
             </div>
-            
             <div class="form-group">
-                <label for="regPassword">密码 (至少6位)</label>
+                <label>密码（至少6位）</label>
                 <input type="password" id="regPassword" placeholder="请输入密码">
             </div>
-            
             <div class="form-group">
-                <label for="regNickname">昵称</label>
+                <label>昵称</label>
                 <input type="text" id="regNickname" placeholder="请输入你的昵称">
             </div>
-
             <div class="form-group">
-                <label for="regRole">选择身份</label>
+                <label>选择身份</label>
                 <select id="regRole">
-                    <option value="player">玩家 (可发单)</option>
-                    <option value="worker">打手 (可接单)</option>
-                    <option value="admin">管理员 (协助管理)</option>
-                    <option value="owner">店长 (最高权限, 仅1个)</option>
+                    <option value="player">玩家（可发单）</option>
+                    <option value="worker">打手（可接单）</option>
+                    <option value="admin">管理员（需店长审核）</option>
+                    <option value="owner">店长（最高权限，仅1个）</option>
                 </select>
             </div>
-            
             <button class="btn btn-primary" id="registerBtn" onclick="handleRegister()">注册账号</button>
-            
             <div class="switch-link">
                 已有账号？<a onclick="showLogin()">点击登录</a>
             </div>
         </div>
     </div>
 
-    <!-- 主应用内容 -->
-    <div class="main-content" id="mainApp">
+    <!-- 主应用页 -->
+    <div class="main-app" id="mainApp">
         <div class="card" style="margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
                     <h2 id="welcomeMsg">欢迎回来</h2>
-                    <p style="color: var(--text-secondary);" id="userRoleDisplay">身份：玩家
+                    <p style="color: var(--text-secondary);" id="userRoleDisplay">身份：玩家</p>
                 </div>
-                <button class="btn" style="width: auto; background: transparent; color: var(--neon-blue); border: 1px solid var(--neon-blue);" onclick="logout()">退出登录</button>
+                <button class="btn-small btn-red" onclick="logout()">退出登录</button>
             </div>
-
-            <!-- 店长专属：审核面板 (默认隐藏) -->
+            <!-- 店长审核面板 -->
             <div id="adminAuditPanel" class="admin-panel hidden">
                 <div class="admin-title">🔍 管理员审核中心</div>
-                <ul class="audit-list" id="auditList">
-                    <!-- JS动态填充 -->
-                </ul>
+                <div id="auditList"></div>
             </div>
         </div>
 
-        <!-- 发单区域 (玩家/店长可见) -->
+        <!-- 发单区（玩家/店长可见） -->
         <div class="card" id="sendOrderCard">
             <h3 style="margin-bottom: 15px; color: var(--neon-blue);">📦 发布新订单</h3>
             <div class="form-group">
-                <label for="orderContent">订单内容</label>
-                <input type="text" id="orderContent" placeholder="例如：王者荣耀 代练 钻石上星耀">
+                <label>订单内容</label>
+                <input type="text" id="orderContent" placeholder="例如：王者荣耀 钻石上星耀">
             </div>
             <div class="form-group">
-                <label for="orderPrice">价格 (元)</label>
+                <label>价格（元）</label>
                 <input type="number" id="orderPrice" placeholder="请输入价格">
             </div>
             <button class="btn btn-primary" onclick="createOrder()">立即发布</button>
@@ -416,8 +207,8 @@
 
         <!-- 订单列表 -->
         <div class="card" style="margin-top: 20px;">
-            <h3 style="margin-bottom: 15px; color: var(--neon-pink);">📋 当前订单列表</h3>
-            <div class="order-list" id="orderList">
+            <h3 style="margin-bottom: 15px; color: var(--neon-pink);">📋 订单列表</h3>
+            <div id="orderList">
                 <div style="text-align:center; color:var(--text-secondary); padding:20px;">正在加载订单...</div>
             </div>
         </div>
@@ -425,450 +216,345 @@
 
     <!-- 底部导航 -->
     <div class="footer-bar" id="footerBar">
-        <div class="footer-item active" onclick="switchTab('home')">
-            <span>🏠</span>
-            <span>首页</span>
-        </div>
-        <div class="footer-item" onclick="switchTab('orders')">
-            <span>📝</span>
-            <span>订单</span>
-        </div>
-        <div class="footer-item" onclick="switchTab('profile')">
-            <span>👤</span>
-            <span>我的</span>
-        </div>
+        <div class="footer-item active"><span>🏠</span><span>首页</span></div>
+        <div class="footer-item"><span>📝</span><span>订单</span></div>
+        <div class="footer-item"><span>👤</span><span>我的</span></div>
     </div>
-
-    <!-- Toast 容器 -->
-    <div class="toast-container" id="toastContainer"></div>
 
     <script>
         // ==========================================
-        // 1. 配置区域 (请替换为你的 Supabase 信息)
+        // 🔴 第一步：必须替换成你的Supabase配置！！！
         // ==========================================
-        const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co'; // 替换为你的 URL
-        const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg'; // 替换为你的 Key
+        const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co';       // 替换为你的Project URL
+        const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg'; // 替换为你的Anon Key
 
-        // 初始化 Supabase
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // 状态变量
+        // 配置预校验（没换配置直接弹窗，避免点了没反应）
+        if (SUPABASE_URL.includes('YOUR_SUPABASE') || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE')) {
+            alert('❌ 请先替换代码中的SUPABASE_URL和SUPABASE_ANON_KEY为你的Supabase配置！\n\n步骤：\n1. 打开Supabase后台→Settings→API\n2. 复制Project URL和Anon Key\n3. 替换代码里的对应内容');
+            throw new Error('未配置Supabase信息');
+        }
+
+        // 初始化Supabase
+        let supabase;
+        try {
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (err) {
+            alert('❌ Supabase SDK加载失败：' + err.message);
+            throw err;
+        }
+
+        // 全局变量
         let currentUser = null;
+        const registerBtn = document.getElementById('registerBtn');
+        const originalRegisterText = registerBtn.innerHTML; // 保存按钮原始文本，避免加载后不恢复
 
         // ==========================================
-        // 2. UI 交互函数
+        // 工具函数
         // ==========================================
         function showToast(msg, isSuccess = false) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.className = `toast ${isSuccess ? 'success' : 'error'}`;
+            toast.className = `toast ${isSuccess ? 'toast-success' : 'toast-error'}`;
             toast.innerText = msg;
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
 
-        function setStatus(elementId, text) {
+        function setStatus(elementId, text, type = 'warning') {
             const el = document.getElementById(elementId);
-            if(el) el.innerText = text;
+            if (!el) return;
+            el.innerText = text;
+            el.className = `status-badge status-${type}`;
         }
 
         function showRegister() {
             document.getElementById('loginCard').classList.add('hidden');
             document.getElementById('registerCard').classList.remove('hidden');
-            setStatus('registerStatus', '请填写注册信息');
+            setStatus('registerStatus', '请填写注册信息', 'warning');
         }
 
         function showLogin() {
             document.getElementById('registerCard').classList.add('hidden');
             document.getElementById('loginCard').classList.remove('hidden');
-            setStatus('loginStatus', '请登录');
+            setStatus('loginStatus', '准备就绪', 'success');
         }
 
         // ==========================================
-        // 3. 核心逻辑 (已修复)
+        // 注册逻辑（核心修复：每一步都有反馈，错误直接弹出）
         // ==========================================
-
-        // 注册逻辑 (重点修复：增加了对 user 对象的判空处理)
         async function handleRegister() {
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value.trim();
             const nickname = document.getElementById('regNickname').value.trim();
             const role = document.getElementById('regRole').value;
 
+            // 1. 基础校验（不通过直接提示，恢复按钮）
             if (!email || !password || !nickname) {
-                showToast('邮箱、密码、昵称不能为空');
+                showToast('❌ 邮箱、密码、昵称不能为空', false);
+                setStatus('registerStatus', '请补全信息', 'error');
                 return;
             }
             if (password.length < 6) {
-                showToast('密码至少需要6位');
+                showToast('❌ 密码至少需要6位', false);
+                setStatus('registerStatus', '密码长度不足', 'error');
                 return;
             }
 
-            const btn = document.getElementById('registerBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span>注册中...';
-            setStatus('registerStatus', '正在连接服务器...');
+            // 2. 按钮置为加载状态，防止重复点击
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<span class="spinner"></span>正在注册...';
+            setStatus('registerStatus', '正在校验信息...', 'warning');
 
             try {
-                // 步骤1：检查店长是否已存在 (如果是注册店长)
+                // 3. 店长唯一性校验（前端预校验）
                 if (role === 'owner') {
-                    const { data: owners, error: ownerError } = await supabase
+                    setStatus('registerStatus', '正在检查店长名额...', 'warning');
+                    const { data: owners, error: ownerErr } = await supabase
                         .from('profiles')
                         .select('id')
                         .eq('role', 'owner');
-                    
-                    if (ownerError) throw ownerError;
-                    
+                    if (ownerErr) throw new Error('校验店长失败：' + ownerErr.message);
                     if (owners && owners.length > 0) {
-                        showToast('❌ 店长账号已存在，无法重复注册！');
-                        btn.disabled = false;
-                        btn.innerHTML = '注册账号';
+                        showToast('❌ 店长账号已存在，无法重复注册', false);
+                        setStatus('registerStatus', '店长已存在', 'error');
                         return;
                     }
                 }
 
-                // 步骤2：注册用户到 Supabase Auth
-                const { data: authData, error: signUpError } = await supabase.auth.signUp({
+                // 4. 注册Supabase Auth账号
+                setStatus('registerStatus', '正在注册账号...', 'warning');
+                const { data: authData, error: signUpErr } = await supabase.auth.signUp({
                     email: email,
                     password: password,
-                    options: {
-                        data: {
-                            nickname: nickname, // 将昵称存入元数据，防止 profiles 表写入失败时丢失
-                            role: role
-                        }
-                    }
+                    options: { data: { nickname: nickname, role: role } }
                 });
-
-                // 【关键修复】检查 authData.user 是否存在
-                if (signUpError) {
-                    // 处理特定错误，例如邮箱已被注册
-                    if (signUpError.message.includes('already registered')) {
-                        showToast('该邮箱已被注册，请直接登录');
-                    } else {
-                        showToast('注册失败：' + signUpError.message);
+                if (signUpErr) {
+                    // 处理常见错误
+                    if (signUpErr.message.includes('already registered')) {
+                        throw new Error('该邮箱已被注册，请直接登录');
                     }
-                    btn.disabled = false;
-                    btn.innerHTML = '注册账号';
-                    return;
+                    throw signUpErr;
                 }
-
                 if (!authData.user) {
-                    showToast('注册响应异常，请重试');
-                    btn.disabled = false;
-                    btn.innerHTML = '注册账号';
-                    return;
+                    throw new Error('注册响应异常，未返回用户信息');
                 }
 
-                // 步骤3：插入或更新 Profiles 表
-                // 注意：signUp 有时会自动创建 profile，所以用 upsert (插入或更新) 更安全
-                const { error: profileError } = await supabase
+                // 5. 插入/更新用户资料表
+                setStatus('registerStatus', '正在保存用户资料...', 'warning');
+                const { error: profileErr } = await supabase
                     .from('profiles')
                     .upsert({
                         id: authData.user.id,
                         email: email,
                         nickname: nickname,
                         role: role,
-                        status: role === 'admin' ? 'pending' : 'approved', // 管理员需要审核
+                        status: role === 'admin' ? 'pending' : 'approved', // 管理员需审核，其他直接通过
                         created_at: new Date().toISOString()
                     }, { onConflict: 'id' });
+                if (profileErr) throw new Error('保存资料失败：' + profileErr.message);
 
-                if (profileError) throw profileError;
-
+                // 6. 注册成功，提示并切换到登录页
                 showToast('✅ 注册成功！请登录', true);
-                setStatus('registerStatus', '注册成功，跳转中...');
-                
+                setStatus('registerStatus', '注册成功', 'success');
                 setTimeout(() => {
                     showLogin();
-                    btn.disabled = false;
-                    btn.innerHTML = '注册账号';
+                    // 自动填充刚才注册的邮箱到登录框
+                    document.getElementById('loginEmail').value = email;
                 }, 1500);
 
             } catch (err) {
-                console.error(err);
-                showToast('发生错误：' + err.message);
-                btn.disabled = false;
-                btn.innerHTML = '注册账号';
+                // 所有错误直接弹出，绝不静默失败
+                showToast('❌ 注册失败：' + err.message, false);
+                setStatus('registerStatus', '注册失败：' + err.message.slice(0, 10), 'error');
+            } finally {
+                // 无论成功失败，都恢复按钮状态
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = originalRegisterText;
             }
         }
 
+        // ==========================================
         // 登录逻辑
+        // ==========================================
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
-            const btn = document.getElementById('loginBtn');
+            const loginBtn = document.getElementById('loginBtn');
+            const originalLoginText = loginBtn.innerHTML;
 
             if (!email || !password) {
-                showToast('邮箱和密码不能为空');
+                showToast('❌ 邮箱和密码不能为空', false);
                 return;
             }
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span>登录中...';
-            setStatus('loginStatus', '正在验证身份...');
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner"></span>登录中...';
+            setStatus('loginStatus', '正在验证身份...', 'warning');
 
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) {
-                    if (error.message === 'Invalid login credentials') {
-                        showToast('邮箱或密码错误');
-                    } else if (error.message.includes('Email not confirmed')) {
-                        showToast('请先验证邮箱（请在Supabase后台关闭邮箱验证）');
-                    } else {
-                        showToast('登录失败：' + error.message);
+                    if (error.message.includes('Invalid login credentials')) {
+                        throw new Error('邮箱或密码错误');
                     }
-                    btn.disabled = false;
-                    btn.innerHTML = '登录账号';
-                    return;
-                }
-
-                if (!data.user) {
-                    showToast('登录响应异常');
-                    btn.disabled = false;
-                    btn.innerHTML = '登录账号';
-                    return;
+                    if (error.message.includes('Email not confirmed')) {
+                        throw new Error('邮箱未验证，请去Supabase后台关闭“Confirm email”');
+                    }
+                    throw error;
                 }
 
                 // 获取用户资料
-                const { data: profile, error: profileError } = await supabase
+                const { data: profile, error: profileErr } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', data.user.id)
                     .single();
-
-                if (profileError || !profile) {
-                    showToast('无法获取用户资料，请联系店长');
-                    btn.disabled = false;
-                    btn.innerHTML = '登录账号';
-                    return;
-                }
-
-                // 检查是否被封禁或未审核
-                if (profile.status !== 'approved') {
-                    showToast('账号正在等待店长审核，暂无法登录');
-                    btn.disabled = false;
-                    btn.innerHTML = '登录账号';
-                    return;
-                }
+                if (profileErr || !profile) throw new Error('无法获取用户资料，请联系店长');
+                if (profile.status !== 'approved') throw new Error('账号等待店长审核，暂无法登录');
 
                 currentUser = { ...data.user, profile };
-                showToast('登录成功！欢迎回来', true);
-                
-                // 显示主界面
-                document.getElementById('authContainer').classList.add('hidden');
+                showToast('✅ 登录成功！欢迎回来', true);
+                setStatus('loginStatus', '登录成功', 'success');
+
+                // 切换到主应用页
+                document.getElementById('authPage').classList.add('hidden');
                 document.getElementById('mainApp').style.display = 'block';
                 document.getElementById('footerBar').classList.add('show');
-
                 updateUI();
                 loadOrders();
-                loadAdminAuditList();
-
-                btn.disabled = false;
-                btn.innerHTML = '登录账号';
+                if (profile.role === 'owner') loadAdminAuditList();
 
             } catch (err) {
-                console.error(err);
-                showToast('发生错误：' + err.message);
-                btn.disabled = false;
-                btn.innerHTML = '登录账号';
+                showToast('❌ 登录失败：' + err.message, false);
+                setStatus('loginStatus', '登录失败', 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = originalLoginText;
             }
         }
 
-        // 更新界面信息
+        // ==========================================
+        // 主应用逻辑
+        // ==========================================
         function updateUI() {
             if (!currentUser || !currentUser.profile) return;
-            
             const profile = currentUser.profile;
             document.getElementById('welcomeMsg').innerText = `欢迎，${profile.nickname}`;
             
             let roleText = '';
             switch(profile.role) {
-                case 'owner': roleText = '👑 店长 (最高权限)'; break;
+                case 'owner': roleText = '👑 店长（最高权限）'; break;
                 case 'admin': roleText = '⚙️ 管理员'; break;
                 case 'worker': roleText = '⚔️ 打手'; break;
                 default: roleText = '🎮 玩家';
             }
             document.getElementById('userRoleDisplay').innerText = `身份：${roleText}`;
 
-            // 控制发单按钮显示
-            const sendCard = document.getElementById('sendOrderCard');
-            if (profile.role === 'owner' || profile.role === 'player') {
-                sendCard.classList.remove('hidden');
-            } else {
-                sendCard.classList.add('hidden');
-            }
-
+            // 控制发单区显示
+            document.getElementById('sendOrderCard').classList.toggle('hidden', !(profile.role === 'owner' || profile.role === 'player'));
             // 控制审核面板显示
-            const auditPanel = document.getElementById('adminAuditPanel');
-            if (profile.role === 'owner') {
-                auditPanel.classList.remove('hidden');
-                loadAdminAuditList(); // 店长登录强制刷新一次审核列表
-            } else {
-                auditPanel.classList.add('hidden');
-            }
+            document.getElementById('adminAuditPanel').classList.toggle('hidden', profile.role !== 'owner');
         }
 
-        // 退出登录
-        async function logout() {
-            await supabase.auth.signOut();
-            currentUser = null;
-            document.getElementById('authContainer').classList.remove('hidden');
-            document.getElementById('mainApp').style.display = 'none';
-            document.getElementById('footerBar').classList.remove('show');
-            // 清空输入框
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-            showToast('已退出登录', true);
-        }
-
-        // ==========================================
-        // 4. 订单功能
-        // ==========================================
         async function createOrder() {
-            if (!currentUser || !currentUser.profile) return;
-            
             const content = document.getElementById('orderContent').value.trim();
             const price = parseFloat(document.getElementById('orderPrice').value);
-
             if (!content || isNaN(price) || price <= 0) {
-                showToast('请填写正确的订单内容和价格');
+                showToast('❌ 请填写正确的订单内容和价格', false);
                 return;
             }
 
             try {
-                const { error } = await supabase
-                    .from('orders')
-                    .insert([
-                        {
-                            sender_id: currentUser.id,
-                            worker_id: null,
-                            content: content,
-                            price: price,
-                            status: 'pending', // pending, accepted, completed, cancelled
-                            created_at: new Date().toISOString()
-                        }
-                    ]);
-
+                const { error } = await supabase.from('orders').insert([{
+                    sender_id: currentUser.id,
+                    content: content,
+                    price: price,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                }]);
                 if (error) throw error;
-
-                showToast('订单发布成功！', true);
+                showToast('✅ 订单发布成功！', true);
                 document.getElementById('orderContent').value = '';
                 document.getElementById('orderPrice').value = '';
-                loadOrders(); // 刷新列表
+                loadOrders();
             } catch (err) {
-                showToast('发布失败：' + err.message);
+                showToast('❌ 发布失败：' + err.message, false);
             }
         }
 
         async function loadOrders() {
             const listEl = document.getElementById('orderList');
             listEl.innerHTML = '<div style="text-align:center; color:var(--text-secondary); padding:20px;">正在加载订单...</div>';
-
             try {
-                let query = supabase
-                    .from('orders')
+                let query = supabase.from('orders')
                     .select('*, profiles!sender_id(nickname)')
                     .order('created_at', { ascending: false });
-
-                // 如果不是店长，只查自己的
                 if (currentUser.profile.role !== 'owner') {
                     query = query.or(`sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id}`);
                 }
-
                 const { data: orders, error } = await query;
-
                 if (error) throw error;
-
                 if (!orders || orders.length === 0) {
                     listEl.innerHTML = '<div style="text-align:center; color:var(--text-secondary); padding:20px;">当前没有订单</div>';
                     return;
                 }
-
                 listEl.innerHTML = orders.map(order => {
-                    const isSender = order.sender_id === currentUser.id;
-                    const isWorker = order.worker_id === currentUser.id;
                     let actions = '';
-
-                    // 打手接单逻辑
                     if (currentUser.profile.role === 'worker' && order.status === 'pending' && !order.worker_id) {
-                        actions += `<button class="btn-small" style="background:#00ff88;color:#000;" onclick="takeOrder('${order.id}')">接单</button>`;
+                        actions += `<button class="btn-small btn-blue" onclick="takeOrder('${order.id}')">接单</button>`;
                     }
-                    // 发单方取消逻辑
-                    if (isSender && order.status === 'pending') {
-                        actions += `<button class="btn-small" style="background:#ff5555;color:#fff;" onclick="cancelOrder('${order.id}')">取消</button>`;
+                    if (order.sender_id === currentUser.id && order.status === 'pending') {
+                        actions += `<button class="btn-small btn-red" onclick="cancelOrder('${order.id}')">取消</button>`;
                     }
-
                     return `
                         <div class="order-card">
                             <div class="order-title">${order.content}</div>
                             <div class="order-meta">
-                                价格：¥${order.price}
-                                发布人：<span style="color:var(--neon-blue);">${order.profiles?.nickname || '未知'}</span>
+                                价格：¥${order.price} | 发布人：${order.profiles?.nickname || '未知'}
                                 ${order.worker_id ? ` | 接单人：待定` : ''}
                             </div>
-                            <div class="order-actions">
-                                ${actions}
-                            </div>
+                            <div class="order-actions">${actions}</div>
                         </div>
                     `;
                 }).join('');
             } catch (err) {
-                listEl.innerHTML = '<div style="text-align:center; color:red; padding:20px;">加载失败</div>';
+                listEl.innerHTML = '<div style="text-align:center; color:red; padding:20px;">加载失败：' + err.message + '</div>';
             }
         }
 
-        // 接单功能
         async function takeOrder(orderId) {
+            if (!confirm('确定接取此单？')) return;
             try {
-                const { error } = await supabase
-                    .from('orders')
-                    .update({ 
-                        worker_id: currentUser.id, 
-                        status: 'accepted' 
-                    })
+                const { error } = await supabase.from('orders')
+                    .update({ worker_id: currentUser.id, status: 'accepted' })
                     .eq('id', orderId)
-                    .is('worker_id', null); // 确保没人接
-
+                    .is('worker_id', null);
                 if (error) throw error;
-                
-                showToast('接单成功！', true);
+                showToast('✅ 接单成功！', true);
                 loadOrders();
             } catch (err) {
-                showToast('接单失败：' + err.message);
+                showToast('❌ 接单失败：' + err.message, false);
             }
         }
 
-        // 取消订单
         async function cancelOrder(orderId) {
-            if (!confirm('确定要取消这个订单吗？')) return;
+            if (!confirm('确定取消此订单？')) return;
             try {
-                const { error } = await supabase
-                    .from('orders')
+                const { error } = await supabase.from('orders')
                     .update({ status: 'cancelled' })
                     .eq('id', orderId);
-                
                 if (error) throw error;
-                showToast('已取消订单', true);
+                showToast('✅ 已取消订单', true);
                 loadOrders();
             } catch (err) {
-                showToast('取消失败：' + err.message);
+                showToast('❌ 取消失败：' + err.message, false);
             }
         }
 
-
-        // ==========================================
-        // 5. 管理员审核功能
-        // ==========================================
         async function loadAdminAuditList() {
-            // 只有店长才加载这个列表
-            if (!currentUser || currentUser.profile.role !== 'owner') return;
-
+            if (currentUser.profile.role !== 'owner') return;
             const listEl = document.getElementById('auditList');
-            listEl.innerHTML = '<li style="text-align:center; color:var(--text-secondary);">正在加载待审核列表...</li>';
-
+            listEl.innerHTML = '<div style="text-align:center; color:var(--text-secondary);">加载中...</div>';
             try {
                 const { data: admins, error } = await supabase
                     .from('profiles')
@@ -876,75 +562,69 @@
                     .eq('role', 'admin')
                     .eq('status', 'pending')
                     .order('created_at', { ascending: false });
-
                 if (error) throw error;
-
                 if (!admins || admins.length === 0) {
-                    listEl.innerHTML = '<li style="text-align:center; color:var(--text-secondary);">暂无待审核的管理员</li>';
+                    listEl.innerHTML = '<div style="text-align:center; color:var(--text-secondary);">暂无待审核的管理员</div>';
                     return;
                 }
-
                 listEl.innerHTML = admins.map(admin => `
-                    <li class="audit-item">
+                    <div class="audit-item">
                         <div class="audit-info">
                             <h4>${admin.nickname}</h4>
-                            邮箱：${admin.email}
-                            <small>申请时间：${new Date(admin.created_at).toLocaleString()}</small>
+                            <p>邮箱：${admin.email}</p>
+                            <p>申请时间：${new Date(admin.created_at).toLocaleString()}</p>
                         </div>
-                        <button class="btn-small" style="background:var(--neon-blue);color:#000;" onclick="approveAdmin('${admin.id}')">批准</button>
-                    </li>
+                        <button class="btn-small btn-green" onclick="approveAdmin('${admin.id}')">批准</button>
+                    </div>
                 `).join('');
-
             } catch (err) {
-                listEl.innerHTML = '<li style="text-align:center; color:red;">加载失败</li>';
+                listEl.innerHTML = '<div style="text-align:center; color:red;">加载失败：' + err.message + '</div>';
             }
         }
 
         async function approveAdmin(userId) {
-            if (!confirm('确定批准该管理员吗？')) return;
+            if (!confirm('确定批准该管理员？')) return;
             try {
-                const { error } = await supabase
-                    .from('profiles')
+                const { error } = await supabase.from('profiles')
                     .update({ status: 'approved' })
                     .eq('id', userId);
-
                 if (error) throw error;
-                
-                showToast('批准成功！', true);
-                loadAdminAuditList(); // 刷新列表
+                showToast('✅ 批准成功！', true);
+                loadAdminAuditList();
             } catch (err) {
-                showToast('操作失败：' + err.message);
+                showToast('❌ 操作失败：' + err.message, false);
             }
         }
 
-        // ==========================================
-        // 6. 底部导航 & 初始化
-        // ==========================================
-        function switchTab(tab) {
-            alert('功能开发中：暂仅支持首页展示订单。');
-            // 简单的高亮切换
-            document.querySelectorAll('.footer-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+        function logout() {
+            supabase.auth.signOut();
+            currentUser = null;
+            document.getElementById('authPage').classList.remove('hidden');
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('footerBar').classList.remove('show');
+            document.getElementById('loginPassword').value = '';
+            showToast('✅ 已退出登录', true);
         }
 
-        // 监听登录状态变化 (自动刷新)
-        supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                // 自动登录逻辑，防止刷新页面掉线
-                handleLogin(); 
+        // 自动登录（页面刷新后保持登录状态）
+        window.onload = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                if (!error && profile && profile.status === 'approved') {
+                    currentUser = { ...session.user, profile };
+                    document.getElementById('authPage').classList.add('hidden');
+                    document.getElementById('mainApp').style.display = 'block';
+                    document.getElementById('footerBar').classList.add('show');
+                    updateUI();
+                    loadOrders();
+                    if (profile.role === 'owner') loadAdminAuditList();
+                }
             }
-            if (event === 'SIGNED_OUT') {
-                currentUser = null;
-                document.getElementById('authContainer').classList.remove('hidden');
-                document.getElementById('mainApp').style.display = 'none';
-                document.getElementById('footerBar').classList.remove('show');
-            }
-        });
-
-        // 页面加载时检查本地缓存 (可选增强)
-        window.onload = () => {
-            // 防止FOUC (Flash of Unstyled Content)
-            document.body.style.visibility = 'visible';
         };
     </script>
 </body>
