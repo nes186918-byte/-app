@@ -290,8 +290,9 @@
 
         .tip {
             text-align: center;
-            color: #555;
+            color: #888;
             padding: 20px;
+            font-size: 14px;
         }
 
         /* 审批面板 */
@@ -325,6 +326,7 @@
     </style>
 </head>
 <body>
+    
 
 <div id="toast"></div>
 
@@ -353,6 +355,7 @@
                 <select id="regRole" required>
                     <option value="player">玩家 (发单/接单)</option>
                     <option value="worker">打手 (接单)</option>
+                    <option value="admin">管理员 (需审核)</option>
                     <option value="owner">店长 (最高权限)</option>
                 </select>
             </div>
@@ -392,11 +395,11 @@
                 <h3 style="margin-bottom:15px;">📝 发布新订单</h3>
                 <div class="form-group">
                     <label for="content">订单内容</label>
-                    <input type="text" id="content" placeholder="例如：三角洲跑刀">
+                    <input type="text" id="content" placeholder="例如：三角洲 上号跑刀">
                 </div>
                 <div class="form-group">
                     <label for="price">金额 (元)</label>
-                    <input type="number" id="price" placeholder="例如：50">
+                    <input type="number" id="price" placeholder="例如：30">
                 </div>
                 <button id="createOrderBtn" class="btn btn-primary">发 布 订 单</button>
             </div>
@@ -413,7 +416,7 @@
         <!-- 底部栏：用户信息 + 操作 -->
         <div class="footer">
             <div class="user-info">
-                欢迎，<span id="welcomeUser">User</span> [<span id="userRoleTag">未知</span>]
+                欢迎，<span id="welcomeUser">用户</span> [<span id="userRoleTag">未分配身份</span>]
             </div>
             <div class="action-bar">
                 <button id="adminApprovalBtn" class="btn btn-small btn-outline hidden">审核管理员</button>
@@ -459,11 +462,11 @@
         if (regForm.classList.contains('hidden')) {
             regForm.classList.remove('hidden');
             loginForm.classList.add('hidden');
-            toggleText.innerText = '已有账号？点我登录';
+            toggleText.innerText = '已有账号？点我注册';
         } else {
             regForm.classList.add('hidden');
             loginForm.classList.remove('hidden');
-            toggleText.innerText = '没有账号？点我注册';
+            toggleText.innerText = '没有账号？点我登录';
         }
     });
 
@@ -489,11 +492,15 @@
             if (data.error) throw new Error(data.error.message);
 
             // 2. 插入 Profiles 数据
-            // 店长注册 status 为 approved，其他角色根据情况
-            const status = (role === 'owner') ? 'approved' : 'approved'; // 店长免审核
+            // 🐛 修复：管理员注册状态设为pending（需审核），其他角色（含店长）直接approved
+            const status = role === 'admin' ? 'pending' : 'approved';
             await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
                 method: 'POST',
-                headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+                headers: { 
+                    'apikey': SUPABASE_ANON_KEY, 
+                    'Content-Type': 'application/json', 
+                    'Prefer': 'return=representation' 
+                },
                 body: JSON.stringify({
                     id: data.user.id,
                     email: email,
@@ -503,7 +510,11 @@
                 })
             });
 
-            showToast('注册成功！请登录', 3000);
+            if (role === 'admin') {
+                showToast('注册成功！请等待店长审核后登录', 3000);
+            } else {
+                showToast('注册成功！请登录', 3000);
+            }
             document.getElementById('toggleAuth').click(); // 自动切换到登录页
 
         } catch (err) {
@@ -534,15 +545,14 @@
 
             if (data.error) throw new Error(data.error.message);
 
-            // 检查是否被封禁或未审核
+            // 验证用户信息是否存在
             const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=status`, {
                 headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${data.access_token}` }
             });
             const profile = (await profileRes.json())[0];
 
-            if (profile && profile.status === 'pending_approval') {
-                throw new Error('账号等待审核，请联系店长');
-            }
+            if (!profile) throw new Error('用户信息不存在，请联系店长');
+            if (profile.status === 'pending_approval') throw new Error('账号等待审核，请联系店长');
 
             // 保存登录态
             localStorage.setItem('sb_token', data.access_token);
@@ -581,9 +591,11 @@
                 headers: authHeaders
             });
             const profile = (await res.json())[0];
+            if (!profile) throw new Error('用户信息加载失败');
             currentUser.profile = profile;
         } catch (e) {
-            console.error(e);
+            showToast('用户信息加载失败，请重新登录', 3000);
+            throw e; // 终止后续逻辑
         }
     }
 
@@ -591,8 +603,11 @@
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('appSection').classList.remove('hidden');
 
-        // 设置欢迎语
-        document.getElementById('welcomeUser').innerText = currentUser.profile?.nickname || currentUser.email;
+        // ✅ 欢迎语优先显示昵称，兜底显示邮箱
+        document.getElementById('welcomeUser').innerText = 
+            currentUser.profile?.nickname || currentUser.email || '尊贵用户';
+        
+        // ✅ 身份栏自动映射中文角色名，避免显示「未知」
         document.getElementById('userRoleTag').innerText = getRoleName(currentUser.profile?.role);
 
         // 店长专属按钮
@@ -609,7 +624,6 @@
         const listEl = document.getElementById('approvalList');
         const panel = document.getElementById('approvalPanel');
         try {
-            // 查询 role=admin 且 status=pending 的用户
             const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?role=eq.admin&status=eq.pending&select=id,nickname,email`, {
                 headers: authHeaders
             });
@@ -627,12 +641,12 @@
                         <div>${u.nickname || u.email}</div>
                         <small>${u.email}</small>
                     </div>
-                    <button class="btn-approve" onclick="approveAdmin('${u.id}', '${u.nickname}')">批准</button>
+                    <button class="btn-approve" onclick="approveAdmin('${u.id}', '${u.nickname || u.email}')">批准</button>
                 </div>
             `).join('');
 
         } catch (e) {
-            listEl.innerText = '加载失败';
+            listEl.innerText = '加载失败，请检查网络';
         }
     }
 
@@ -681,7 +695,7 @@
             document.getElementById('price').value = '';
             loadOrders();
         } catch (e) {
-            showToast('发布失败', 2000);
+            showToast('发布失败，请检查网络', 2000);
         }
     });
 
@@ -700,7 +714,7 @@
             showToast('接单成功！');
             loadOrders();
         } catch (e) {
-            showToast('接单失败', 2000);
+            showToast('接单失败，请检查网络', 2000);
         }
     }
 
@@ -717,10 +731,13 @@
             }
 
             const res = await fetch(url, { headers: authHeaders });
+            if (!res.ok) throw new Error('请求失败');
+            
             const orders = await res.json();
 
+            // ✅ 空订单显示「当前没有订单」，仅错误时显示加载失败
             if (orders.length === 0) {
-                listEl.innerHTML = '<div class="tip">暂无订单，快来发布第一个吧！</div>';
+                listEl.innerHTML = '<div class="tip">当前没有订单</div>';
                 return;
             }
 
@@ -749,14 +766,15 @@
                 `;
             }).join('');
         } catch (e) {
+            // 仅网络/权限错误时显示加载失败
             listEl.innerHTML = '<div class="tip">加载失败，请检查网络</div>';
         }
     }
 
-    // 角色映射
+    // ✅ 角色映射函数，避免显示「未知」
     function getRoleName(role) {
-        const map = { player: '玩家', worker: '打手', admin: '管理员', owner: '店长' };
-        return map[role] || '未知';
+        const roleMap = { player: '玩家', worker: '打手', admin: '管理员', owner: '店长' };
+        return roleMap[role] || '未分配身份';
     }
 
     // 自动登录
