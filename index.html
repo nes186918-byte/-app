@@ -4,25 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
-    <!-- 必须引入Supabase SDK，否则所有功能失效 -->
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --neon-blue: #00f0ff;
-            --neon-pink: #ff00ff;
-            --dark-bg: #050510;
-            --card-bg: rgba(10, 15, 30, 0.8);
-            --text-color: #e0e0ff;
-            --border-color: rgba(0, 240, 255, 0.2);
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: var(--dark-bg);
-            color: var(--text-color);
+            background: #050510;
             min-height: 100vh;
             display: flex;
             justify-content: center;
+            align-items: center;
             padding: 20px;
             position: relative;
         }
@@ -38,45 +29,68 @@
             background-size: 30px 30px;
             z-index: -1;
         }
-        .container {
+        /* 错误提示区 */
+        .error-banner {
+            position: fixed;
+            top: 0; left: 0;
             width: 100%;
-            max-width: 500px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
+            background: #ff0044;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 14px;
+            z-index: 9999;
+            display: none;
+        }
+        /* 主容器 */
+        .page-container {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(10, 15, 30, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.2);
             border-radius: 15px;
+            padding: 30px;
             box-shadow: 0 0 50px rgba(0, 240, 255, 0.1);
-            overflow: hidden;
         }
-        /* 头部 */
-        .header {
-            padding: 15px 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* 页面标题 */
+        .page-title {
+            color: #00f0ff;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 25px;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
         }
-        .logo { color: var(--neon-blue); font-weight: bold; font-size: 18px; }
-        .header-status { color: #888; font-size: 14px; }
-        /* 主体 */
-        .main { padding: 30px 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #ccc; font-size: 14px; }
-        .form-control {
+        /* 表单组 */
+        .form-group { margin-bottom: 18px; }
+        .form-label {
+            display: block;
+            color: #ccc;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+        .form-input {
             width: 100%;
             padding: 12px 15px;
             background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(0, 240, 255, 0.2);
             border-radius: 8px;
-            color: #fff;
+            color: white;
             font-size: 14px;
             outline: none;
         }
-        .form-control:focus { border-color: var(--neon-blue); }
-        select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2300f0ff' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 16px; }
+        .form-input:focus { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0, 240, 255, 0.2); }
+        select.form-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2300f0ff' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+        }
+        /* 按钮 */
         .btn {
             width: 100%;
-            padding: 12px;
+            padding: 13px;
             border: none;
             border-radius: 8px;
             font-size: 16px;
@@ -85,369 +99,399 @@
             transition: all 0.3s;
             margin-top: 10px;
         }
-        .btn-primary { background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink)); color: #000; }
-        .btn-primary:hover { opacity: 0.9; }
-        .btn-secondary { background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue); }
-        .switch-mode { text-align: center; margin-top: 15px; color: #888; font-size: 14px; }
-        .switch-mode a { color: var(--neon-blue); cursor: pointer; text-decoration: none; }
-        /* 底部信息栏 */
-        .footer {
-            padding: 15px 20px;
-            background: rgba(0, 20, 40, 0.9);
-            border-top: 1px solid var(--border-color);
+        .btn-primary {
+            background: linear-gradient(90deg, #00f0ff, #ff00ff);
+            color: #000;
+        }
+        .btn-primary:hover:not(:disabled) { opacity: 0.9; box-shadow: 0 0 20px rgba(0, 240, 255, 0.5); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-link {
+            background: none;
+            border: none;
+            color: #00f0ff;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 15px;
+            text-align: center;
+            width: 100%;
+        }
+        /* 状态提示 */
+        .status-text {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-top: 15px;
+            min-height: 20px;
+        }
+        /* 应用页（登录后） */
+        .app-page { display: none; }
+        .footer-bar {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%;
+            background: rgba(0, 20, 40, 0.95);
+            border-top: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 14px;
         }
-        .user-name { color: var(--neon-pink); font-weight: bold; }
-        .user-role { color: var(--neon-blue); font-size: 12px; margin-left: 8px; background: rgba(0, 240, 255, 0.1); padding: 2px 6px; border-radius: 4px; }
-        .btn-logout { background: transparent; border: 1px solid var(--neon-pink); color: var(--neon-pink); padding: 5px 15px; border-radius: 20px; cursor: pointer; font-size: 12px; }
+        .user-name { color: #ff00ff; font-weight: bold; }
+        .user-role { color: #00f0ff; font-size: 12px; margin-left: 8px; background: rgba(0, 240, 255, 0.1); padding: 2px 6px; border-radius: 4px; }
+        .btn-logout {
+            background: transparent;
+            border: 1px solid #ff00ff;
+            color: #ff00ff;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
         /* 订单区 */
         .order-section { margin-top: 20px; }
-        .order-input-row { display: flex; gap: 10px; }
-        .order-input-row .form-control { flex: 1; }
+        .order-input-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .order-input-row .form-input { flex: 1; }
         .order-list { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
         .order-card {
             background: rgba(0, 0, 0, 0.3);
             padding: 15px;
             border-radius: 8px;
-            border-left: 3px solid var(--neon-blue);
+            border-left: 3px solid #00f0ff;
         }
         .order-title { font-weight: bold; margin-bottom: 5px; }
         .order-meta { font-size: 12px; color: #888; margin-bottom: 5px; }
-        .order-price { color: var(--neon-pink); font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        .order-price { color: #ff00ff; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
         .order-actions { display: flex; gap: 10px; }
         .btn-small { padding: 5px 15px; font-size: 12px; border-radius: 5px; border: none; cursor: pointer; }
-        .btn-blue { background: var(--neon-blue); color: #000; }
-        .btn-red { background: var(--neon-pink); color: #000; }
-        /* Toast提示 */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 12px 25px;
-            border-radius: 25px;
-            border: 1px solid var(--neon-blue);
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s;
-            max-width: 80%;
-            text-align: center;
-        }
-        .toast.show { opacity: 1; }
-        .hidden { display: none; }
+        .btn-blue { background: #00f0ff; color: #000; }
         .tip { text-align: center; color: #888; padding: 20px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- 头部 -->
-        <div class="header">
-            <div class="logo">卡了电竞欢迎您</div>
-            <div class="header-status" id="headerStatus">未登录</div>
-        </div>
+    <!-- 错误提示区 -->
+    <div class="error-banner" id="errorBanner"></div>
 
-        <!-- 登录/注册区 -->
-        <div class="main" id="authSection">
-            <h2 style="text-align: center; margin-bottom: 20px; color: var(--neon-blue);">账号登录 / 注册</h2>
-            <div class="form-group">
-                <label>邮箱</label>
-                <input type="email" id="email" class="form-control" placeholder="请输入邮箱">
-            </div>
-            <div class="form-group">
-                <label>密码（至少6位）</label>
-                <input type="password" id="password" class="form-control" placeholder="请输入密码">
-            </div>
-            <!-- 注册专属字段 -->
-            <div id="registerFields" class="hidden">
-                <div class="form-group">
-                    <label>昵称</label>
-                    <input type="text" id="nickname" class="form-control" placeholder="请输入昵称">
-                </div>
-                <div class="form-group">
-                    <label>角色</label>
-                    <select id="role" class="form-control">
-                        <option value="player">玩家（发单/接单）</option>
-                        <option value="worker">打手（接单）</option>
-                        <option value="owner">店长（最高权限）</option>
-                    </select>
-                </div>
-            </div>
-            <button class="btn btn-primary" id="submitBtn">登录账号</button>
-            <div class="switch-mode">
-                <span id="switchText">还没有账号？</span>
-                <a id="switchMode">点击注册</a>
-            </div>
+    <!-- 登录页（默认显示） -->
+    <div class="page-container" id="loginPage">
+        <div class="page-title">卡了电竞欢迎您</div>
+        <div class="form-group">
+            <label class="form-label">邮箱</label>
+            <input type="email" class="form-input" id="loginEmail" placeholder="请输入邮箱">
         </div>
-
-        <!-- 应用区（登录后显示） -->
-        <div class="main hidden" id="appSection">
-            <div class="order-section">
-                <div class="order-input-row">
-                    <input type="text" id="orderContent" class="form-control" placeholder="请输入订单内容">
-                    <input type="number" id="orderPrice" class="form-control" placeholder="金额" step="0.01">
-                </div>
-                <button class="btn btn-primary" id="createOrderBtn">发布订单</button>
-            </div>
-            <h3 style="margin-top: 20px; color: var(--neon-pink);">订单列表</h3>
-            <div class="order-list" id="orderList">
-                <div class="tip">正在加载订单...</div>
-            </div>
+        <div class="form-group">
+            <label class="form-label">密码（至少6位）</label>
+            <input type="password" class="form-input" id="loginPassword" placeholder="请输入密码">
         </div>
+        <button class="btn btn-primary" id="loginBtn">登录账号</button>
+        <div class="status-text" id="loginStatus"></div>
+        <button class="btn-link" id="toRegisterBtn">没有账号？点击注册</button>
+    </div>
 
-        <!-- 底部信息栏 -->
-        <div class="footer hidden" id="footerBar">
-            <div>
-                <span>欢迎，</span>
-                <span class="user-name" id="footerUserName">用户</span>
-                <span class="user-role" id="footerUserRole">[玩家]</span>
+    <!-- 注册页（默认隐藏，点击去注册后显示） -->
+    <div class="page-container hidden" id="registerPage">
+        <div class="page-title">账号注册</div>
+        <div class="form-group">
+            <label class="form-label">邮箱</label>
+            <input type="email" class="form-input" id="registerEmail" placeholder="请输入邮箱">
+        </div>
+        <div class="form-group">
+            <label class="form-label">密码（至少6位）</label>
+            <input type="password" class="form-input" id="registerPassword" placeholder="请输入密码">
+        </div>
+        <div class="form-group">
+            <label class="form-label">昵称</label>
+            <input type="text" class="form-input" id="registerNickname" placeholder="请输入昵称">
+        </div>
+        <div class="form-group">
+            <label class="form-label">选择身份</label>
+            <select class="form-input" id="registerRole">
+                <option value="player">玩家（发单/接单）</option>
+                <option value="worker">打手（接单）</option>
+                <option value="admin">管理员（需店长审核）</option>
+                <option value="owner">店长（最高权限，仅1个）</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" id="registerBtn">注册账号</button>
+        <div class="status-text" id="registerStatus"></div>
+        <button class="btn-link" id="toLoginBtn">已有账号？点击登录</button>
+    </div>
+
+    <!-- 应用页（登录后显示） -->
+    <div class="page-container app-page" id="appPage">
+        <div class="order-section">
+            <div class="order-input-row">
+                <input type="text" class="form-input" id="orderContent" placeholder="请输入订单内容">
+                <input type="number" class="form-input" id="orderPrice" placeholder="金额" step="0.01">
             </div>
-            <button class="btn-logout" id="logoutBtn">退出登录</button>
+            <button class="btn btn-primary" id="createOrderBtn">发布订单</button>
+        </div>
+        <h3 style="color: #ff00ff; margin-top: 20px;">订单列表</h3>
+        <div class="order-list" id="orderList">
+            <div class="tip">正在加载订单...</div>
         </div>
     </div>
 
-    <!-- Toast容器 -->
-    <div class="toast" id="toast"></div>
+    <!-- 底部信息栏（登录后显示） -->
+    <div class="footer-bar hidden" id="footerBar">
+        <div>
+            <span>欢迎，</span>
+            <span class="user-name" id="footerUserName">用户</span>
+            <span class="user-role" id="footerUserRole">[玩家]</span>
+        </div>
+        <button class="btn-logout" id="logoutBtn">退出登录</button>
+    </div>
 
     <script>
-        // 🔴🔴🔴 必须替换成你的Supabase配置 🔴🔴🔴
+        // ==========================================
+        // 🔴 必须替换成你的Supabase配置！！！
+        // ==========================================
         const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg';
 
-        // 全局错误捕获：任何JS报错都会弹窗，不会默默失败
-        window.onerror = function(msg, url, line) {
-            showToast(`系统错误：${msg}`, 5000);
-            return true;
-        };
+        // 错误提示函数
+        function showError(msg) {
+            const banner = document.getElementById('errorBanner');
+            banner.innerText = msg;
+            banner.style.display = 'block';
+            console.error(msg);
+        }
 
-        // 初始化Supabase客户端
+        // 状态提示函数（页面内显示）
+        function setStatus(elementId, msg, isError = false) {
+            const el = document.getElementById(elementId);
+            el.innerText = msg;
+            el.style.color = isError ? '#ff0044' : '#888';
+        }
+
+        // 配置预检查（最关键：没填配置直接报错，不会无反应）
+        if (SUPABASE_URL.includes('YOUR_SUPABASE') || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE')) {
+            showError('❌ 请先替换代码中的SUPABASE_URL和SUPABASE_ANON_KEY为你的Supabase配置！');
+            // 禁用所有按钮
+            document.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
+        }
+
+        // 初始化Supabase
         let supabase;
         try {
             supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         } catch (e) {
-            showToast('Supabase SDK加载失败，请检查网络或配置', 5000);
+            showError('❌ Supabase SDK加载失败：' + e.message);
         }
 
         // DOM元素
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const nicknameInput = document.getElementById('nickname');
-        const roleSelect = document.getElementById('role');
-        const submitBtn = document.getElementById('submitBtn');
-        const switchMode = document.getElementById('switchMode');
-        const switchText = document.getElementById('switchText');
-        const registerFields = document.getElementById('registerFields');
-        const authSection = document.getElementById('authSection');
-        const appSection = document.getElementById('appSection');
+        const loginPage = document.getElementById('loginPage');
+        const registerPage = document.getElementById('registerPage');
+        const appPage = document.getElementById('appPage');
         const footerBar = document.getElementById('footerBar');
-        const footerUserName = document.getElementById('footerUserName');
-        const footerUserRole = document.getElementById('footerUserRole');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const toRegisterBtn = document.getElementById('toRegisterBtn');
+        const toLoginBtn = document.getElementById('toLoginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
-        const orderContent = document.getElementById('orderContent');
-        const orderPrice = document.getElementById('orderPrice');
         const createOrderBtn = document.getElementById('createOrderBtn');
-        const orderList = document.getElementById('orderList');
-        const headerStatus = document.getElementById('headerStatus');
-        const toast = document.getElementById('toast');
 
-        let isRegisterMode = false; // 当前是否为注册模式
-        let currentUser = null; // 当前登录用户
+        let currentUser = null;
 
-        // Toast提示函数
-        function showToast(message, duration = 2000) {
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), duration);
-        }
-
-        // 切换登录/注册模式
-        switchMode.addEventListener('click', () => {
-            isRegisterMode = !isRegisterMode;
-            if (isRegisterMode) {
-                submitBtn.textContent = '注册账号';
-                switchText.textContent = '已有账号？';
-                switchMode.textContent = '点击登录';
-                registerFields.classList.remove('hidden');
-                showToast('请填写注册信息', 1000);
-            } else {
-                submitBtn.textContent = '登录账号';
-                switchText.textContent = '还没有账号？';
-                switchMode.textContent = '点击注册';
-                registerFields.classList.add('hidden');
-                showToast('请输入账号密码登录', 1000);
-            }
+        // ==========================================
+        // 页面切换逻辑（完全拆分，点击必响应）
+        // ==========================================
+        // 点击「去注册」：隐藏登录页，显示注册页
+        toRegisterBtn.addEventListener('click', () => {
+            console.log('点击了去注册按钮'); // 控制台可查
+            loginPage.classList.add('hidden');
+            registerPage.classList.remove('hidden');
+            setStatus('registerStatus', '请填写注册信息');
         });
 
-        // 提交按钮点击事件（登录/注册）
-        submitBtn.addEventListener('click', async () => {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            const nickname = nicknameInput.value.trim();
-            const role = roleSelect.value;
+        // 点击「去登录」：隐藏注册页，显示登录页
+        toLoginBtn.addEventListener('click', () => {
+            console.log('点击了去登录按钮');
+            registerPage.classList.add('hidden');
+            loginPage.classList.remove('hidden');
+            setStatus('loginStatus', '请输入账号密码登录');
+        });
 
-            // 1. 基础校验
-            if (!email || !password) {
-                showToast('邮箱和密码不能为空', 2000);
+        // ==========================================
+        // 注册逻辑（点击必响应）
+        // ==========================================
+        registerBtn.addEventListener('click', async () => {
+            console.log('点击了注册按钮'); // 控制台可查
+            const email = document.getElementById('registerEmail').value.trim();
+            const password = document.getElementById('registerPassword').value.trim();
+            const nickname = document.getElementById('registerNickname').value.trim();
+            const role = document.getElementById('registerRole').value;
+
+            // 1. 字段校验（漏填直接提示，不会无反应）
+            if (!email || !password || !nickname) {
+                setStatus('registerStatus', '❌ 邮箱、密码、昵称不能为空', true);
                 return;
             }
             if (password.length < 6) {
-                showToast('密码至少需要6位', 2000);
+                setStatus('registerStatus', '❌ 密码至少需要6位', true);
                 return;
             }
 
-            // 2. 注册模式额外校验
-            if (isRegisterMode) {
-                if (!nickname) {
-                    showToast('昵称不能为空', 2000);
+            // 2. 店长唯一性校验（前端预校验）
+            if (role === 'owner') {
+                setStatus('registerStatus', '正在校验店长名额...');
+                const { count, error } = await supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('role', 'owner');
+                if (error) {
+                    setStatus('registerStatus', '❌ 校验失败：' + error.message, true);
                     return;
                 }
-                // 店长唯一性校验（前端预校验）
-                if (role === 'owner') {
-                    const { count, error } = await supabase
-                        .from('profiles')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('role', 'owner');
-                    if (error) {
-                        showToast('校验店长失败：' + error.message, 3000);
-                        return;
-                    }
-                    if (count > 0) {
-                        showToast('店长账号已存在，无法重复注册', 3000);
-                        return;
-                    }
+                if (count > 0) {
+                    setStatus('registerStatus', '❌ 店长账号已存在，无法重复注册', true);
+                    return;
                 }
             }
 
-            // 3. 执行登录/注册
-            showToast(isRegisterMode ? '正在注册中，请稍后...' : '正在登录中，请稍后...', 2000);
+            // 3. 执行注册
+            setStatus('registerStatus', '正在注册中，请稍候...');
+            registerBtn.disabled = true; // 禁用按钮防止重复点击
+            registerBtn.innerText = '注册中...';
+
             try {
-                if (isRegisterMode) {
-                    // 注册逻辑
-                    const { data, error } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: { nickname, role } // 元数据传给profiles表
-                        }
-                    });
-                    if (error) throw error;
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: { data: { nickname, role } }
+                });
+                if (error) throw error;
 
-                    // 注册成功后自动插入profiles表
-                    const { error: profileError } = await supabase.from('profiles').insert({
-                        id: data.user.id,
-                        email,
-                        nickname,
-                        role,
-                        status: 'approved' // 店长和普通用户都直接通过
-                    });
-                    if (profileError) throw profileError;
+                // 插入用户资料
+                const { error: profileError } = await supabase.from('profiles').insert({
+                    id: data.user.id,
+                    email,
+                    nickname,
+                    role,
+                    status: role === 'admin' ? 'pending' : 'approved' // 管理员需审核，其他直接通过
+                });
+                if (profileError) throw profileError;
 
-                    showToast('注册成功！已自动登录', 2000);
-                    currentUser = data.user;
-                    updateUI();
-                } else {
-                    // 登录逻辑
-                    const { data, error } = await supabase.auth.signInWithPassword({
-                        email,
-                        password
-                    });
-                    if (error) throw error;
-
-                    currentUser = data.user;
-                    // 加载用户资料
-                    const { data: profile, error: profileError } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', currentUser.id)
-                        .single();
-                    if (profileError) throw profileError;
-                    currentUser.profile = profile;
-
-                    showToast('登录成功！', 2000);
-                    updateUI();
-                }
+                // 注册成功
+                setStatus('registerStatus', '✅ 注册成功！请返回登录', false);
+                registerBtn.innerText = '注册成功';
+                setTimeout(() => toLoginBtn.click(), 1500); // 1.5秒后自动切回登录页
             } catch (error) {
-                showToast(`操作失败：${error.message}`, 3000);
+                setStatus('registerStatus', '❌ 注册失败：' + error.message, true);
+                registerBtn.disabled = false;
+                registerBtn.innerText = '注册账号';
             }
         });
 
-        // 更新UI（登录后）
-        function updateUI() {
-            if (!currentUser || !currentUser.profile) return;
-            // 切换显示区域
-            authSection.classList.add('hidden');
-            appSection.classList.remove('hidden');
-            footerBar.classList.remove('hidden');
-            // 更新底部信息
-            footerUserName.textContent = currentUser.profile.nickname;
-            footerUserRole.textContent = `[${getRoleName(currentUser.profile.role)}]`;
-            headerStatus.textContent = getRoleName(currentUser.profile.role);
-            // 加载订单
-            loadOrders();
-        }
+        // ==========================================
+        // 登录逻辑
+        // ==========================================
+        loginBtn.addEventListener('click', async () => {
+            console.log('点击了登录按钮');
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
 
-        // 角色中文映射
-        function getRoleName(role) {
-            const map = { player: '玩家', worker: '打手', owner: '店长' };
-            return map[role] || '未知';
+            if (!email || !password) {
+                setStatus('loginStatus', '❌ 邮箱和密码不能为空', true);
+                return;
+            }
+
+            setStatus('loginStatus', '正在登录中...');
+            loginBtn.disabled = true;
+            loginBtn.innerText = '登录中...';
+
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+
+                // 加载用户资料
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single();
+                if (profileError) throw profileError;
+
+                // 检查审核状态
+                if (profile.status === 'pending') {
+                    setStatus('loginStatus', '❌ 账号等待店长审核，暂无法登录', true);
+                    loginBtn.disabled = false;
+                    loginBtn.innerText = '登录账号';
+                    return;
+                }
+
+                // 登录成功，切换到应用页
+                currentUser = { ...data.user, profile };
+                loginPage.classList.add('hidden');
+                appPage.classList.remove('hidden');
+                footerBar.classList.remove('hidden');
+                updateFooter();
+                loadOrders();
+            } catch (error) {
+                setStatus('loginStatus', '❌ 登录失败：' + error.message, true);
+                loginBtn.disabled = false;
+                loginBtn.innerText = '登录账号';
+            }
+        });
+
+        // ==========================================
+        // 应用页逻辑
+        // ==========================================
+        // 更新底部信息
+        function updateFooter() {
+            document.getElementById('footerUserName').innerText = currentUser.profile.nickname;
+            const roleMap = { player: '玩家', worker: '打手', admin: '管理员', owner: '店长' };
+            document.getElementById('footerUserRole').innerText = `[${roleMap[currentUser.profile.role] || '未知'}]`;
         }
 
         // 发布订单
         createOrderBtn.addEventListener('click', async () => {
-            const content = orderContent.value.trim();
-            const price = orderPrice.value.trim();
+            const content = document.getElementById('orderContent').value.trim();
+            const price = document.getElementById('orderPrice').value.trim();
             if (!content || !price) {
-                showToast('请填写订单内容和金额', 2000);
+                alert('请填写订单内容和金额');
                 return;
             }
-            showToast('发布中...', 1000);
             try {
-                const { error } = await supabase.from('orders').insert({
+                await supabase.from('orders').insert({
                     sender_id: currentUser.id,
                     content,
                     price: parseFloat(price),
                     status: 'pending'
                 });
-                if (error) throw error;
-                showToast('发布成功！', 2000);
-                orderContent.value = '';
-                orderPrice.value = '';
+                alert('发布成功！');
+                document.getElementById('orderContent').value = '';
+                document.getElementById('orderPrice').value = '';
                 loadOrders();
             } catch (error) {
-                showToast('发布失败：' + error.message, 3000);
+                alert('发布失败：' + error.message);
             }
         });
 
         // 接单
         window.takeOrder = async (orderId) => {
             if (!confirm('确定接取此单？')) return;
-            showToast('接单中...', 1000);
             try {
-                const { error } = await supabase
+                await supabase
                     .from('orders')
                     .update({ worker_id: currentUser.id, status: 'accepted' })
                     .eq('id', orderId);
-                if (error) throw error;
-                showToast('接单成功！', 2000);
+                alert('接单成功！');
                 loadOrders();
             } catch (error) {
-                showToast('接单失败：' + error.message, 3000);
+                alert('接单失败：' + error.message);
             }
         };
 
         // 加载订单
         async function loadOrders() {
+            const orderList = document.getElementById('orderList');
             orderList.innerHTML = '<div class="tip">加载中...</div>';
             try {
                 let query = supabase
                     .from('orders')
                     .select('*, profiles!worker_id(nickname), profiles!sender_id(nickname)')
                     .order('created_at', { ascending: false });
-                // 非店长只能看自己的订单
                 if (currentUser.profile.role !== 'owner') {
                     query = query.or(`sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id}`);
                 }
@@ -461,7 +505,6 @@
 
                 orderList.innerHTML = orders.map(order => {
                     let actions = '';
-                    // 打手只能接待接单的订单
                     if (currentUser.profile.role === 'worker' && order.status === 'pending' && !order.worker_id) {
                         actions = `<button class="btn-small btn-blue" onclick="takeOrder('${order.id}')">接单</button>`;
                     }
@@ -476,14 +519,13 @@
                             <div class="order-price">¥${order.price}</div>
                             <div class="order-actions">
                                 ${actions}
-                                ${isMyOrder ? '<span style="color:var(--neon-blue);font-size:12px;margin-left:10px;">(我的订单)</span>' : ''}
+                                ${isMyOrder ? '<span style="color:#00f0ff;font-size:12px;margin-left:10px;">(我的订单)</span>' : ''}
                             </div>
                         </div>
                     `;
                 }).join('');
             } catch (error) {
-                orderList.innerHTML = '<div class="tip">加载失败，请检查网络</div>';
-                showToast('加载订单失败：' + error.message, 3000);
+                orderList.innerHTML = '<div class="tip">加载失败：' + error.message + '</div>';
             }
         }
 
@@ -491,34 +533,35 @@
         logoutBtn.addEventListener('click', async () => {
             await supabase.auth.signOut();
             currentUser = null;
-            authSection.classList.remove('hidden');
-            appSection.classList.add('hidden');
+            appPage.classList.add('hidden');
             footerBar.classList.add('hidden');
-            emailInput.value = '';
-            passwordInput.value = '';
-            nicknameInput.value = '';
-            showToast('已退出登录', 2000);
+            loginPage.classList.remove('hidden');
+            document.getElementById('loginPassword').value = '';
+            setStatus('loginStatus', '已退出登录，请重新登录');
         });
 
-        // 自动登录（监听会话变化）
-        supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                currentUser = session.user;
-                // 加载用户资料
+        // ==========================================
+        // 自动登录（页面加载时检查会话）
+        // ==========================================
+        window.onload = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
                 const { data: profile, error } = await supabase
                     .from('profiles')
                     .select('*')
-                    .eq('id', currentUser.id)
+                    .eq('id', session.user.id)
                     .single();
-                if (!error && profile) {
-                    currentUser.profile = profile;
-                    updateUI();
+                if (!error && profile && profile.status === 'approved') {
+                    currentUser = { ...session.user, profile };
+                    loginPage.classList.add('hidden');
+                    registerPage.classList.add('hidden');
+                    appPage.classList.remove('hidden');
+                    footerBar.classList.remove('hidden');
+                    updateFooter();
+                    loadOrders();
                 }
             }
-            if (event === 'SIGNED_OUT') {
-                currentUser = null;
-            }
-        });
+        };
     </script>
 </body>
 </html>
