@@ -3,109 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>调试版-派单系统</title>
+    <title>卡了电竞派单系统</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; }
-        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 5px; color: white; font-size: 16px; }
-        .purple { background: #7232dd; }
-        .green { background: #07c160; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 20px; max-width: 500px; margin: auto; }
+        .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: #333; }
+        input, select, button { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; box-sizing: border-box; }
+        button { background: #1677ff; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:active { background: #0958d9; }
+        .green-btn { background: #52c41a; }
+        .red-btn { background: #ff4d4f; }
+        .order { background: #fafafa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #1677ff; }
+        .order p { margin: 6px 0; }
+        .worker { color: #1677ff; font-weight: bold; }
+        .hidden { display: none; }
+        #status { padding: 10px; background: #e6f7ff; border-radius: 8px; margin-bottom: 20px; font-size: 14px; word-break: break-all; }
     </style>
 </head>
 <body>
 
-<div class="box">
-    <h3>注册/登录</h3>
-    <input id="e" placeholder="邮箱">
-    <input id="p" type="password" placeholder="密码">
-    <input id="n" placeholder="昵称">
-    <select id="r">
+<div id="loginBox" class="card">
+    <h2>登录 / 注册</h2>
+    <input id="email" type="email" placeholder="邮箱">
+    <input id="password" type="password" placeholder="密码 (至少6位)">
+    <input id="nickname" placeholder="昵称 (注册必填)">
+    <select id="role">
         <option value="player">玩家</option>
         <option value="worker">打手</option>
-        <option value="manager">经理</option>
         <option value="admin">管理员</option>
         <option value="boss">店长</option>
     </select>
-    <button class="purple" onclick="reg()">注册账号</button>
-    <button class="green" onclick="log()">登录账号</button>
+    <button onclick="register()">注册</button>
+    <button class="green-btn" onclick="login()">登录</button>
 </div>
 
-<div class="box">
-    <h3>状态</h3>
-    <div id="s">等待操作...</div>
+<div id="appBox" class="card hidden">
+    <div id="status">加载中...</div>
+    <button class="red-btn" onclick="logout()">退出登录</button>
+
+    <div id="createSection">
+        <h2>发布订单</h2>
+        <input id="content" placeholder="订单内容 (如：王者排位)">
+        <input id="price" type="number" placeholder="金额 (元)">
+        <button onclick="createOrder()">发布订单</button>
+    </div>
+
+    <h2>订单列表</h2>
+    <div id="orderList"></div>
 </div>
 
 <script>
-// 👇 这里填你自己的 Supabase 信息
-const url = 'https://qyprklqzadevrybumwot.supabase.co';
-const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg';
+// ====== 配置区（必须修改）======
+const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co'; 
+const SUPABASE_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg'; 
+// ==============================
 
-// 注册函数（带强制弹窗）
-function reg() {
-    var email = document.getElementById('e').value;
-    var pwd = document.getElementById('p').value;
-    var nick = document.getElementById('n').value;
-    var role = document.getElementById('r').value;
-    
-    if(!email || !pwd || !nick) {
-        alert('请填写邮箱、密码和昵称！');
-        return;
+let currentUser = null;
+
+// 通用请求函数
+async function sbFetch(path, method = 'GET', body = null, auth = true) {
+    const headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY };
+    if (auth) {
+        const token = localStorage.getItem('sb_token');
+        if (!token) throw new Error('未登录');
+        headers['Authorization'] = `Bearer ${token}`;
+    } else {
+        headers['Authorization'] = `Bearer ${SUPABASE_KEY}`;
     }
 
-    document.getElementById('s').innerText = '正在发送注册请求...';
-    
-    // 使用最简单的 fetch API，兼容性最好
-    fetch(url + '/auth/v1/signup', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'apikey': key,
-            'Authorization': 'Bearer ' + key
-        },
-        body: JSON.stringify({
-            email: email,
-            password: pwd,
-            data: { nickname: nick, role: role }
-        })
-    })
-    .then(function(response) {
-        // 先弹状态码，看服务器回了什么
-        alert('服务器状态码: ' + response.status);
-        return response.json();
-    })
-    .then(function(data) {
-        // 再弹服务器返回的具体内容
-        alert('服务器返回数据: ' + JSON.stringify(data));
-        if (data.id || data.user_id) {
-            document.getElementById('s').innerText = '注册成功！';
-        } else {
-            document.getElementById('s').innerText = '注册失败！';
-        }
-    })
-    .catch(function(error) {
-        // 如果网络断了或者代码错了，这里会弹
-        alert('发生错误: ' + error.message);
-        document.getElementById('s').innerText = '请求出错';
+    const res = await fetch(SUPABASE_URL + path, {
+        method, headers, body: body ? JSON.stringify(body) : null
     });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error_description || data?.message || '请求失败');
+    return data;
 }
 
-// 登录函数（备用）
-function log() {
-    var email = document.getElementById('e').value;
-    var pwd = document.getElementById('p').value;
-    fetch(url + '/auth/v1/token?grant_type=password', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'apikey': key,
-            'Authorization': 'Bearer ' + key
-        },
-        body: JSON.stringify({ email: email, password: pwd })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) { alert('登录返回: ' + JSON.stringify(d)); });
+// 注册
+async function register() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const nickname = document.getElementById('nickname').value;
+    const role = document.getElementById('role').value;
+    if (!email || !password || !nickname) return alert('请填完整');
+    try {
+        await sbFetch('/auth/v1/signup', 'POST', { email, password, data: { nickname, role } }, false);
+        alert('注册成功！请登录');
+    } catch (e) { alert('注册失败: ' + e.message); }
 }
+
+// 登录
+async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    if (!email || !password) return alert('填邮箱密码');
+    try {
+        const data = await sbFetch('/auth/v1/token?grant_type=password', 'POST', { email, password }, false);
+        localStorage.setItem('sb_token', data.access_token);
+        currentUser = data.user;
+        showApp();
+        loadOrders();
+    } catch (e) { alert('登录失败: ' + e.message); }
+}
+
+// 显示主界面
+function showApp() {
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('appBox').classList.remove('hidden');
+    document.getElementById('status').innerText = '欢迎，用户ID: ' + currentUser.id;
+}
+
+// 发单
+async function createOrder() {
+    const content = document.getElementById('content').value;
+    const price = document.getElementById('price').value;
+    if (!content || !price) return alert('填内容和价格');
+    try {
+        await sbFetch('/rest/v1/orders', 'POST', { sender_id: currentUser.id, content, price, status: 'pending' });
+        alert('发单成功！');
+        loadOrders();
+    } catch (e) { alert('发单失败: ' + e.message); }
+}
+
+// 接单
+async function takeOrder(id) {
+    try {
+        await sbFetch(`/rest/v1/orders?id=eq.${id}`, 'PATCH', { worker_id: currentUser.id, status: 'accepted' });
+        alert('接单成功！');
+        loadOrders();
+    } catch (e) { alert('接单失败: ' + e.message); }
+}
+
+// 加载订单
+async function loadOrders() {
+    try {
+        const orders = await sbFetch('/rest/v1/orders?select=*,profiles!worker_id(nickname)&order=created_at.desc');
+        const list = document.getElementById('orderList');
+        list.innerHTML = '';
+        orders.forEach(o => {
+            const div = document.createElement('div');
+            div.className = 'order';
+            let btn = '';
+            if (o.status === 'pending') btn = `<button class="green-btn" onclick="takeOrder('${o.id}')">接单</button>`;
+            div.innerHTML = `
+                <p>内容：${o.content}</p>
+                <p>金额：￥${o.price}</p>
+                <p>状态：${o.status === 'pending' ? '待接单' : '已接单'}</p>
+                <p class="worker">${o.profiles?.nickname ? '接单人：' + o.profiles.nickname : ''}</p>
+                ${btn}
+            `;
+            list.appendChild(div);
+        });
+    } catch (e) { console.error(e); }
+}
+
+// 退出
+function logout() {
+    localStorage.clear();
+    location.reload();
+}
+
+// 自动登录
+window.onload = async () => {
+    const token = localStorage.getItem('sb_token');
+    if (token) {
+        try {
+            const user = await sbFetch('/auth/v1/user', 'GET');
+            currentUser = user;
+            showApp();
+            loadOrders();
+        } catch (e) { localStorage.clear(); }
+    }
+};
 </script>
 </body>
 </html>
