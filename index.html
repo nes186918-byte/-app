@@ -20,7 +20,7 @@
         .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .tip { font-size: 13px; color: #888; text-align: center; margin-top: 20px; }
         .order-item { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 12px; }
-        .worker-info { color: #7232dd; font-weight: 500; margin-top: 8px; }
+        .worker-info { color: #7232dd; font-weight: 500; margin-top: 8px; padding: 8px; background: #f3eeff; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -50,7 +50,6 @@
 
     <!-- 已登录界面 -->
     <div id="userPage" style="display: none;">
-        <!-- 用户信息卡片 -->
         <div class="card">
             <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">欢迎回来</div>
             <div class="info-box">
@@ -60,7 +59,6 @@
             <button class="btn-red" onclick="doLogout()">退出登录</button>
         </div>
 
-        <!-- 发单卡片（仅玩家/店长可见） -->
         <div class="card" id="createOrderCard">
             <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">发布订单</div>
             <label class="input-label">订单内容</label>
@@ -70,14 +68,12 @@
             <button class="btn-purple" onclick="createOrder()">发布订单</button>
         </div>
 
-        <!-- 订单列表卡片（新增接单人显示） -->
         <div class="card">
             <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">订单列表</div>
             <div id="orderList"></div>
         </div>
     </div>
 
-    <!-- 系统状态卡片 -->
     <div class="card">
         <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">系统状态</div>
         <div class="info-box">
@@ -89,18 +85,13 @@
     <div class="tip">数据存储在云端，卸载/换设备也不会丢失</div>
 
     <script>
-        // ========================================================================
-        // 👇👇👇 在这里填入你自己的 Supabase 配置（从Supabase后台Settings→API复制）👇👇👇
-        // ========================================================================
-        const SUPABASE_URL = 'https://qyprklqzadevrybumwot.supabase.co'; 
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg'; 
-        // ========================================================================
-
+        // 👇 换成你自己的Supabase配置（Settings→API里复制）
+        const SUPABASE_URL = 'https://qyprklqzadevrybumwot.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg';
         const roleNames = {'player':'玩家','worker':'打手','admin':'管理员','boss':'店长'};
-        let currentUserId = '';
-        let currentUserRole = '';
+        let currentUserId = '', currentUserRole = '';
 
-        // 原生HTTP请求封装（兼容所有浏览器）
+        // 原生请求封装（对齐Supabase最新接口）
         function sendRequest(url, method, data, callback, needAuth = true) {
             const xhr = new XMLHttpRequest();
             xhr.open(method, SUPABASE_URL + url, true);
@@ -108,172 +99,139 @@
             xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
             if (needAuth) {
                 const token = localStorage.getItem('sb_token');
-                if (!token) {
-                    callback(401, { message: '未登录' });
-                    return;
-                }
+                if (!token) return callback(401, { message: '未登录' });
                 xhr.setRequestHeader('Authorization', 'Bearer ' + token);
             } else {
                 xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
             }
-            xhr.onload = function() {
-                let result = null;
-                try { result = JSON.parse(xhr.responseText); } catch(e) {}
-                callback(xhr.status, result);
+            xhr.onload = () => {
+                let res = null;
+                try { res = JSON.parse(xhr.responseText); } catch(e) {}
+                callback(xhr.status, res);
             };
-            xhr.onerror = function() { callback(0, { message: '网络错误' }); };
+            xhr.onerror = () => callback(0, { message: '网络错误' });
             xhr.send(data ? JSON.stringify(data) : null);
         }
 
         // 注册
         function doRegister() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const nickname = document.getElementById('nickname').value.trim();
-            const role = document.getElementById('role').value;
-            if (!email || !password || !nickname) { alert('请填写邮箱、密码和昵称'); return; }
-            if (password.length < 6) { alert('密码至少6位'); return; }
-            document.getElementById('apiStatus').innerText = '注册中...';
-            sendRequest('/auth/v1/signup', 'POST', {
-                email, password, data: { nickname, role }
-            }, function(status) {
+            const email = email.value.trim(), pwd = password.value, nick = nickname.value.trim(), roleVal = role.value;
+            if (!email || !pwd || !nick) return alert('请填写完整信息');
+            if (pwd.length < 6) return alert('密码至少6位');
+            apiStatus.innerText = '注册中...';
+            sendRequest('/auth/v1/signup', 'POST', { email, password: pwd, data: { nickname: nick, role: roleVal } }, (status) => {
                 if (status === 200 || status === 201) {
                     alert('注册成功，请登录');
-                    document.getElementById('apiStatus').innerText = '注册成功';
-                    document.getElementById('password').value = '';
+                    apiStatus.innerText = '注册成功';
+                    password.value = '';
                 } else {
-                    alert('注册失败：' + (status === 400 ? '店长/管理员名额已满' : '未知错误'));
-                    document.getElementById('apiStatus').innerText = '注册失败';
+                    alert('注册失败：店长/管理员名额已满或其他错误');
+                    apiStatus.innerText = '注册失败';
                 }
             }, false);
         }
 
-        // 登录（彻底兼容新旧版Supabase接口结构）
+        // 登录（严格对齐Supabase Auth v2最新返回结构）
         function doLogin() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            if (!email || !password) { alert('请填写邮箱和密码'); return; }
-            document.getElementById('apiStatus').innerText = '登录中...';
-            sendRequest('/auth/v1/token?grant_type=password', 'POST', {
-                email, password
-            }, function(status, res) {
-                // 兼容新版（res.data.session）和旧版（res.session）结构
-                const session = res?.data?.session || res?.session;
-                const user = res?.data?.user || res?.user;
-                
+            const emailVal = email.value.trim(), pwd = password.value;
+            if (!emailVal || !pwd) return alert('请填写邮箱和密码');
+            apiStatus.innerText = '登录中...';
+            sendRequest('/auth/v1/token?grant_type=password', 'POST', { email: emailVal, password: pwd }, (status, res) => {
+                // 最新版Supabase登录返回结构：{ session: { access_token, user }, user }
+                const session = res.session;
+                const user = res.user;
                 if (status === 200 && session && user) {
                     localStorage.setItem('sb_token', session.access_token);
                     localStorage.setItem('sb_uid', user.id);
                     currentUserId = user.id;
                     loadUserInfo(user.id, session.access_token);
                 } else {
-                    alert('登录失败：' + (res?.error_description || res?.error || '账号或密码错误'));
-                    document.getElementById('apiStatus').innerText = '登录失败';
+                    // 弹窗显示真实错误，方便排查
+                    alert(`登录失败：\n状态码：${status}\n错误信息：${res?.error_description || res?.error || '未知错误'}`);
+                    apiStatus.innerText = '登录失败';
                 }
             }, false);
         }
 
         // 加载用户信息
         function loadUserInfo(userId, token) {
-            sendRequest('/rest/v1/profiles?id=eq.' + userId + '&select=*', 'GET', null, function(status, res) {
+            sendRequest(`/rest/v1/profiles?id=eq.${userId}&select=*`, 'GET', null, (status, res) => {
                 if (status === 200 && res.length > 0) {
                     const user = res[0];
                     currentUserRole = user.role;
-                    
-                    document.getElementById('loginPage').style.display = 'none';
-                    document.getElementById('userPage').style.display = 'block';
-                    
-                    document.getElementById('showNickname').innerText = user.nickname || '未设置';
-                    document.getElementById('showRole').innerText = roleNames[user.role] || user.role;
-                    document.getElementById('apiStatus').innerText = '登录成功';
-                    
-                    // 只有玩家/店长能发单
-                    document.getElementById('createOrderCard').style.display = 
-                        (user.role === 'player' || user.role === 'boss') ? 'block' : 'none';
-                    
+                    loginPage.style.display = 'none';
+                    userPage.style.display = 'block';
+                    showNickname.innerText = user.nickname || '未设置';
+                    showRole.innerText = roleNames[user.role] || user.role;
+                    apiStatus.innerText = '登录成功';
+                    createOrderCard.style.display = (user.role === 'player' || user.role === 'boss') ? 'block' : 'none';
                     loadOrders();
                 } else {
                     alert('加载用户信息失败：无权限访问');
-                    document.getElementById('apiStatus').innerText = '加载失败';
+                    apiStatus.innerText = '加载失败';
                 }
             });
         }
 
         // 发单
         function createOrder() {
-            const content = document.getElementById('orderContent').value.trim();
-            const price = document.getElementById('orderPrice').value.trim();
-            if (!content || !price) { alert('请填写订单内容和金额'); return; }
-            
+            const contentVal = orderContent.value.trim(), priceVal = orderPrice.value.trim();
+            if (!contentVal || !priceVal) return alert('请填写订单内容和金额');
             sendRequest('/rest/v1/orders', 'POST', {
-                sender_id: currentUserId, 
-                content: content, 
-                price: Number(price), 
-                status: '待接单'
-            }, function(status) {
+                sender_id: currentUserId, content: contentVal, price: Number(priceVal), status: '待接单'
+            }, (status) => {
                 if (status === 201) {
                     alert('发单成功！');
-                    document.getElementById('orderContent').value = '';
-                    document.getElementById('orderPrice').value = '';
+                    orderContent.value = '';
+                    orderPrice.value = '';
                     loadOrders();
                 } else {
-                    alert('发单失败，请检查网络或权限');
+                    alert('发单失败，请检查网络');
                 }
             });
         }
 
-        // 接单（抢单）
+        // 接单
         function takeOrder(orderId) {
-            sendRequest('/rest/v1/orders?id=eq.' + orderId, 'PATCH', {
-                worker_id: currentUserId, 
-                status: '已接单'
-            }, function(status) {
+            sendRequest(`/rest/v1/orders?id=eq.${orderId}`, 'PATCH', {
+                worker_id: currentUserId, status: '已接单'
+            }, (status) => {
                 if (status === 200) {
                     alert('接单成功！');
                     loadOrders();
                 } else {
-                    alert('接单失败：订单可能已被抢或权限不足');
+                    alert('接单失败：订单已被抢或权限不足');
                 }
             });
         }
 
-        // 加载订单列表（新增：联查接单人昵称）
+        // 加载订单+显示接单人
         function loadOrders() {
-            // 关联查询profiles表，获取接单人的昵称（通过worker_id外键）
+            // 关联查询接单人的昵称（通过worker_id关联profiles表）
             let url = '/rest/v1/orders?select=*,profiles!worker_id(nickname)&order=created_at.desc';
-            // 非店长/管理员只看自己的订单
             if (currentUserRole !== 'boss' && currentUserRole !== 'admin') {
                 url += `&or=(sender_id.eq.${currentUserId},worker_id.eq.${currentUserId})`;
             }
-            
-            sendRequest(url, 'GET', null, function(status, res) {
+            sendRequest(url, 'GET', null, (status, res) => {
                 if (status === 200) {
-                    const orderList = document.getElementById('orderList');
                     orderList.innerHTML = '';
-                    if (res.length === 0) {
-                        orderList.innerHTML = '<div class="tip">暂无订单</div>';
-                        return;
-                    }
+                    if (res.length === 0) return orderList.innerHTML = '<div class="tip">暂无订单</div>';
                     res.forEach(order => {
                         const div = document.createElement('div');
                         div.className = 'order-item';
-                        let actionBtn = '';
-                        let workerInfo = '';
-                        
-                        // 显示接单人信息（已接单/已完成时显示）
+                        let actionBtn = '', workerInfo = '';
+                        // 显示接单人
                         if (order.profiles?.nickname) {
                             workerInfo = `<div class="worker-info">接单人：${order.profiles.nickname}</div>`;
                         } else if (order.status === '待接单') {
                             workerInfo = `<div class="worker-info">暂无接单</div>`;
                         }
-
-                        // 打手可见待接单的订单，显示接单按钮
+                        // 打手接单按钮
                         if (currentUserRole === 'worker' && order.status === '待接单') {
                             actionBtn = `<button class="btn-green" onclick="takeOrder('${order.id}')">接单</button>`;
                         }
-                        
                         div.innerHTML = `
-                            <div class="info-row"><span>订单内容：</span><span>${order.content}</span></div>
+                            <div class="info-row"><span>内容：</span><span>${order.content}</span></div>
                             <div class="info-row"><span>金额：</span><span>￥${order.price}</span></div>
                             <div class="info-row"><span>状态：</span><span>${order.status}</span></div>
                             ${workerInfo}
@@ -282,7 +240,7 @@
                         orderList.appendChild(div);
                     });
                 } else {
-                    alert('加载订单失败：' + (res?.message || '无权限访问'));
+                    alert('加载订单失败');
                 }
             });
         }
@@ -290,30 +248,26 @@
         // 退出登录
         function doLogout() {
             localStorage.clear();
-            currentUserId = '';
-            currentUserRole = '';
-            window.location.reload();
+            location.reload();
         }
 
-        // 自动登录（兼容新旧版Supabase接口结构）
-        window.onload = function() {
-            const token = localStorage.getItem('sb_token');
-            const uid = localStorage.getItem('sb_uid');
+        // 自动登录
+        window.onload = () => {
+            const token = localStorage.getItem('sb_token'), uid = localStorage.getItem('sb_uid');
             if (token && uid) {
-                document.getElementById('apiStatus').innerText = '自动登录中...';
-                sendRequest('/auth/v1/user', 'GET', null, function(status, res) {
-                    // 兼容新版（res.data.user）和旧版（res.user）结构
-                    const user = res?.data?.user || res?.user;
+                apiStatus.innerText = '自动登录中...';
+                sendRequest('/auth/v1/user', 'GET', null, (status, res) => {
+                    const user = res.user;
                     if (status === 200 && user && user.id) {
                         currentUserId = uid;
                         loadUserInfo(uid, token);
                     } else {
                         localStorage.clear();
-                        document.getElementById('apiStatus').innerText = 'Token过期，请重新登录';
+                        apiStatus.innerText = 'Token过期，请重新登录';
                     }
                 });
             } else {
-                document.getElementById('apiStatus').innerText = '等待操作';
+                apiStatus.innerText = '等待操作';
             }
         };
     </script>
