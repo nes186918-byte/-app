@@ -3,273 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>电竞派单系统</title>
+    <title>调试版-派单系统</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; }
-        body { background: #f7f8fa; min-height: 100vh; padding: 20px; }
-        .header { background: #242933; color: white; padding: 18px; text-align: center; font-size: 19px; font-weight: 600; border-radius: 12px; margin-bottom: 20px; }
-        .card { background: white; border-radius: 12px; padding: 22px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-        .input-label { font-size: 15px; color: #555; margin-bottom: 8px; display: block; }
-        input, select { width: 100%; height: 48px; border: 1px solid #ddd; border-radius: 10px; padding: 0 15px; font-size: 16px; background: #f9f9f9; margin-bottom: 16px; outline: none; }
-        button { width: 100%; height: 48px; border: none; border-radius: 10px; font-size: 17px; color: white; margin-bottom: 14px; cursor: pointer; }
-        .btn-purple { background: #7232dd; }
-        .btn-green { background: #07c160; }
-        .btn-red { background: #ee0a24; }
-        .btn-gray { background: #86909c; }
-        .info-box { background: #eaf5ff; padding: 18px; border-radius: 10px; font-size: 15px; line-height: 1.7; margin-bottom: 18px; }
-        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .tip { font-size: 13px; color: #888; text-align: center; margin-top: 20px; }
-        .order-item { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 12px; }
-        .worker-info { color: #7232dd; font-weight: 500; margin-top: 8px; padding: 8px; background: #f3eeff; border-radius: 6px; }
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 5px; color: white; font-size: 16px; }
+        .purple { background: #7232dd; }
+        .green { background: #07c160; }
     </style>
 </head>
 <body>
-    <div class="header">卡了电竞派单系统</div>
 
-    <!-- 未登录界面 -->
-    <div id="loginPage">
-        <div class="card">
-            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">账号登录/注册</div>
-            <label class="input-label">邮箱</label>
-            <input type="email" id="email" placeholder="请输入邮箱">
-            <label class="input-label">密码</label>
-            <input type="password" id="password" placeholder="至少6位">
-            <label class="input-label">昵称（注册必填）</label>
-            <input type="text" id="nickname" placeholder="比如：小明">
-            <label class="input-label">角色</label>
-            <select id="role">
-                <option value="player">玩家</option>
-                <option value="worker">打手</option>
-                <option value="admin">管理员</option>
-                <option value="boss">店长</option>
-            </select>
-            <button class="btn-purple" onclick="doRegister()">注册账号</button>
-            <button class="btn-green" onclick="doLogin()">登录账号</button>
-        </div>
-    </div>
+<div class="box">
+    <h3>注册/登录</h3>
+    <input id="e" placeholder="邮箱">
+    <input id="p" type="password" placeholder="密码">
+    <input id="n" placeholder="昵称">
+    <select id="r">
+        <option value="player">玩家</option>
+        <option value="worker">打手</option>
+        <option value="manager">经理</option>
+        <option value="admin">管理员</option>
+        <option value="boss">店长</option>
+    </select>
+    <button class="purple" onclick="reg()">注册账号</button>
+    <button class="green" onclick="log()">登录账号</button>
+</div>
 
-    <!-- 已登录界面 -->
-    <div id="userPage" style="display: none;">
-        <div class="card">
-            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">欢迎回来</div>
-            <div class="info-box">
-                <div class="info-row"><span>昵称：</span><span id="showNickname"></span></div>
-                <div class="info-row"><span>角色：</span><span id="showRole"></span></div>
-            </div>
-            <button class="btn-red" onclick="doLogout()">退出登录</button>
-        </div>
+<div class="box">
+    <h3>状态</h3>
+    <div id="s">等待操作...</div>
+</div>
 
-        <div class="card" id="createOrderCard">
-            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">发布订单</div>
-            <label class="input-label">订单内容</label>
-            <input type="text" id="orderContent" placeholder="比如：打王者排位上10星">
-            <label class="input-label">金额（元）</label>
-            <input type="number" id="orderPrice" placeholder="比如：50">
-            <button class="btn-purple" onclick="createOrder()">发布订单</button>
-        </div>
+<script>
+// 👇 这里填你自己的 Supabase 信息
+const url = 'YOUR_SUPABASE_URL';
+const key = 'YOUR_SUPABASE_ANON_KEY';
 
-        <div class="card">
-            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">订单列表</div>
-            <div id="orderList"></div>
-        </div>
-    </div>
+// 注册函数（带强制弹窗）
+function reg() {
+    var email = document.getElementById('e').value;
+    var pwd = document.getElementById('p').value;
+    var nick = document.getElementById('n').value;
+    var role = document.getElementById('r').value;
+    
+    if(!email || !pwd || !nick) {
+        alert('请填写邮箱、密码和昵称！');
+        return;
+    }
 
-    <div class="card">
-        <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">系统状态</div>
-        <div class="info-box">
-            <div class="info-row"><span>运行状态：</span><span id="runStatus">正常</span></div>
-            <div class="info-row"><span>接口状态：</span><span id="apiStatus">等待操作</span></div>
-        </div>
-        <button class="btn-gray" onclick="window.location.reload()">刷新重试</button>
-    </div>
-    <div class="tip">数据存储在云端，卸载/换设备也不会丢失</div>
-
-    <script>
-        // 👇 换成你自己的Supabase配置（Settings→API里复制）
-        const SUPABASE_URL = 'https://qyprklqzadevrybumwot.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg';
-        const roleNames = {'player':'玩家','worker':'打手','admin':'管理员','boss':'店长'};
-        let currentUserId = '', currentUserRole = '';
-
-        // 原生请求封装（对齐Supabase最新接口）
-        function sendRequest(url, method, data, callback, needAuth = true) {
-            const xhr = new XMLHttpRequest();
-            xhr.open(method, SUPABASE_URL + url, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-            if (needAuth) {
-                const token = localStorage.getItem('sb_token');
-                if (!token) return callback(401, { message: '未登录' });
-                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-            } else {
-                xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
-            }
-            xhr.onload = () => {
-                let res = null;
-                try { res = JSON.parse(xhr.responseText); } catch(e) {}
-                callback(xhr.status, res);
-            };
-            xhr.onerror = () => callback(0, { message: '网络错误' });
-            xhr.send(data ? JSON.stringify(data) : null);
+    document.getElementById('s').innerText = '正在发送注册请求...';
+    
+    // 使用最简单的 fetch API，兼容性最好
+    fetch(url + '/auth/v1/signup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': key,
+            'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({
+            email: email,
+            password: pwd,
+            data: { nickname: nick, role: role }
+        })
+    })
+    .then(function(response) {
+        // 先弹状态码，看服务器回了什么
+        alert('服务器状态码: ' + response.status);
+        return response.json();
+    })
+    .then(function(data) {
+        // 再弹服务器返回的具体内容
+        alert('服务器返回数据: ' + JSON.stringify(data));
+        if (data.id || data.user_id) {
+            document.getElementById('s').innerText = '注册成功！';
+        } else {
+            document.getElementById('s').innerText = '注册失败！';
         }
+    })
+    .catch(function(error) {
+        // 如果网络断了或者代码错了，这里会弹
+        alert('发生错误: ' + error.message);
+        document.getElementById('s').innerText = '请求出错';
+    });
+}
 
-        // 注册
-        function doRegister() {
-            const email = email.value.trim(), pwd = password.value, nick = nickname.value.trim(), roleVal = role.value;
-            if (!email || !pwd || !nick) return alert('请填写完整信息');
-            if (pwd.length < 6) return alert('密码至少6位');
-            apiStatus.innerText = '注册中...';
-            sendRequest('/auth/v1/signup', 'POST', { email, password: pwd, data: { nickname: nick, role: roleVal } }, (status) => {
-                if (status === 200 || status === 201) {
-                    alert('注册成功，请登录');
-                    apiStatus.innerText = '注册成功';
-                    password.value = '';
-                } else {
-                    alert('注册失败：店长/管理员名额已满或其他错误');
-                    apiStatus.innerText = '注册失败';
-                }
-            }, false);
-        }
-
-        // 登录（严格对齐Supabase Auth v2最新返回结构）
-        function doLogin() {
-            const emailVal = email.value.trim(), pwd = password.value;
-            if (!emailVal || !pwd) return alert('请填写邮箱和密码');
-            apiStatus.innerText = '登录中...';
-            sendRequest('/auth/v1/token?grant_type=password', 'POST', { email: emailVal, password: pwd }, (status, res) => {
-                // 最新版Supabase登录返回结构：{ session: { access_token, user }, user }
-                const session = res.session;
-                const user = res.user;
-                if (status === 200 && session && user) {
-                    localStorage.setItem('sb_token', session.access_token);
-                    localStorage.setItem('sb_uid', user.id);
-                    currentUserId = user.id;
-                    loadUserInfo(user.id, session.access_token);
-                } else {
-                    // 弹窗显示真实错误，方便排查
-                    alert(`登录失败：\n状态码：${status}\n错误信息：${res?.error_description || res?.error || '未知错误'}`);
-                    apiStatus.innerText = '登录失败';
-                }
-            }, false);
-        }
-
-        // 加载用户信息
-        function loadUserInfo(userId, token) {
-            sendRequest(`/rest/v1/profiles?id=eq.${userId}&select=*`, 'GET', null, (status, res) => {
-                if (status === 200 && res.length > 0) {
-                    const user = res[0];
-                    currentUserRole = user.role;
-                    loginPage.style.display = 'none';
-                    userPage.style.display = 'block';
-                    showNickname.innerText = user.nickname || '未设置';
-                    showRole.innerText = roleNames[user.role] || user.role;
-                    apiStatus.innerText = '登录成功';
-                    createOrderCard.style.display = (user.role === 'player' || user.role === 'boss') ? 'block' : 'none';
-                    loadOrders();
-                } else {
-                    alert('加载用户信息失败：无权限访问');
-                    apiStatus.innerText = '加载失败';
-                }
-            });
-        }
-
-        // 发单
-        function createOrder() {
-            const contentVal = orderContent.value.trim(), priceVal = orderPrice.value.trim();
-            if (!contentVal || !priceVal) return alert('请填写订单内容和金额');
-            sendRequest('/rest/v1/orders', 'POST', {
-                sender_id: currentUserId, content: contentVal, price: Number(priceVal), status: '待接单'
-            }, (status) => {
-                if (status === 201) {
-                    alert('发单成功！');
-                    orderContent.value = '';
-                    orderPrice.value = '';
-                    loadOrders();
-                } else {
-                    alert('发单失败，请检查网络');
-                }
-            });
-        }
-
-        // 接单
-        function takeOrder(orderId) {
-            sendRequest(`/rest/v1/orders?id=eq.${orderId}`, 'PATCH', {
-                worker_id: currentUserId, status: '已接单'
-            }, (status) => {
-                if (status === 200) {
-                    alert('接单成功！');
-                    loadOrders();
-                } else {
-                    alert('接单失败：订单已被抢或权限不足');
-                }
-            });
-        }
-
-        // 加载订单+显示接单人
-        function loadOrders() {
-            // 关联查询接单人的昵称（通过worker_id关联profiles表）
-            let url = '/rest/v1/orders?select=*,profiles!worker_id(nickname)&order=created_at.desc';
-            if (currentUserRole !== 'boss' && currentUserRole !== 'admin') {
-                url += `&or=(sender_id.eq.${currentUserId},worker_id.eq.${currentUserId})`;
-            }
-            sendRequest(url, 'GET', null, (status, res) => {
-                if (status === 200) {
-                    orderList.innerHTML = '';
-                    if (res.length === 0) return orderList.innerHTML = '<div class="tip">暂无订单</div>';
-                    res.forEach(order => {
-                        const div = document.createElement('div');
-                        div.className = 'order-item';
-                        let actionBtn = '', workerInfo = '';
-                        // 显示接单人
-                        if (order.profiles?.nickname) {
-                            workerInfo = `<div class="worker-info">接单人：${order.profiles.nickname}</div>`;
-                        } else if (order.status === '待接单') {
-                            workerInfo = `<div class="worker-info">暂无接单</div>`;
-                        }
-                        // 打手接单按钮
-                        if (currentUserRole === 'worker' && order.status === '待接单') {
-                            actionBtn = `<button class="btn-green" onclick="takeOrder('${order.id}')">接单</button>`;
-                        }
-                        div.innerHTML = `
-                            <div class="info-row"><span>内容：</span><span>${order.content}</span></div>
-                            <div class="info-row"><span>金额：</span><span>￥${order.price}</span></div>
-                            <div class="info-row"><span>状态：</span><span>${order.status}</span></div>
-                            ${workerInfo}
-                            ${actionBtn}
-                        `;
-                        orderList.appendChild(div);
-                    });
-                } else {
-                    alert('加载订单失败');
-                }
-            });
-        }
-
-        // 退出登录
-        function doLogout() {
-            localStorage.clear();
-            location.reload();
-        }
-
-        // 自动登录
-        window.onload = () => {
-            const token = localStorage.getItem('sb_token'), uid = localStorage.getItem('sb_uid');
-            if (token && uid) {
-                apiStatus.innerText = '自动登录中...';
-                sendRequest('/auth/v1/user', 'GET', null, (status, res) => {
-                    const user = res.user;
-                    if (status === 200 && user && user.id) {
-                        currentUserId = uid;
-                        loadUserInfo(uid, token);
-                    } else {
-                        localStorage.clear();
-                        apiStatus.innerText = 'Token过期，请重新登录';
-                    }
-                });
-            } else {
-                apiStatus.innerText = '等待操作';
-            }
-        };
-    </script>
+// 登录函数（备用）
+function log() {
+    var email = document.getElementById('e').value;
+    var pwd = document.getElementById('p').value;
+    fetch(url + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'apikey': key,
+            'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({ email: email, password: pwd })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { alert('登录返回: ' + JSON.stringify(d)); });
+}
+</script>
 </body>
 </html>
