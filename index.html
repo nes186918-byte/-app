@@ -3,333 +3,448 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Dispatch System</title>
+    <title>卡了电竞</title>
     <style>
+        /* --- 全局变量与基础重置 --- */
         :root {
-            --bg-dark: #050510;
-            --panel-bg: rgba(10, 15, 30, 0.65);
-            --neon-cyan: #00f2fe;
-            --neon-purple: #4facfe;
-            --text-main: #e0e0ff;
-            --text-sub: #8892b0;
-            --success: #00ff9d;
-            --danger: #ff0055;
+            --bg-color: #020208;
+            --grid-color: rgba(0, 217, 255, 0.08);
+            --glow-cyan: #00d9ff;
+            --glow-purple: #9d4edd;
+            --text-primary: #e0e0ff;
+            --text-secondary: #8a8aa8;
+            --panel-bg: rgba(10, 10, 30, 0.7);
+            --border-glow: rgba(0, 217, 255, 0.3);
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
             position: relative;
         }
-        /* 结构光网格背景 */
-        .grid-bg {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; z-index: -2;
-            background-image: 
-                linear-gradient(rgba(79, 172, 254, 0.08) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(79, 172, 254, 0.08) 1px, transparent 1px);
-            background-size: 40px 40px;
+
+        /* --- 核心：结构光扫描背景 --- */
+        .cyber-grid {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            background: 
+                /* 纵向发光线条 */
+                linear-gradient(90deg, transparent 49.75%, var(--grid-color) 49.75%, var(--grid-color) 50.25%, transparent 50.25%),
+                /* 横向发光线条 */
+                linear-gradient(180deg, transparent 49.75%, var(--grid-color) 49.75%, var(--grid-color) 50.25%, transparent 50.25%),
+                var(--bg-color);
+            background-size: 80px 80px, 80px 80px;
+            animation: grid-scan 20s linear infinite;
+            perspective: 1000px;
+            transform: rotateX(60deg) scale(2.5);
+            transform-origin: center center;
         }
-        /* 扫描线动画 */
-        .grid-bg::after {
-            content: ''; position: absolute; top: 0; left: 0;
+        @keyframes grid-scan {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 0 80px, 0 80px; }
+        }
+
+        /* 顶部光晕 */
+        .light-vignette {
+            position: fixed;
+            top: 0; left: 0;
             width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(0,242,254,0) 0%, rgba(0,242,254,0.05) 50%, rgba(0,242,254,0) 100%);
-            background-size: 100% 4px;
-            animation: scan 4s linear infinite;
+            z-index: -1;
+            background: radial-gradient(ellipse at 50% -10%, rgba(0, 217, 255, 0.15), transparent 60%);
             pointer-events: none;
         }
-        @keyframes scan { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
-        /* 底部向上发光流（你要的效果） */
-        .light-beam {
-            position: fixed; bottom: -50px; left: 50%; transform: translateX(-50%);
-            width: 150vw; height: 200px;
-            background: radial-gradient(ellipse at center bottom, rgba(0,242,254,0.15) 0%, transparent 70%);
-            filter: blur(20px);
-            animation: float 8s ease-in-out infinite alternate;
-            z-index: -1; pointer-events: none;
-        }
-        @keyframes float { from { opacity: 0.3; transform: translateX(-50%) scale(0.9); } to { opacity: 0.6; transform: translateX(-50%) scale(1.1); } }
-        /* 顶部状态栏 */
+
+        /* --- UI布局 --- */
         .status-bar {
             position: fixed; top: 0; left: 0; width: 100%;
-            background: var(--panel-bg); backdrop-filter: blur(5px);
-            padding: 10px 20px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid rgba(0,242,254,0.1); z-index: 100; font-size: 14px;
+            padding: 12px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(2, 2, 8, 0.8); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-glow);
+            z-index: 100; font-size: 14px;
         }
         .logout-btn {
-            background: none; border: 1px solid var(--danger); color: var(--danger);
-            padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+            background: transparent; border: 1px solid var(--glow-purple); color: var(--glow-purple);
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: all 0.3s;
         }
-        /* 容器 */
-        .container { max-width: 500px; margin: 0 auto; padding: 60px 20px 20px; }
-        .hidden { display: none !important; }
-        /* 磨砂玻璃面板 */
+        .logout-btn:hover { background: var(--glow-purple); color: #fff; }
+
+        .container { max-width: 480px; margin: 80px auto 20px; padding: 0 15px; }
+
+        /* --- 面板样式 --- */
         .panel {
-            background: var(--panel-bg); backdrop-filter: blur(10px);
-            border: 1px solid rgba(0,242,254,0.1); border-radius: 12px;
-            padding: 25px; margin-bottom: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3); position: relative; overflow: hidden;
+            background: var(--panel-bg); backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px; padding: 24px; margin-bottom: 20px;
+            box-shadow: 0 0 40px rgba(0, 217, 255, 0.1);
+            animation: panel-fade-in 0.5s ease-out;
         }
-        .panel::before {
-            content: ''; position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px;
-            background: linear-gradient(45deg, var(--neon-cyan), var(--neon-purple), var(--neon-cyan));
-            z-index: -1; border-radius: 13px; opacity: 0.5; filter: blur(5px);
-        }
-        h2, h3 { color: var(--neon-cyan); margin-bottom: 20px; font-weight: 300; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,242,254,0.5); }
-        /* 表单元素 */
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-sub); }
+        @keyframes panel-fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        h2 { font-size: 22px; font-weight: 300; letter-spacing: 2px; margin-bottom: 20px; color: var(--glow-cyan); text-shadow: 0 0 10px var(--glow-cyan); }
+        h3 { font-size: 18px; font-weight: 400; color: var(--text-primary); margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
         input, select, textarea {
             width: 100%; padding: 12px 15px;
-            background: rgba(0,0,0,0.3); border: 1px solid rgba(0,242,254,0.2);
-            border-radius: 6px; color: var(--text-main); font-size: 16px; outline: none;
+            background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 217, 255, 0.2);
+            border-radius: 6px; color: var(--text-primary); font-size: 16px; outline: none;
             transition: all 0.3s;
         }
-        input:focus, textarea:focus, select:focus {
-            border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0,242,254,0.3);
-        }
-        /* 霓虹按钮 */
+        input:focus, select:focus, textarea:focus { border-color: var(--glow-cyan); box-shadow: 0 0 15px rgba(0, 217, 255, 0.2); }
+        
         .btn {
-            width: 100%; padding: 14px; border: none; border-radius: 6px;
-            font-size: 16px; font-weight: bold; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 1px; margin-top: 10px;
-            color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.5);
-            background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan));
-            box-shadow: 0 0 15px rgba(0,242,254,0.4); transition: all 0.3s;
+            width: 100%; padding: 14px; margin-top: 10px;
+            background: linear-gradient(90deg, var(--glow-purple), var(--glow-cyan));
+            border: none; border-radius: 6px; color: #fff; font-size: 16px; font-weight: bold;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.3s; box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
         }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0,242,254,0.6); }
-        .btn-line { background: transparent; border: 1px solid var(--neon-cyan); box-shadow: none; }
-        /* 订单卡片 */
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0, 217, 255, 0.5); }
+        .btn-secondary { background: transparent; border: 1px solid var(--glow-cyan); box-shadow: none; }
+        .btn-danger { background: linear-gradient(90deg, #ff004c, #ff4d4d); box-shadow: 0 0 20px rgba(255, 0, 76, 0.3); }
+        .btn-small { padding: 8px 12px; font-size: 14px; width: auto; margin: 0 5px 0 0; }
+
+        /* --- 订单卡片 --- */
         .order-card {
-            background: rgba(0,10,20,0.5); border-left: 3px solid var(--neon-purple);
+            background: rgba(0,0,0,0.3); border-left: 3px solid var(--glow-cyan);
             padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0;
-            animation: fadeIn 0.5s ease;
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed rgba(136,146,176,0.2); padding-bottom: 8px; }
-        .order-title { font-size: 18px; font-weight: bold; color: #fff; }
-        .order-price { font-size: 20px; color: var(--success); text-shadow: 0 0 8px rgba(0,255,157,0.5); font-weight: bold; }
-        .order-meta { font-size: 14px; color: var(--text-sub); margin-bottom: 10px; }
-        .order-status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
-        .status-pending { background: rgba(255,165,0,0.2); color: orange; border: 1px solid orange; }
-        .status-accepted { background: rgba(0,255,157,0.1); color: var(--success); border: 1px solid var(--success); }
-        .order-actions { text-align: right; }
-        .btn-small { padding: 8px 15px; font-size: 14px; margin: 0 5px 0 0; width: auto; }
-        .tip { text-align: center; color: var(--text-sub); padding: 20px; font-style: italic; }
+        .order-title { font-size: 17px; color: #fff; margin-bottom: 8px; }
+        .order-price { font-size: 22px; color: #00ff9d; font-weight: bold; text-shadow: 0 0 8px #00ff9d; margin-bottom: 8px; }
+        .order-meta { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+        .order-status { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        .status-pending { background: rgba(255,170,0,0.2); color: #ffaa00; border: 1px solid #ffaa00; }
+        .status-accepted { background: rgba(0,255,157,0.1); color: #00ff9d; border: 1px solid #00ff9d; }
+        .status-pending_approval { background: rgba(157,78,221,0.2); color: var(--glow-purple); border: 1px solid var(--glow-purple); }
+        .tip { text-align: center; color: var(--text-secondary); padding: 20px; font-style: italic; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <!-- 结构光背景 -->
-    <div class="grid-bg"></div>
-    <div class="light-beam"></div>
+
+    <!-- 背景特效 -->
+    <div class="cyber-grid"></div>
+    <div class="light-vignette"></div>
 
     <!-- 顶部状态栏 -->
     <div id="topBar" class="status-bar hidden">
-        <span id="welcomeMsg">欢迎回来</span>
-        <button class="logout-btn" onclick="doLogout()">退出</button>
+        <span id="welcomeMsg"></span>
+        <button class="logout-btn" onclick="doLogout()">注销</button>
     </div>
 
     <div class="container">
         <!-- 登录/注册面板 -->
         <div id="authPanel" class="panel">
-            <h2>ACCESS SYSTEM</h2>
+            <h2>卡了电竞欢迎您</h2>
             <div class="form-group">
                 <label>电子邮箱</label>
-                <input type="email" id="email" placeholder="user@example.com">
+                <input type="email" id="email" placeholder="agent@cyber.net">
             </div>
             <div class="form-group">
-                <label>通行密钥</label>
-                <input type="password" id="password" placeholder="********">
+                <label>登录密码</label>
+                <input type="password" id="password" placeholder="••••••••">
             </div>
             <div class="form-group">
-                <label>用户昵称</label>
-                <input type="text" id="nickname" placeholder="请输入你的代号">
+                <label>昵称</label>
+                <input type="text" id="nickname" placeholder="Ghost">
             </div>
             <div class="form-group">
                 <label>身份选择</label>
                 <select id="role">
-                    <option value="player">发单员</option>
-                    <option value="worker">代练/打手</option>
+                    <option value="player">玩家 (发单)</option>
+                    <option value="worker">打手 (接单)</option>
+                    <option value="boss">老板</option>
+                    <option value="admin">管理员</option>
+                    <option value="owner">店长</option>
                 </select>
             </div>
-            <button class="btn" onclick="handleAuth('register')">注 册</button>
-            <button class="btn btn-line" onclick="handleAuth('login')">登 录</button>
+            <button class="btn" onclick="handleAuth('register')">注册身份</button>
+            <button class="btn btn-secondary" onclick="handleAuth('login')">身份核验</button>
         </div>
 
-        <!-- 发单面板 -->
-        <div id="actionPanel" class="panel hidden">
+        <!-- 店长审批面板 (仅店长可见) -->
+        <div id="approvalPanel" class="panel hidden">
+            <h2>AWAITING APPROVAL</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">以下管理员申请等待您的批复：</p>
+            <div id="pendingList"></div>
+        </div>
+
+        <!-- 发单面板 (玩家/老板可见) -->
+        <div id="createPanel" class="panel hidden">
             <h3>发布新订单</h3>
             <div class="form-group">
-                <label>订单内容</label>
-                <textarea id="content" rows="3" placeholder="请详细描述需求..."></textarea>
+                <label>需要的服务</label>
+                <textarea id="content" rows="3" placeholder="输入任务详情..."></textarea>
             </div>
             <div class="form-group">
-                <label>结单金额（元）</label>
+                <label>价格</label>
                 <input type="number" id="price" placeholder="0.00">
             </div>
-            <button class="btn" onclick="createOrder()">发布订单</button>
+            <button class="btn" onclick="createOrder()">确认发布</button>
         </div>
 
-        <!-- 订单列表面板 -->
+        <!-- 订单列表 -->
         <div id="listPanel" class="panel hidden">
-            <h3>实时订单列表</h3>
-            <div id="orderList">
-                <div class="tip">系统连接中...</div>
-            </div>
+            <h3>任务列表</h3>
+            <div id="orderList"><div class="tip">加载中...</div></div>
         </div>
     </div>
 
     <script>
-        /* ==================================================
-           【⚠️ 唯一需要修改的地方：替换为你的Supabase配置】
-           ================================================== */
-        const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co';       // 替换为你的Project URL
-        const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg'; // 替换为你的anon public key
-        /* ================================================== */
+        /* ==========================================================
+           【⚠️ 配置区】请填入你的 Supabase 信息
+           ========================================================== */
+        const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg';
+        /* ========================================================== */
 
         let currentUser = null;
+        let authToken = null;
         let authHeaders = {};
 
-        // 通用请求封装
+        // --- API 封装 ---
         async function sbFetch(endpoint, method = 'GET', body = null) {
             const res = await fetch(`${SUPABASE_URL}/rest/v1${endpoint}`, {
                 method, headers: authHeaders, body: body ? JSON.stringify(body) : null
             });
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.message || `请求失败: ${res.status}`);
+                throw new Error(err.message || `HTTP ${res.status}`);
             }
             return res.json();
         }
 
-        // 注册/登录统一处理
+        // --- 核心逻辑：注册/登录 ---
         async function handleAuth(type) {
-            const email = document.getElementById('email').value.trim();
-            const pwd = document.getElementById('password').value;
-            const nick = document.getElementById('nickname').value.trim();
-            const role = document.getElementById('role').value;
+            const email = email.value.trim();
+            const pwd = password.value;
+            const nick = nickname.value.trim();
+            const selectedRole = role.value;
+
             if (!email || !pwd || !nick) return alert('请填写完整信息');
 
             try {
                 if (type === 'register') {
+                    // 注册时，如果是 admin，状态设为 pending_approval
+                    const userData = { nickname: nick, role: selectedRole };
+                    if (selectedRole === 'admin') {
+                        userData.status = 'pending_approval';
+                    }
+
                     await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
-                        body: JSON.stringify({ email, password: pwd, data: { nickname: nick, role } })
+                        body: JSON.stringify({ email, password: pwd, data: userData })
                     });
-                    alert('注册成功！请登录');
-                } else {
-                    // 登录成功，保存Token
+                    
+                    if (selectedRole === 'admin') {
+                        alert('管理员注册申请已提交，请等待店长审核通过后方可登录。');
+                    } else {
+                        alert('注册成功！请登录。');
+                    }
+
+                } else { // Login
                     const data = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
                         body: JSON.stringify({ email, password: pwd })
                     }).then(r => r.json());
 
-                    localStorage.setItem('sb_token', data.access_token);
-                    localStorage.setItem('sb_uid', data.user.id);
+                    // 检查是否是管理员且未审核
+                    if (data.user?.user_metadata?.status === 'pending_approval') {
+                        alert('您的账号正在等待店长审核，暂无法登录。');
+                        return;
+                    }
+
+                    authToken = data.access_token;
                     currentUser = data.user;
                     authHeaders = {
                         'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${data.access_token}`,
+                        'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json'
                     };
-
-                    await loadNickname(); // 加载昵称，解决显示UUID的问题
+                    localStorage.setItem('sb_token', authToken);
+                    localStorage.setItem('sb_uid', currentUser.id);
                     showApp();
                 }
-            } catch (e) { alert(e.message); }
+            } catch (e) {
+                alert('操作失败: ' + e.message);
+            }
         }
 
-        // 加载用户昵称
-        async function loadNickname() {
-            try {
-                const profile = await sbFetch(`/profiles?id=eq.${currentUser.id}&select=nickname`);
-                currentUser.nickname = profile[0]?.nickname || '新用户';
-            } catch (e) { currentUser.nickname = '新用户'; }
-        }
+        // --- 应用界面控制 ---
+        async function showApp() {
+            authPanel.classList.add('hidden');
+            topBar.classList.remove('hidden');
+            listPanel.classList.remove('hidden');
 
-        // 显示主界面
-        function showApp() {
-            document.getElementById('authPanel').classList.add('hidden');
-            document.getElementById('topBar').classList.remove('hidden');
-            document.getElementById('actionPanel').classList.remove('hidden');
-            document.getElementById('listPanel').classList.remove('hidden');
-            document.getElementById('welcomeMsg').innerText = `欢迎，${currentUser.nickname}`;
+            const meta = currentUser.user_metadata || {};
+            const role = meta.role || 'player';
+            const nickname = meta.nickname || '匿名用户';
+            
+            welcomeMsg.innerText = `欢迎, ${nickname} [${getRoleName(role)}]`;
+
+            // 权限控制
+            // 店长可见审批面板
+            if (role === 'owner') {
+                approvalPanel.classList.remove('hidden');
+                loadPendingAdmins();
+            } else {
+                approvalPanel.classList.add('hidden');
+            }
+
+            // 玩家和老板可见发单面板
+            if (role === 'player' || role === 'boss' || role === 'owner') {
+                createPanel.classList.remove('hidden');
+            } else {
+                createPanel.classList.add('hidden');
+            }
+
             loadOrders();
         }
 
-        // 发单
-        async function createOrder() {
-            const content = document.getElementById('content').value.trim();
-            const price = document.getElementById('price').value;
-            if (!content || !price) return alert('请填写内容和金额');
+        // --- 店长审批功能 ---
+        async function loadPendingAdmins() {
             try {
-                await sbFetch('/orders', 'POST', {
-                    sender_id: currentUser.id, content, price: parseFloat(price), status: 'pending'
-                });
-                alert('发单成功！');
-                document.getElementById('content').value = '';
-                document.getElementById('price').value = '';
-                loadOrders();
-            } catch (e) { alert('发单失败: ' + e.message); }
+                // 注意：这里需要数据库支持查询 metadata，或者我们把 status 移到 profiles 表
+                // 简化版：我们假设 profiles 表有 status 字段
+                const pending = await sbFetch('/profiles?select=id,nickname,status&status=eq.pending_approval');
+                if (pending.length === 0) {
+                    pendingList.innerHTML = '<div class="tip">暂无待审批申请</div>';
+                    return;
+                }
+                pendingList.innerHTML = pending.map(p => `
+                    <div class="order-card">
+                        <div class="order-title">申请人: ${p.nickname}</div>
+                        <div class="order-meta">ID: ${p.id}</div>
+                        <div class="order-actions">
+                            <button class="btn-small" onclick="approveAdmin('${p.id}')">批准</button>
+                            <button class="btn-small btn-danger" onclick="rejectAdmin('${p.id}')">驳回</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                pendingList.innerHTML = `<div class="tip">加载失败: ${e.message}</div>`;
+            }
         }
 
-        // 接单
+        async function approveAdmin(userId) {
+            if (!confirm('确定批准该管理员申请？')) return;
+            try {
+                // 更新 profiles 表状态
+                await sbFetch(`/profiles?id=eq.${userId}`, 'PATCH', { status: 'approved' });
+                // 注意：Supabase Auth 的用户 metadata 不能直接通过 REST API 修改，除非用 Edge Functions 或 Service Role Key
+                // 此处仅更新 profiles 表作为演示。实际应用中，需要后端逻辑同步更新 auth.users 的 metadata
+                alert('审批通过！请通知该用户重新登录。');
+                loadPendingAdmins();
+            } catch (e) { alert('操作失败: ' + e.message); }
+        }
+        
+        async function rejectAdmin(userId) {
+            if (!confirm('确定驳回该申请？用户将被删除。')) return;
+            try {
+                // 删除 profiles 记录
+                await sbFetch(`/profiles?id=eq.${userId}`, 'DELETE');
+                // 删除 auth 用户 (需要 Service Role Key，前端无法直接操作，此处仅逻辑删除)
+                alert('申请已驳回。');
+                loadPendingAdmins();
+            } catch (e) { alert('操作失败: ' + e.message); }
+        }
+
+        // --- 订单功能 ---
+        async function createOrder() {
+            const contentVal = content.value.trim();
+            const priceVal = price.value;
+            if (!contentVal || !priceVal) return alert('请填写内容和金额');
+            try {
+                await sbFetch('/orders', 'POST', {
+                    sender_id: currentUser.id,
+                    content: contentVal,
+                    price: parseFloat(priceVal),
+                    status: 'pending'
+                });
+                alert('发布成功！');
+                content.value = ''; price.value = '';
+                loadOrders();
+            } catch (e) { alert('发布失败: ' + e.message); }
+        }
+
         async function takeOrder(orderId) {
             if (!confirm('确定接取此单？')) return;
             try {
                 await sbFetch(`/orders?id=eq.${orderId}`, 'PATCH', {
-                    worker_id: currentUser.id, status: 'accepted'
+                    worker_id: currentUser.id,
+                    status: 'accepted'
                 });
                 alert('接单成功！');
                 loadOrders();
             } catch (e) { alert('接单失败（可能已被抢）'); }
         }
 
-        // 加载订单列表
         async function loadOrders() {
-            const listEl = document.getElementById('orderList');
+            const listEl = orderList;
             try {
-                const orders = await sbFetch('/orders?select=*,profiles!worker_id(nickname)&order=created_at.desc');
+                const orders = await sbFetch('/orders?select=*,profiles!worker_id(nickname),profiles!sender_id(nickname)&order=created_at.desc');
                 if (!orders.length) {
-                    listEl.innerHTML = '<div class="tip">暂无订单，快来发布第一个吧！</div>';
+                    listEl.innerHTML = '<div class="tip">暂无订单</div>';
                     return;
                 }
-                listEl.innerHTML = orders.map(o => `
+                const role = currentUser.user_metadata?.role;
+                listEl.innerHTML = orders.map(o => {
+                    let actions = '';
+                    // 打手可见待接单
+                    if (!o.worker_id && o.status === 'pending' && role === 'worker') {
+                        actions = `<button class="btn-small" onclick="takeOrder('${o.id}')">接单</button>`;
+                    }
+                    // 店长/管理员可见所有，打手只能看见自己接的
+                    const isVisible = (role === 'owner' || role === 'admin' || o.sender_id === currentUser.id || o.worker_id === currentUser.id);
+                    if (!isVisible) return '';
+
+                    return `
                     <div class="order-card">
-                        <div class="order-header">
-                            <div class="order-title">${o.content}</div>
-                            <div class="order-price">¥${o.price}</div>
+                        <div class="order-title">${o.content}</div>
+                        <div class="order-price">¥${o.price}</div>
+                        <div class="order-meta">
+                            发单人: ${o.profiles?.nickname || '未知'} | 
+                            接单人: ${o.profiles?.nickname || '暂无'}
                         </div>
-                        <div class="order-meta">发布人: ${o.profiles?.nickname || '未知'} | 时间: ${new Date(o.created_at).toLocaleString()}</div>
                         <div class="order-status status-${o.status}">${o.status === 'pending' ? '待接单' : '已接单'}</div>
-                        <div class="order-actions">
-                            ${!o.worker_id && o.status === 'pending' && currentUser.user_metadata?.role === 'worker' ? `<button class="btn-small" onclick="takeOrder('${o.id}')">接单</button>` : ''}
-                            ${o.sender_id === currentUser.id ? '<span style="color:var(--neon-cyan);font-size:12px;">(我的订单)</span>' : ''}
-                            ${o.worker_id === currentUser.id ? '<span style="color:var(--success);font-size:12px;">(我已接单)</span>' : ''}
-                        </div>
+                        <div class="order-actions">${actions}</div>
                     </div>
-                `).join('');
+                    `;
+                }).filter(Boolean).join('');
             } catch (e) { listEl.innerHTML = `<div class="tip">加载失败: ${e.message}</div>`; }
         }
 
-        // 退出登录
-        function doLogout() { localStorage.clear(); location.reload(); }
+        // --- 工具函数 ---
+        function getRoleName(role) {
+            const map = { player: '玩家', worker: '打手', boss: '老板', admin: '管理员', owner: '店长' };
+            return map[role] || '未知';
+        }
 
-        // 自动登录（页面加载时校验Token）
+        function doLogout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        // --- 自动登录 ---
         window.onload = async () => {
             const token = localStorage.getItem('sb_token');
-            const uid = localStorage.getItem('sb_uid');
-            if (token && uid) {
+            if (token) {
                 try {
                     const user = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
                         headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY }
                     }).then(r => r.json());
+
                     if (user.id) {
                         currentUser = user;
                         authHeaders = {
@@ -337,7 +452,6 @@
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json'
                         };
-                        await loadNickname();
                         showApp();
                     } else { localStorage.clear(); }
                 } catch (e) { localStorage.clear(); }
