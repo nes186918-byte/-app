@@ -5,428 +5,786 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
     <style>
-        /* 第一版简洁UI风格 */
         :root {
             --bg-dark: #050510;
-            --grid-color: rgba(0, 217, 255, 0.08);
-            --neon-cyan: #00d9ff;
-            --neon-blue: #4facfe;
+            --card-bg: rgba(16, 18, 37, 0.85);
+            --neon-blue: #00f2ff;
+            --neon-pink: #ff00ff;
             --text-main: #e0e0ff;
-            --text-sub: #8892b0;
-            --panel-bg: rgba(10, 15, 30, 0.7);
+            --border-color: rgba(0, 242, 255, 0.2);
+            --success: #00ff88;
+            --danger: #ff0055;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
             position: relative;
         }
-        /* 结构光背景：正交网格+上下扫描 */
-        .grid-bg {
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; z-index: -2;
+
+        /* 网格背景 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background-image: 
-                linear-gradient(var(--grid-color) 1px, transparent 1px),
-                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-            background-size: 40px 40px;
-            animation: grid-scan 20s linear infinite;
+                linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            animation: gridMove 20s linear infinite;
         }
-        @keyframes grid-scan {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 40px; }
+
+        @keyframes gridMove {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(30px); }
         }
-        /* 底部光晕 */
-        .light-beam {
-            position: fixed; bottom: -50px; left: 50%; transform: translateX(-50%);
-            width: 150vw; height: 200px;
-            background: radial-gradient(ellipse at center bottom, rgba(0, 217, 255, 0.15) 0%, transparent 70%);
-            filter: blur(20px); z-index: -1;
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
         }
-        /* 容器 */
-        .container { max-width: 480px; margin: 0 auto; padding: 20px; }
-        /* 卡片 */
-        .panel {
-            background: var(--panel-bg); backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 217, 255, 0.2); border-radius: 12px;
-            padding: 24px; margin-bottom: 20px;
-        }
-        h2 { color: var(--neon-cyan); font-size: 20px; margin-bottom: 20px; font-weight: 500; }
-        h3 { color: var(--text-main); font-size: 17px; margin-bottom: 15px; }
-        /* 输入框 */
-        .form-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 8px; font-size: 14px; color: var(--text-sub); }
-        input, select {
-            width: 100%; padding: 12px 15px;
-            background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(0, 217, 255, 0.2);
-            border-radius: 8px; color: var(--text-main); font-size: 16px; outline: none;
-        }
-        input:focus, select:focus { border-color: var(--neon-cyan); box-shadow: 0 0 10px rgba(0, 217, 255, 0.2); }
-        /* 按钮（第一版简洁样式，无复杂动效） */
-        .btn {
-            width: 100%; padding: 14px; border: none; border-radius: 8px;
-            font-size: 16px; font-weight: bold; color: white; cursor: pointer;
-            background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan));
-            margin-top: 10px; transition: background 0.3s;
-        }
-        .btn:hover { background: linear-gradient(90deg, #3a9bfe, #00c4e6); }
-        .btn-secondary {
-            background: transparent; border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
-        }
-        .btn-small { padding: 8px 12px; font-size: 14px; width: auto; margin-right: 8px; }
-        .btn-danger { background: linear-gradient(90deg, #ff416c, #ff004c); }
-        /* 订单卡片 */
-        .order-card {
-            background: rgba(0, 0, 0, 0.3); border-left: 3px solid var(--neon-cyan);
-            padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0;
-        }
-        .order-title { font-size: 17px; color: #fff; margin-bottom: 8px; }
-        .order-price { font-size: 20px; color: #00ff9d; font-weight: bold; margin-bottom: 8px; }
-        .order-meta { font-size: 13px; color: var(--text-sub); margin-bottom: 10px; }
-        .order-status {
-            display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;
+
+        .header {
+            text-align: center;
             margin-bottom: 10px;
         }
-        .status-pending { background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid #ffaa00; }
-        .status-accepted { background: rgba(0, 255, 157, 0.1); color: #00ff9d; border: 1px solid #00ff9d; }
-        .status-pending_approval { background: rgba(157, 78, 221, 0.2); color: #9d4edd; border: 1px solid #9d4edd; }
-        .tip { text-align: center; color: var(--text-sub); padding: 20px; font-style: italic; }
-        .hidden { display: none !important; }
-        /* 顶部状态栏 */
-        .status-bar {
-            position: fixed; top: 0; left: 0; width: 100%;
-            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
-            background: rgba(5, 5, 16, 0.8); backdrop-filter: blur(5px);
-            border-bottom: 1px solid rgba(0, 217, 255, 0.2); z-index: 100;
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+            margin-bottom: 5px;
         }
-        .logout-btn {
-            background: transparent; border: 1px solid #ff004c; color: #ff004c;
-            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px;
+
+        .subtitle {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 25px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+        }
+
+        .link {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+
+        .link a {
+            color: var(--neon-blue);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 主界面布局 */
+        #appSection {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            font-size: 13px;
+        }
+
+        /* 订单列表 */
+        .order-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+
+        .order-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .order-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 15px;
+        }
+
+        .order-meta {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .order-price {
+            color: var(--success);
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .order-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .order-status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(0, 242, 255, 0.1);
+            display: inline-block;
+        }
+
+        /* 底部栏 */
+        .footer {
+            width: 100%;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .user-info span {
+            color: var(--neon-blue);
+        }
+
+        /* Toast 提示样式 */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 25px;
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.4s ease;
+            font-size: 14px;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .tip {
+            text-align: center;
+            color: #555;
+            padding: 20px;
+        }
+
+        /* 审批面板 */
+        .approval-panel {
+            background: rgba(255, 0, 85, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .approval-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed rgba(255, 0, 85, 0.2);
+        }
+
+        .approval-item:last-child { border-bottom: none; }
+        
+        .btn-approve {
+            background: var(--success);
+            color: #000;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <!-- 背景特效 -->
-    <div class="grid-bg"></div>
-    <div class="light-beam"></div>
 
-    <!-- 顶部状态栏 -->
-    <div id="topBar" class="status-bar hidden">
-        <span id="welcomeMsg"></span>
-        <button class="logout-btn" onclick="doLogout()">退出</button>
-    </div>
+<div id="toast"></div>
 
-    <div class="container">
-        <!-- 登录/注册面板 -->
-        <div id="authPanel" class="panel">
-            <h2>账号登录/注册</h2>
+<div class="container">
+    <!-- 1. 登录/注册区域 -->
+    <div id="authSection" class="card">
+        <div class="logo">卡了电竞欢迎您</div>
+        
+        <!-- 注册表单 -->
+        <form id="registerForm">
+            <h3 style="margin-bottom:15px;text-align:center;">账号注册</h3>
             <div class="form-group">
-                <label>邮箱</label>
-                <input type="email" id="inpEmail" placeholder="请输入邮箱">
+                <label for="regEmail">邮箱</label>
+                <input type="email" id="regEmail" required>
             </div>
             <div class="form-group">
-                <label>密码（至少6位）</label>
-                <input type="password" id="inpPassword" placeholder="请输入密码">
+                <label for="regPassword">密码 (至少6位)</label>
+                <input type="password" id="regPassword" required>
             </div>
             <div class="form-group">
-                <label>昵称</label>
-                <input type="text" id="inpNickname" placeholder="请输入昵称">
+                <label for="regNickname">昵称</label>
+                <input type="text" id="regNickname" required>
             </div>
             <div class="form-group">
-                <label>角色</label>
-                <select id="selRole">
-                    <option value="player">玩家（发单）</option>
-                    <option value="worker">打手（接单）</option>
-                    <option value="admin">管理员（需审核）</option>
-                    <option value="owner">店长</option>
+                <label for="regRole">身份选择</label>
+                <select id="regRole" required>
+                    <option value="player">玩家 (发单/接单)</option>
+                    <option value="worker">打手 (接单)</option>
+                    <option value="owner">店长 (最高权限)</option>
                 </select>
             </div>
-            <!-- 按钮用onclick直接绑定，100%触发点击事件 -->
-            <button class="btn" onclick="handleAuth('register')">注册账号</button>
-            <button class="btn btn-secondary" onclick="handleAuth('login')">登录账号</button>
-        </div>
+            <button type="submit" class="btn btn-primary">立即注册</button>
+        </form>
 
-        <!-- 店长专属：审核面板 -->
-        <div id="approvalPanel" class="panel hidden">
-            <h2>管理员审核</h2>
-            <div id="pendingList"></div>
-        </div>
-
-        <!-- 发单面板（玩家/店长可见） -->
-        <div id="createPanel" class="panel hidden">
-            <!-- 店长专属按钮 -->
-            <div id="ownerActions" class="hidden">
-                <button class="btn" onclick="toggleApprovalPanel()">审核管理员申请</button>
-                <hr style="border: none; border-top: 1px solid rgba(0,217,255,0.1); margin: 20px 0;">
-            </div>
-            <h3>发布订单</h3>
+        <!-- 登录表单 -->
+        <form id="loginForm" class="hidden" style="margin-top:20px;">
+            <h3 style="margin-bottom:15px;text-align:center;">账号登录</h3>
             <div class="form-group">
-                <label>订单内容</label>
-                <textarea id="inpContent" rows="3" placeholder="请输入订单内容"></textarea>
+                <label for="loginEmail">邮箱</label>
+                <input type="email" id="loginEmail" required>
             </div>
             <div class="form-group">
-                <label>金额（元）</label>
-                <input type="number" id="inpPrice" placeholder="请输入金额">
+                <label for="loginPassword">密码</label>
+                <input type="password" id="loginPassword" required>
             </div>
-            <button class="btn" onclick="createOrder()">发布订单</button>
-        </div>
-
-        <!-- 订单列表 -->
-        <div id="listPanel" class="panel hidden">
-            <h3>订单列表</h3>
-            <div id="orderList"><div class="tip">加载中...</div></div>
+            <button type="submit" class="btn btn-primary">登 录</button>
+        </form>
+        
+        <div class="link">
+            <span id="toggleAuth">已有账号？点我登录</span>
         </div>
     </div>
 
-    <script>
-        // ⚠️ 替换为你的Supabase配置
-        const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg';
+    <!-- 2. 主应用区域 (默认隐藏) -->
+    <div id="appSection" class="hidden">
+        <div class="main-area">
+            <!-- 审批面板 (店长专属) -->
+            <div id="approvalPanel" class="card hidden">
+                <h3 style="color:var(--danger);margin-bottom:15px;">⚠️ 管理员审核</h3>
+                <div id="approvalList">加载中...</div>
+            </div>
 
-        let currentUser = null;
-        let authHeaders = {};
+            <!-- 发单区域 -->
+            <div class="card">
+                <h3 style="margin-bottom:15px;">📝 发布新订单</h3>
+                <div class="form-group">
+                    <label for="content">订单内容</label>
+                    <input type="text" id="content" placeholder="例如：王者荣耀 代练上王者">
+                </div>
+                <div class="form-group">
+                    <label for="price">金额 (元)</label>
+                    <input type="number" id="price" placeholder="例如：50">
+                </div>
+                <button id="createOrderBtn" class="btn btn-primary">发 布 订 单</button>
+            </div>
 
-        // 切换审核面板显示/隐藏
-        function toggleApprovalPanel() {
-            const panel = document.getElementById('approvalPanel');
-            panel.classList.toggle('hidden');
-            if (!panel.classList.contains('hidden')) loadPendingAdmins();
+            <!-- 订单列表 -->
+            <div class="card" style="flex:1;">
+                <h3 style="margin-bottom:15px;">📋 订单大厅</h3>
+                <div id="orderList" class="order-list">
+                    <!-- JS渲染订单 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部栏：用户信息 + 操作 -->
+        <div class="footer">
+            <div class="user-info">
+                欢迎，<span id="welcomeUser">User</span> [<span id="userRoleTag">未知</span>]
+            </div>
+            <div class="action-bar">
+                <button id="adminApprovalBtn" class="btn btn-small btn-outline hidden">审核管理员</button>
+                <button id="logoutBtn" class="btn btn-small" style="background:#444;color:#ccc;">退出登录</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. 配置区域 (请替换为你的 Supabase 配置)
+    // ==========================================
+    const SUPABASE_URL = 'https://tuxekxblholrggksfhoz.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_36-cLUyAK_K2dv28hUzhHw_ExULb_Yg';
+
+    // ==========================================
+    // 2. 全局变量
+    // ==========================================
+    let currentUser = null;
+    let authHeaders = {};
+
+    // ==========================================
+    // 3. UI 交互逻辑
+    // ==========================================
+
+    // Toast 提示函数
+    function showToast(message, duration = 2000) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, duration);
+    }
+
+    // 切换登录/注册表单
+    document.getElementById('toggleAuth').addEventListener('click', () => {
+        const regForm = document.getElementById('registerForm');
+        const loginForm = document.getElementById('loginForm');
+        const toggleText = document.getElementById('toggleAuth');
+        
+        if (regForm.classList.contains('hidden')) {
+            regForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            toggleText.innerText = '已有账号？点我注册';
+        } else {
+            regForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            toggleText.innerText = '没有账号？点我登录';
         }
+    });
 
-        // 原生XHR请求（无兼容性问题，所有错误都会弹窗）
-        function xhrRequest(method, endpoint, body, callback, needAuth = false) {
-            const xhr = new XMLHttpRequest();
-            xhr.open(method, SUPABASE_URL + endpoint, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-            if (needAuth) {
-                xhr.setRequestHeader('Authorization', 'Bearer ' + localStorage.getItem('sb_token'));
+    // 注册逻辑
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const nickname = document.getElementById('regNickname').value;
+        const role = document.getElementById('regRole').value;
+
+        showToast('正在注册...', 1000);
+
+        try {
+            // 1. 注册 Auth 用户
+            const response = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+
+            if (data.error) throw new Error(data.error.message);
+
+            // 2. 插入 Profiles 数据
+            // 店长注册 status 为 approved，其他角色根据情况
+            const status = (role === 'owner') ? 'approved' : 'approved'; // 店长免审核
+            await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+                body: JSON.stringify({
+                    id: data.user.id,
+                    email: email,
+                    nickname: nickname,
+                    role: role,
+                    status: status
+                })
+            });
+
+            showToast('注册成功！请登录', 3000);
+            document.getElementById('toggleAuth').click(); // 自动切换到登录页
+
+        } catch (err) {
+            // 特殊处理店长唯一性约束错误
+            if (err.message.includes('idx_only_one_owner')) {
+                showToast('店长账号已存在，无法注册', 3000);
             } else {
-                xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
+                showToast('注册失败: ' + err.message, 3000);
             }
-            xhr.onload = () => {
-                let res = null;
-                try { res = JSON.parse(xhr.responseText); } catch(e) {}
-                callback(xhr.status, res);
-            };
-            xhr.onerror = () => callback(0, { error: '网络错误，请检查网络连接' });
-            xhr.send(body ? JSON.stringify(body) : null);
         }
+    });
 
-        // 注册/登录逻辑
-        function handleAuth(type) {
-            // 调试用：确认按钮点击触发（没问题后可以删除这行）
-            alert('点击了' + (type === 'register' ? '注册' : '登录') + '按钮');
+    // 登录逻辑
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        showToast('正在登录...', 1000);
+
+        try {
+            const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+                method: 'POST',
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await response.json();
+
+            if (data.error) throw new Error(data.error.message);
+
+            // 检查是否被封禁或未审核
+            const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=status`, {
+                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${data.access_token}` }
+            });
+            const profile = (await profileRes.json())[0];
+
+            if (profile && profile.status === 'pending_approval') {
+                throw new Error('账号等待审核，请联系店长');
+            }
+
+            // 保存登录态
+            localStorage.setItem('sb_token', data.access_token);
+            localStorage.setItem('sb_uid', data.user.id);
             
-            const email = document.getElementById('inpEmail').value.trim();
-            const pwd = document.getElementById('inpPassword').value;
-            const nick = document.getElementById('inpNickname').value.trim();
-            const role = document.getElementById('selRole').value;
+            // 设置全局请求头
+            authHeaders = {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${data.access_token}`,
+                'Content-Type': 'application/json'
+            };
 
-            if (!email || !pwd || !nick) { alert('请填写完整信息'); return; }
-            if (pwd.length < 6) { alert('密码至少6位'); return; }
+            currentUser = data.user;
+            await loadProfile(); // 加载昵称和角色
+            showApp(); // 显示主界面
+            showToast('登录成功！', 1500);
 
-            if (type === 'register') {
-                // 注册请求
-                xhrRequest('POST', '/auth/v1/signup', {
-                    email, password: pwd,
-                    data: {
-                        nickname: nick,
-                        role: role,
-                        status: role === 'admin' ? 'pending_approval' : 'approved' // 管理员需审核，其他免审
-                    }
-                }, (status, res) => {
-                    if (status >= 200 && status < 300) {
-                        alert(role === 'admin' ? '管理员申请已提交，请等待店长审核' : '注册成功，请登录');
-                    } else {
-                        // 店长已存在的错误提示
-                        if (res?.message?.includes('idx_only_one_owner')) {
-                            alert('店长账号已存在，无法注册');
-                        } else {
-                            alert('注册失败：' + (res?.error_description || res?.message || '未知错误'));
-                        }
-                    }
-                });
-            } else {
-                // 登录请求
-                xhrRequest('POST', '/auth/v1/token?grant_type=password', {
-                    email, password: pwd
-                }, (status, res) => {
-                    if (status === 200) {
-                        // 检查管理员是否审核通过
-                        if (res.user?.user_metadata?.status === 'pending_approval') {
-                            alert('账号等待店长审核，无法登录');
-                            return;
-                        }
-                        localStorage.setItem('sb_token', res.access_token);
-                        localStorage.setItem('sb_uid', res.user.id);
-                        currentUser = res.user;
-                        authHeaders = {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': 'Bearer ' + res.access_token,
-                            'Content-Type': 'application/json'
-                        };
-                        showApp();
-                    } else {
-                        alert('登录失败：' + (res?.error_description || res?.message || '账号或密码错误'));
-                    }
-                });
-            }
+        } catch (err) {
+            showToast('登录失败: ' + err.message, 3000);
+        }
+    });
+
+    // 退出登录
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.clear();
+        location.reload();
+    });
+
+    // ==========================================
+    // 4. 主应用逻辑
+    // ==========================================
+
+    async function loadProfile() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}`, {
+                headers: authHeaders
+            });
+            const profile = (await res.json())[0];
+            currentUser.profile = profile;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function showApp() {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('appSection').classList.remove('hidden');
+
+        // 设置欢迎语
+        document.getElementById('welcomeUser').innerText = currentUser.profile?.nickname || currentUser.email;
+        document.getElementById('userRoleTag').innerText = getRoleName(currentUser.profile?.role);
+
+        // 店长专属按钮
+        if (currentUser.profile?.role === 'owner') {
+            document.getElementById('adminApprovalBtn').classList.remove('hidden');
+            loadPendingAdmins(); // 加载待审核列表
         }
 
-        // 显示登录后界面
-        function showApp() {
-            document.getElementById('authPanel').classList.add('hidden');
-            document.getElementById('topBar').classList.remove('hidden');
-            document.getElementById('listPanel').classList.remove('hidden');
+        loadOrders();
+    }
 
-            const meta = currentUser.user_metadata || {};
-            const role = meta.role || 'player';
-            document.getElementById('welcomeMsg').innerText = `欢迎，${meta.nickname || '用户'} [${getRoleName(role)}]`;
+    // 加载待审核管理员
+    async function loadPendingAdmins() {
+        const listEl = document.getElementById('approvalList');
+        const panel = document.getElementById('approvalPanel');
+        try {
+            // 查询 role=admin 且 status=pending 的用户
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?role=eq.admin&status=eq.pending&select=id,nickname,email`, {
+                headers: authHeaders
+            });
+            const pending = await res.json();
 
-            // 权限控制
-            const ownerActions = document.getElementById('ownerActions');
-            if (role === 'owner') {
-                // 店长：显示发单+审核按钮
-                document.getElementById('createPanel').classList.remove('hidden');
-                ownerActions.classList.remove('hidden');
-            } else if (role === 'player') {
-                // 玩家：仅显示发单
-                document.getElementById('createPanel').classList.remove('hidden');
-                ownerActions.classList.add('hidden');
-            } else {
-                // 打手/管理员：不显示发单
-                document.getElementById('createPanel').classList.add('hidden');
-                ownerActions.classList.add('hidden');
+            if (pending.length === 0) {
+                panel.classList.add('hidden');
+                return;
             }
-            loadOrders();
-        }
+            panel.classList.remove('hidden');
 
-        // 加载待审核管理员
-        function loadPendingAdmins() {
-            xhrRequest('GET', '/rest/v1/profiles?select=id,nickname&status=eq.pending_approval', null, (status, res) => {
-                const list = document.getElementById('pendingList');
-                if (status !== 200 || !res.length) {
-                    list.innerHTML = '<div class="tip">暂无待审核申请</div>';
-                    return;
-                }
-                list.innerHTML = res.map(p => `
-                    <div class="order-card">
-                        <div class="order-title">申请人：${p.nickname}</div>
-                        <div class="order-actions">
-                            <button class="btn-small" onclick="approveAdmin('${p.id}')">批准</button>
-                            <button class="btn-small btn-danger" onclick="rejectAdmin('${p.id}')">驳回</button>
-                        </div>
+            listEl.innerHTML = pending.map(u => `
+                <div class="approval-item">
+                    <div>
+                        <div>${u.nickname || u.email}</div>
+                        <small>${u.email}</small>
                     </div>
-                `).join('');
-            }, true);
-        }
+                    <button class="btn-approve" onclick="approveAdmin('${u.id}', '${u.nickname}')">批准</button>
+                </div>
+            `).join('');
 
-        // 批准管理员
-        function approveAdmin(userId) {
-            if (!confirm('确定批准该管理员？')) return;
-            xhrRequest('PATCH', `/rest/v1/profiles?id=eq.${userId}`, { status: 'approved' }, (status) => {
-                if (status === 200) { alert('批准成功'); loadPendingAdmins(); }
-                else alert('操作失败');
-            }, true);
+        } catch (e) {
+            listEl.innerText = '加载失败';
         }
+    }
 
-        // 驳回管理员
-        function rejectAdmin(userId) {
-            if (!confirm('确定驳回该申请？')) return;
-            xhrRequest('DELETE', `/rest/v1/profiles?id=eq.${userId}`, null, (status) => {
-                if (status === 204) { alert('驳回成功'); loadPendingAdmins(); }
-                else alert('操作失败');
-            }, true);
+    // 批准管理员
+    async function approveAdmin(userId, nick) {
+        if (!confirm(`确定批准 ${nick} 成为管理员吗？`)) return;
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+                method: 'PATCH',
+                headers: authHeaders,
+                body: JSON.stringify({ status: 'approved' })
+            });
+            showToast('批准成功！', 1500);
+            loadPendingAdmins(); // 刷新列表
+        } catch (e) {
+            showToast('操作失败', 1500);
         }
+    }
 
-        // 发单
-        function createOrder() {
-            const content = document.getElementById('inpContent').value.trim();
-            const price = document.getElementById('inpPrice').value;
-            if (!content || !price) { alert('请填写内容和金额'); return; }
-            xhrRequest('POST', '/rest/v1/orders', {
-                sender_id: currentUser.id, content, price: parseFloat(price), status: 'pending'
-            }, (status) => {
-                if (status === 201) {
-                    alert('发布成功');
-                    document.getElementById('inpContent').value = '';
-                    document.getElementById('inpPrice').value = '';
-                    loadOrders();
-                } else alert('发布失败');
-            }, true);
+    // 绑定店长审核按钮
+    document.getElementById('adminApprovalBtn').addEventListener('click', () => {
+        const panel = document.getElementById('approvalPanel');
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) loadPendingAdmins();
+    });
+
+    // 发单
+    document.getElementById('createOrderBtn').addEventListener('click', async () => {
+        const content = document.getElementById('content').value.trim();
+        const price = document.getElementById('price').value;
+        if (!content || !price) return showToast('请填写内容和金额');
+
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    sender_id: currentUser.id,
+                    content: content,
+                    price: parseFloat(price),
+                    status: 'pending'
+                })
+            });
+            showToast('发布成功！');
+            document.getElementById('content').value = '';
+            document.getElementById('price').value = '';
+            loadOrders();
+        } catch (e) {
+            showToast('发布失败', 2000);
         }
+    });
 
-        // 接单
-        function takeOrder(orderId) {
-            if (!confirm('确定接单？')) return;
-            xhrRequest('PATCH', `/rest/v1/orders?id=eq.${orderId}`, {
-                worker_id: currentUser.id, status: 'accepted'
-            }, (status) => {
-                if (status === 200) { alert('接单成功'); loadOrders(); }
-                else alert('接单失败（可能已被抢）');
-            }, true);
+    // 接单
+    async function takeOrder(orderId) {
+        if (!confirm('确定接取此单？')) return;
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+                method: 'PATCH',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    worker_id: currentUser.id,
+                    status: 'accepted'
+                })
+            });
+            showToast('接单成功！');
+            loadOrders();
+        } catch (e) {
+            showToast('接单失败', 2000);
         }
+    }
 
-        // 加载订单列表
-        function loadOrders() {
-            const role = currentUser.user_metadata?.role;
-            let url = '/rest/v1/orders?select=*,profiles!worker_id(nickname),profiles!sender_id(nickname)&order=created_at.desc';
-            // 非店长/管理员仅看自己的订单
+    // 加载订单
+    async function loadOrders() {
+        const listEl = document.getElementById('orderList');
+        try {
+            let url = `${SUPABASE_URL}/rest/v1/orders?select=*,profiles!worker_id(nickname),profiles!sender_id(nickname)&order=created_at.desc`;
+            
+            // 权限过滤：非店长/管理员只能看自己的
+            const role = currentUser.profile?.role;
             if (role !== 'owner' && role !== 'admin') {
                 url += `&or=(sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id})`;
             }
-            xhrRequest('GET', url, null, (status, res) => {
-                const list = document.getElementById('orderList');
-                if (status !== 200 || !res.length) {
-                    list.innerHTML = '<div class="tip">暂无订单</div>';
-                    return;
-                }
-                list.innerHTML = res.map(o => {
-                    let btn = '';
-                    if (!o.worker_id && o.status === 'pending' && role === 'worker') {
-                        btn = `<button class="btn-small" onclick="takeOrder('${o.id}')">接单</button>`;
-                    }
-                    return `
-                    <div class="order-card">
-                        <div class="order-title">${o.content}</div>
-                        <div class="order-price">¥${o.price}</div>
-                        <div class="order-meta">
-                            发单人：${o.profiles?.nickname || '未知'} | 接单人：${o.profiles?.nickname || '暂无'}
-                        </div>
-                        <div class="order-status status-${o.status}">${o.status === 'pending' ? '待接单' : '已接单'}</div>
-                        <div class="order-actions">${btn}</div>
-                    </div>
-                    `;
-                }).join('');
-            }, true);
-        }
 
-        // 工具函数
-        function getRoleName(role) {
-            const map = { player: '玩家', worker: '打手', admin: '管理员', owner: '店长' };
-            return map[role] || '未知';
-        }
-        function doLogout() { localStorage.clear(); location.reload(); }
+            const res = await fetch(url, { headers: authHeaders });
+            const orders = await res.json();
 
-        // 自动登录
-        window.onload = () => {
-            const token = localStorage.getItem('sb_token');
-            if (token) {
-                xhrRequest('GET', '/auth/v1/user', null, (status, res) => {
-                    if (status === 200 && res.id) {
-                        currentUser = res;
-                        authHeaders = {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': 'Bearer ' + token,
-                            'Content-Type': 'application/json'
-                        };
-                        showApp();
-                    } else localStorage.clear();
-                }, true);
+            if (orders.length === 0) {
+                listEl.innerHTML = '<div class="tip">暂无订单，快来发布第一个吧！</div>';
+                return;
             }
-        };
-    </script>
+
+            listEl.innerHTML = orders.map(o => {
+                let actions = '';
+                // 打手接单逻辑
+                if (!o.worker_id && o.status === 'pending' && role === 'worker') {
+                    actions = `<button class="btn-small" style="background:var(--neon-blue);color:#000;" onclick="takeOrder('${o.id}')">接单</button>`;
+                }
+                // 标记自己发的单
+                const isMyOrder = o.sender_id === currentUser.id;
+
+                return `
+                <div class="order-card">
+                    <div class="order-title">${o.content}</div>
+                    <div class="order-meta">
+                        发布人: ${o.profiles?.sender_id?.nickname || '未知'} 
+                        ${o.worker_id ? `| 接单人: ${o.profiles?.worker_id?.nickname || '未知'}` : '| 状态: 待接单'}
+                    </div>
+                    <div class="order-price">¥${o.price}</div>
+                    <div class="order-actions">
+                        ${actions}
+                        ${isMyOrder ? '<span style="color:var(--neon-blue);font-size:12px;margin-left:10px;">(我的订单)</span>' : ''}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        } catch (e) {
+            listEl.innerHTML = '<div class="tip">加载失败，请检查网络</div>';
+        }
+    }
+
+    // 角色映射
+    function getRoleName(role) {
+        const map = { player: '玩家', worker: '打手', admin: '管理员', owner: '店长' };
+        return map[role] || '未知';
+    }
+
+    // 自动登录
+    window.onload = async () => {
+        const token = localStorage.getItem('sb_token');
+        if (token) {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY }
+                });
+                const user = await response.json();
+                if (user.id) {
+                    currentUser = user;
+                    authHeaders = {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    };
+                    await loadProfile();
+                    showApp();
+                } else {
+                    localStorage.clear();
+                }
+            } catch (e) {
+                localStorage.clear();
+            }
+        }
+    };
+</script>
 </body>
 </html>
