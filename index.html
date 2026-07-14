@@ -151,25 +151,30 @@
 
         // 登录
         function doLogin() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            if (!email || !password) { alert('请填写邮箱和密码'); return; }
-            document.getElementById('apiStatus').innerText = '登录中...';
-            sendRequest('/auth/v1/token?grant_type=password', 'POST', {
-                email, password
-            }, function(status, res) {
-                if (status === 200 && res.session) {
-                    const { access_token, user } = res.session;
-                    localStorage.setItem('sb_token', access_token);
-                    localStorage.setItem('sb_uid', user.id);
-                    currentUserId = user.id;
-                    loadUserInfo(user.id, access_token);
-                } else {
-                    alert('登录失败：账号或密码错误');
-                    document.getElementById('apiStatus').innerText = '登录失败';
-                }
-            }, false);
-        }
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) { alert('请填写邮箱和密码'); return; }
+    document.getElementById('apiStatus').innerText = '登录中...';
+    // 直接用 XHR 打登录接口，不走 sendRequest 那层封装，排除封装干扰
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/auth/v1/token?grant_type=password', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+    xhr.onload = function() {
+        let res = null;
+        try { res = JSON.parse(xhr.responseText); } catch(e) {}
+        // 把原始信息弹出来，这就是我们要的线索
+        alert(
+            'HTTP状态码: ' + xhr.status + '\n' +
+            'error: ' + (res?.error || '无') + '\n' +
+            'error_desc: ' + (res?.error_description || '无') + '\n' +
+            'msg: ' + (res?.msg || '无')
+        );
+    };
+    xhr.onerror = function() { alert('网络层错误，连不到 Supabase'); };
+    xhr.send(JSON.stringify({ email, password }));
+}
+
 
         // 加载用户信息
         function loadUserInfo(userId, token) {
