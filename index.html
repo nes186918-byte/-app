@@ -149,17 +149,19 @@
             }, false);
         }
 
-                // 登录（账号密码）
-        function doLogin() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            if (!email || !password) { alert('请填写邮箱和密码'); return; }
-            
-            document.getElementById('apiStatus').innerText = '登录中...';
-            
-            // 构造请求体
-            const body = JSON.stringify({ email, password });
-            
+                function doLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) { alert('请填写邮箱和密码'); return; }
+    document.getElementById('apiStatus').innerText = '登录中...';
+    sendRequest('/auth/v1/token?grant_type=password', 'POST', {
+        email: email, password: password
+    }, function(status, res) {
+        // 把Supabase返回的原始数据完整弹出来
+        alert('HTTP状态：' + status + '\n返回数据：' + JSON.stringify(res, null, 2));
+    }, false);
+}
+
             sendRequest('/auth/v1/token?grant_type=password', 'POST', body, function(status, res) {
                 // 【关键修改】新版 Supabase 会把数据包在 data 里，或者直接返回
                 // 这里做一下兼容处理，优先取 data 里的 session，没有就直接取 res 里的
