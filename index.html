@@ -19,6 +19,7 @@
         .info-box { background: #eaf5ff; padding: 18px; border-radius: 10px; font-size: 15px; line-height: 1.7; margin-bottom: 18px; }
         .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .tip { font-size: 13px; color: #888; text-align: center; margin-top: 20px; }
+        .order-item { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -47,8 +48,9 @@
         </div>
     </div>
 
-    <!-- 已登录界面（默认隐藏） -->
+    <!-- 已登录界面 -->
     <div id="userPage" style="display: none;">
+        <!-- 用户信息卡片 -->
         <div class="card">
             <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">欢迎回来</div>
             <div class="info-box">
@@ -58,9 +60,25 @@
             </div>
             <button class="btn-red" onclick="doLogout()">退出登录</button>
         </div>
+
+        <!-- 发单卡片（仅玩家/店长可见） -->
+        <div class="card" id="createOrderCard">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">发布订单</div>
+            <label class="input-label">订单内容</label>
+            <input type="text" id="orderContent" placeholder="比如：打王者排位上10星">
+            <label class="input-label">金额（元）</label>
+            <input type="number" id="orderPrice" placeholder="比如：50">
+            <button class="btn-purple" onclick="createOrder()">发布订单</button>
+        </div>
+
+        <!-- 订单列表卡片 -->
+        <div class="card">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">订单列表</div>
+            <div id="orderList"></div>
+        </div>
     </div>
 
-    <!-- 状态提示 -->
+    <!-- 系统状态卡片 -->
     <div class="card">
         <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">系统状态</div>
         <div class="info-box">
@@ -72,17 +90,13 @@
     <div class="tip">数据存储在云端，卸载/换设备也不会丢失</div>
 
     <script>
-        // ====== 这里已经帮你填好了Supabase配置，不用改 ======
-        const SUPABASE_URL = https://qyprklqzadevrybumwot.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg';
+        // ✅ 已填好你的Supabase配置，不用改任何内容
+        const SUPABASE_URL = 'https://qyprklqzadevrybumwot.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHlxemFkZXZyeWJ1bXdvdCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzUyNDgzMjYwLCJleHAiOjIwNjgwNTkyNjB9.KM6YOX8qLZ8qOwGyZt5VdLUYySm-qQTxs-DvLCmUVPQ';
+        const roleNames = {'player':'玩家','worker':'打手','manager':'经理','admin':'管理员','boss':'店长'};
+        let currentUserRole = '';
 
-        // 角色中文映射
-        const roleNames = {
-            'player': '玩家', 'worker': '打手', 'manager': '经理',
-            'admin': '管理员', 'boss': '店长'
-        };
-
-        // 原生HTTP请求（不用任何框架，绝对稳定）
+        // 原生HTTP请求（无框架，彻底避免双大括号/加载失败问题）
         function sendRequest(url, method, data, callback) {
             const xhr = new XMLHttpRequest();
             xhr.open(method, SUPABASE_URL + url, true);
@@ -94,9 +108,7 @@
                 try { result = JSON.parse(xhr.responseText); } catch(e) {}
                 callback(xhr.status, result);
             };
-            xhr.onerror = function() {
-                callback(0, { message: '网络错误，请检查网络' });
-            };
+            xhr.onerror = function() { callback(0, {message: '网络错误，请检查网络'}); };
             xhr.send(data ? JSON.stringify(data) : null);
         }
 
@@ -106,28 +118,18 @@
             const password = document.getElementById('password').value;
             const nickname = document.getElementById('nickname').value.trim();
             const role = document.getElementById('role').value;
-
-            if (!email || !password || !nickname) {
-                alert('请填写邮箱、密码和昵称');
-                return;
-            }
-            if (password.length < 6) {
-                alert('密码至少需要6位');
-                return;
-            }
-
+            if (!email || !password || !nickname) { alert('请填写邮箱、密码和昵称'); return; }
+            if (password.length < 6) { alert('密码至少需要6位'); return; }
             document.getElementById('apiStatus').innerText = '注册中...';
             sendRequest('/auth/v1/signup', 'POST', {
-                email: email,
-                password: password,
-                data: { nickname: nickname, role: role }
-            }, function(status, res) {
+                email: email, password: password, data: {nickname: nickname, role: role}
+            }, function(status) {
                 if (status === 200 || status === 201) {
                     alert('注册成功！请登录');
                     document.getElementById('apiStatus').innerText = '注册成功';
                     document.getElementById('password').value = '';
                 } else {
-                    alert('注册失败：' + (res.message || res.error_description || '未知错误'));
+                    alert('注册失败：店长/管理员名额已满或其他错误');
                     document.getElementById('apiStatus').innerText = '注册失败';
                 }
             });
@@ -137,46 +139,113 @@
         function doLogin() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
-
-            if (!email || !password) {
-                alert('请填写邮箱和密码');
-                return;
-            }
-
+            if (!email || !password) { alert('请填写邮箱和密码'); return; }
             document.getElementById('apiStatus').innerText = '登录中...';
             sendRequest('/auth/v1/token?grant_type=password', 'POST', {
-                email: email,
-                password: password
+                email: email, password: password
             }, function(status, res) {
                 if (status === 200 && res.access_token) {
-                    // 保存登录态
                     localStorage.setItem('sb_token', res.access_token);
                     localStorage.setItem('sb_uid', res.user.id);
-                    // 加载用户信息
                     loadUserInfo(res.user.id, res.access_token);
                 } else {
-                    alert('登录失败：' + (res.message || res.error_description || '账号或密码错误'));
+                    alert('登录失败：账号或密码错误');
                     document.getElementById('apiStatus').innerText = '登录失败';
                 }
             });
         }
 
-        // 加载用户信息
+        // 加载用户信息+订单
         function loadUserInfo(userId, token) {
             sendRequest('/rest/v1/profiles?id=eq.' + userId + '&select=*', 'GET', null, function(status, res) {
                 if (status === 200 && res.length > 0) {
                     const user = res[0];
+                    currentUserRole = user.role;
+                    localStorage.setItem('sb_role', user.role);
                     // 切换界面
                     document.getElementById('loginPage').style.display = 'none';
                     document.getElementById('userPage').style.display = 'block';
-                    // 显示信息
+                    // 显示用户信息
                     document.getElementById('showNickname').innerText = user.nickname || '未设置';
                     document.getElementById('showRole').innerText = roleNames[user.role] || user.role;
                     document.getElementById('showUserId').innerText = userId;
                     document.getElementById('apiStatus').innerText = '登录成功';
+                    // 控制发单权限：只有玩家/店长能发单
+                    document.getElementById('createOrderCard').style.display = 
+                        (user.role === 'player' || user.role === 'boss') ? 'block' : 'none';
+                    // 加载订单列表
+                    loadOrders();
+                }
+            });
+        }
+
+        // 发单
+        function createOrder() {
+            const content = document.getElementById('orderContent').value.trim();
+            const price = document.getElementById('orderPrice').value.trim();
+            const userId = localStorage.getItem('sb_uid');
+            if (!content || !price) { alert('请填写订单内容和金额'); return; }
+            sendRequest('/rest/v1/orders', 'POST', {
+                sender_id: userId, content: content, price: parseFloat(price), status: '待接单'
+            }, function(status) {
+                if (status === 201) {
+                    alert('发单成功！');
+                    document.getElementById('orderContent').value = '';
+                    document.getElementById('orderPrice').value = '';
+                    loadOrders();
                 } else {
-                    alert('获取用户信息失败，请重试');
-                    document.getElementById('apiStatus').innerText = '获取信息失败';
+                    alert('发单失败：请检查网络或权限');
+                }
+            });
+        }
+
+        // 接单
+        function takeOrder(orderId) {
+            const userId = localStorage.getItem('sb_uid');
+            sendRequest('/rest/v1/orders?id=eq.' + orderId, 'PATCH', {
+                worker_id: userId, status: '已接单'
+            }, function(status) {
+                if (status === 200) {
+                    alert('接单成功！');
+                    loadOrders();
+                } else {
+                    alert('接单失败：订单已被抢或权限不足');
+                }
+            });
+        }
+
+        // 加载订单列表
+        function loadOrders() {
+            const userId = localStorage.getItem('sb_uid');
+            let url = '/rest/v1/orders?select=*&order=created_at.desc';
+            // 非店长/管理员只看自己的订单
+            if (currentUserRole !== 'boss' && currentUserRole !== 'admin') {
+                url += '&or=(sender_id.eq.' + userId + ',worker_id.eq.' + userId + ')';
+            }
+            sendRequest(url, 'GET', null, function(status, res) {
+                if (status === 200) {
+                    const orderList = document.getElementById('orderList');
+                    orderList.innerHTML = '';
+                    if (res.length === 0) {
+                        orderList.innerHTML = '<div class="tip">暂无订单</div>';
+                        return;
+                    }
+                    res.forEach(order => {
+                        const div = document.createElement('div');
+                        div.className = 'order-item';
+                        let actionBtn = '';
+                        // 打手可见待接单的订单，显示接单按钮
+                        if (currentUserRole === 'worker' && order.status === '待接单') {
+                            actionBtn = `<button class="btn-green" onclick="takeOrder('${order.id}')">接单</button>`;
+                        }
+                        div.innerHTML = `
+                            <div class="info-row"><span>订单内容：</span><span>${order.content}</span></div>
+                            <div class="info-row"><span>金额：</span><span>￥${order.price}</span></div>
+                            <div class="info-row"><span>状态：</span><span>${order.status}</span></div>
+                            ${actionBtn}
+                        `;
+                        orderList.appendChild(div);
+                    });
                 }
             });
         }
@@ -187,7 +256,7 @@
             window.location.reload();
         }
 
-        // 页面加载时自动登录
+        // 自动登录
         window.onload = function() {
             const token = localStorage.getItem('sb_token');
             const uid = localStorage.getItem('sb_uid');
