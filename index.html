@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
     <style>
-        /* --- 全局变量与基础重置 --- */
+        /* --- 全局变量 --- */
         :root {
             --bg-color: #020208;
             --grid-color: rgba(0, 217, 255, 0.08);
@@ -26,7 +26,7 @@
             position: relative;
         }
 
-        /* --- 核心：结构光扫描背景 --- */
+        /* --- 结构光扫描背景（修正后，是线条整体流动）--- */
         .cyber-grid {
             position: fixed;
             top: 0; left: 0;
@@ -34,9 +34,7 @@
             height: 100vh;
             z-index: -2;
             background: 
-                /* 纵向发光线条 */
                 linear-gradient(90deg, transparent 49.75%, var(--grid-color) 49.75%, var(--grid-color) 50.25%, transparent 50.25%),
-                /* 横向发光线条 */
                 linear-gradient(180deg, transparent 49.75%, var(--grid-color) 49.75%, var(--grid-color) 50.25%, transparent 50.25%),
                 var(--bg-color);
             background-size: 80px 80px, 80px 80px;
@@ -50,7 +48,6 @@
             100% { background-position: 0 80px, 0 80px; }
         }
 
-        /* 顶部光晕 */
         .light-vignette {
             position: fixed;
             top: 0; left: 0;
@@ -60,7 +57,7 @@
             pointer-events: none;
         }
 
-        /* --- UI布局 --- */
+        /* --- 顶部状态栏 --- */
         .status-bar {
             position: fixed; top: 0; left: 0; width: 100%;
             padding: 12px 20px;
@@ -100,6 +97,7 @@
         }
         input:focus, select:focus, textarea:focus { border-color: var(--glow-cyan); box-shadow: 0 0 15px rgba(0, 217, 255, 0.2); }
         
+        /* 按钮样式（重点修正：登录按钮现在清晰可见） */
         .btn {
             width: 100%; padding: 14px; margin-top: 10px;
             background: linear-gradient(90deg, var(--glow-purple), var(--glow-cyan));
@@ -108,7 +106,13 @@
             transition: all 0.3s; box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
         }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0, 217, 255, 0.5); }
-        .btn-secondary { background: transparent; border: 1px solid var(--glow-cyan); box-shadow: none; }
+        /* 次要按钮（登录按钮用这个，现在边框和文字都高亮，不会消失） */
+        .btn-secondary { 
+            background: transparent; 
+            border: 1px solid var(--glow-cyan); 
+            color: var(--glow-cyan);
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+        }
         .btn-danger { background: linear-gradient(90deg, #ff004c, #ff4d4d); box-shadow: 0 0 20px rgba(255, 0, 76, 0.3); }
         .btn-small { padding: 8px 12px; font-size: 14px; width: auto; margin: 0 5px 0 0; }
 
@@ -144,7 +148,7 @@
     <div class="container">
         <!-- 登录/注册面板 -->
         <div id="authPanel" class="panel">
-            <h2>卡了电竞欢迎您</h2>
+            <h2>卡了电竞欢迎您的光临</h2>
             <div class="form-group">
                 <label>电子邮箱</label>
                 <input type="email" id="email" placeholder="agent@cyber.net">
@@ -158,35 +162,41 @@
                 <input type="text" id="nickname" placeholder="Ghost">
             </div>
             <div class="form-group">
-                <label>身份选择</label>
+                <label>选择你的身份</label>
                 <select id="role">
                     <option value="player">玩家 (发单)</option>
                     <option value="worker">打手 (接单)</option>
-                    <option value="boss">老板</option>
-                    <option value="admin">管理员</option>
+                    <option value="admin">管理员 (审核/运维)</option>
                     <option value="owner">店长</option>
+                    <!-- 已彻底移除「老板」选项 -->
                 </select>
             </div>
+            <!-- 登录按钮现在样式高亮，清晰可见 -->
             <button class="btn" onclick="handleAuth('register')">注册身份</button>
-            <button class="btn btn-secondary" onclick="handleAuth('login')">身份核验</button>
+            <button class="btn btn-secondary" onclick="handleAuth('login')">身份核验（登录）</button>
         </div>
 
-        <!-- 店长审批面板 (仅店长可见) -->
+        <!-- 店长专属：审核管理员面板（默认隐藏，点击按钮展开） -->
         <div id="approvalPanel" class="panel hidden">
             <h2>AWAITING APPROVAL</h2>
             <p style="color: var(--text-secondary); margin-bottom: 20px;">以下管理员申请等待您的批复：</p>
             <div id="pendingList"></div>
         </div>
 
-        <!-- 发单面板 (玩家/老板可见) -->
+        <!-- 发单面板（玩家/店长可见，已移除老板权限） -->
         <div id="createPanel" class="panel hidden">
+            <!-- 店长专属：审核管理员按钮（醒目位置） -->
+            <div id="ownerActions" class="hidden">
+                <button class="btn" onclick="toggleApprovalPanel()">审核管理员申请</button>
+                <hr style="border: none; border-top: 1px solid rgba(0,217,255,0.1); margin: 20px 0;">
+            </div>
             <h3>发布新订单</h3>
             <div class="form-group">
                 <label>需要的服务</label>
                 <textarea id="content" rows="3" placeholder="输入任务详情..."></textarea>
             </div>
             <div class="form-group">
-                <label>价格</label>
+                <label>价格(¥)</label>
                 <input type="number" id="price" placeholder="0.00">
             </div>
             <button class="btn" onclick="createOrder()">确认发布</button>
@@ -194,7 +204,7 @@
 
         <!-- 订单列表 -->
         <div id="listPanel" class="panel hidden">
-            <h3>任务列表</h3>
+            <h3>订单列表</h3>
             <div id="orderList"><div class="tip">加载中...</div></div>
         </div>
     </div>
@@ -211,6 +221,15 @@
         let authToken = null;
         let authHeaders = {};
 
+        // 切换审核面板显示/隐藏
+        function toggleApprovalPanel() {
+            const panel = document.getElementById('approvalPanel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                loadPendingAdmins(); // 展开时加载待审批列表
+            }
+        }
+
         // --- API 封装 ---
         async function sbFetch(endpoint, method = 'GET', body = null) {
             const res = await fetch(`${SUPABASE_URL}/rest/v1${endpoint}`, {
@@ -223,7 +242,7 @@
             return res.json();
         }
 
-        // --- 核心逻辑：注册/登录 ---
+        // --- 注册/登录逻辑 ---
         async function handleAuth(type) {
             const email = email.value.trim();
             const pwd = password.value;
@@ -234,7 +253,6 @@
 
             try {
                 if (type === 'register') {
-                    // 注册时，如果是 admin，状态设为 pending_approval
                     const userData = { nickname: nick, role: selectedRole };
                     if (selectedRole === 'admin') {
                         userData.status = 'pending_approval';
@@ -259,7 +277,7 @@
                         body: JSON.stringify({ email, password: pwd })
                     }).then(r => r.json());
 
-                    // 检查是否是管理员且未审核
+                    // 检查管理员是否审核通过
                     if (data.user?.user_metadata?.status === 'pending_approval') {
                         alert('您的账号正在等待店长审核，暂无法登录。');
                         return;
@@ -288,36 +306,35 @@
             listPanel.classList.remove('hidden');
 
             const meta = currentUser.user_metadata || {};
-            const role = meta.role || 'player';
+            const userRole = meta.role || 'player';
             const nickname = meta.nickname || '匿名用户';
             
-            welcomeMsg.innerText = `欢迎, ${nickname} [${getRoleName(role)}]`;
+            welcomeMsg.innerText = `欢迎, ${nickname} [${getRoleName(userRole)}]`;
 
-            // 权限控制
-            // 店长可见审批面板
-            if (role === 'owner') {
-                approvalPanel.classList.remove('hidden');
-                loadPendingAdmins();
-            } else {
-                approvalPanel.classList.add('hidden');
-            }
-
-            // 玩家和老板可见发单面板
-            if (role === 'player' || role === 'boss' || role === 'owner') {
+            // 权限控制（已移除老板相关逻辑）
+            const ownerActions = document.getElementById('ownerActions');
+            if (userRole === 'owner') {
+                // 店长：显示发单面板 + 审核按钮
                 createPanel.classList.remove('hidden');
+                ownerActions.classList.remove('hidden');
+            } else if (userRole === 'player') {
+                // 玩家：仅显示发单面板
+                createPanel.classList.remove('hidden');
+                ownerActions.classList.add('hidden');
             } else {
+                // 打手/管理员：不显示发单面板
                 createPanel.classList.add('hidden');
+                ownerActions.classList.add('hidden');
             }
 
             loadOrders();
         }
 
-        // --- 店长审批功能 ---
+        // --- 店长审核功能 ---
         async function loadPendingAdmins() {
             try {
-                // 注意：这里需要数据库支持查询 metadata，或者我们把 status 移到 profiles 表
-                // 简化版：我们假设 profiles 表有 status 字段
                 const pending = await sbFetch('/profiles?select=id,nickname,status&status=eq.pending_approval');
+                const pendingList = document.getElementById('pendingList');
                 if (pending.length === 0) {
                     pendingList.innerHTML = '<div class="tip">暂无待审批申请</div>';
                     return;
@@ -340,21 +357,16 @@
         async function approveAdmin(userId) {
             if (!confirm('确定批准该管理员申请？')) return;
             try {
-                // 更新 profiles 表状态
                 await sbFetch(`/profiles?id=eq.${userId}`, 'PATCH', { status: 'approved' });
-                // 注意：Supabase Auth 的用户 metadata 不能直接通过 REST API 修改，除非用 Edge Functions 或 Service Role Key
-                // 此处仅更新 profiles 表作为演示。实际应用中，需要后端逻辑同步更新 auth.users 的 metadata
                 alert('审批通过！请通知该用户重新登录。');
                 loadPendingAdmins();
             } catch (e) { alert('操作失败: ' + e.message); }
         }
         
         async function rejectAdmin(userId) {
-            if (!confirm('确定驳回该申请？用户将被删除。')) return;
+            if (!confirm('确定驳回该申请？用户资料将被删除。')) return;
             try {
-                // 删除 profiles 记录
                 await sbFetch(`/profiles?id=eq.${userId}`, 'DELETE');
-                // 删除 auth 用户 (需要 Service Role Key，前端无法直接操作，此处仅逻辑删除)
                 alert('申请已驳回。');
                 loadPendingAdmins();
             } catch (e) { alert('操作失败: ' + e.message); }
@@ -398,15 +410,20 @@
                     listEl.innerHTML = '<div class="tip">暂无订单</div>';
                     return;
                 }
-                const role = currentUser.user_metadata?.role;
+                const userRole = currentUser.user_metadata?.role;
                 listEl.innerHTML = orders.map(o => {
                     let actions = '';
                     // 打手可见待接单
-                    if (!o.worker_id && o.status === 'pending' && role === 'worker') {
+                    if (!o.worker_id && o.status === 'pending' && userRole === 'worker') {
                         actions = `<button class="btn-small" onclick="takeOrder('${o.id}')">接单</button>`;
                     }
-                    // 店长/管理员可见所有，打手只能看见自己接的
-                    const isVisible = (role === 'owner' || role === 'admin' || o.sender_id === currentUser.id || o.worker_id === currentUser.id);
+                    // 权限控制：店长/管理员看所有，其他人看自己相关的
+                    const isVisible = (
+                        userRole === 'owner' || 
+                        userRole === 'admin' || 
+                        o.sender_id === currentUser.id || 
+                        o.worker_id === currentUser.id
+                    );
                     if (!isVisible) return '';
 
                     return `
@@ -427,7 +444,7 @@
 
         // --- 工具函数 ---
         function getRoleName(role) {
-            const map = { player: '玩家', worker: '打手', boss: '老板', admin: '管理员', owner: '店长' };
+            const map = { player: '玩家', worker: '打手', admin: '管理员', owner: '店长' };
             return map[role] || '未知';
         }
 
@@ -441,7 +458,7 @@
             const token = localStorage.getItem('sb_token');
             if (token) {
                 try {
-                    const user = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+                    const user = await fetch(`${SUPABASE_URL}/auth/v1/user', {
                         headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_ANON_KEY }
                     }).then(r => r.json());
 
