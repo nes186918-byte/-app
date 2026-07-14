@@ -4,115 +4,200 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>电竞派单系统</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@4/lib/index.css" />
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vant@4/lib/vant.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #f7f8fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; min-height: 100vh; }
-        .header { background: #242933; color: #fff; padding: 16px; text-align: center; font-size: 18px; font-weight: 600; }
-        .container { max-width: 500px; margin: 0 auto; padding: 15px; }
-        .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .form-item { margin-bottom: 12px; }
-        .van-field { background: #f7f8fa !important; border-radius: 8px !important; }
-        .btn { width: 100%; height: 44px; border-radius: 8px; font-size: 16px; border: none; margin-bottom: 10px; }
-        .btn-purple { background: #7232dd; color: #fff; }
-        .btn-green { background: #07c160; color: #fff; }
-        .btn-red { background: #ee0a24; color: #fff; }
-        .status-box { background: #eaf5ff; padding: 15px; border-radius: 8px; font-size: 14px; line-height: 1.6; }
-        .status-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; }
+        body { background: #f7f8fa; min-height: 100vh; padding: 20px; }
+        .header { background: #242933; color: white; padding: 18px; text-align: center; font-size: 19px; font-weight: 600; border-radius: 12px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 12px; padding: 22px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        .input-label { font-size: 15px; color: #555; margin-bottom: 8px; display: block; }
+        input, select { width: 100%; height: 48px; border: 1px solid #ddd; border-radius: 10px; padding: 0 15px; font-size: 16px; background: #f9f9f9; margin-bottom: 16px; outline: none; }
+        button { width: 100%; height: 48px; border: none; border-radius: 10px; font-size: 17px; color: white; margin-bottom: 14px; cursor: pointer; }
+        .btn-purple { background: #7232dd; }
+        .btn-green { background: #07c160; }
+        .btn-red { background: #ee0a24; }
+        .btn-gray { background: #86909c; }
+        .info-box { background: #eaf5ff; padding: 18px; border-radius: 10px; font-size: 15px; line-height: 1.7; margin-bottom: 18px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .tip { font-size: 13px; color: #888; text-align: center; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="header">卡了电竞派单系统</div>
-        <div class="container">
-            <div class="card" v-if="!isLogin">
-                <div style="font-size: 18px; font-weight: 600; margin-bottom: 15px;">账号登录/注册</div>
-                <div class="form-item"><van-field v-model="email" label="邮箱" placeholder="请输入邮箱" type="email" /></div>
-                <div class="form-item"><van-field v-model="password" label="密码" placeholder="请输入密码" type="password" /></div>
-                <div class="form-item"><van-field v-model="nickname" label="昵称" placeholder="注册必填" /></div>
-                <div class="form-item"><van-field v-model="roleText" label="角色" readonly clickable placeholder="点击选择角色" @click="showRoleSheet = true" /></div>
-                <button class="btn btn-purple" @click="doRegister">注册账号</button>
-                <button class="btn btn-green" @click="doLogin">登录账号</button>
-            </div>
-            <div class="card" v-else>
-                <div style="font-size: 18px; font-weight: 600; margin-bottom: 15px;">欢迎回来</div>
-                <div class="status-box">
-                    <div class="status-row"><span>昵称：</span><span>{{ profile.nickname }}</span></div>
-                    <div class="status-row"><span>角色：</span><span>{{ roleMap[profile.role] || profile.role }}</span></div>
-                    <div class="status-row"><span>用户ID：</span><span>{{ userId }}</span></div>
-                </div>
-                <button class="btn btn-red" @click="doLogout">退出登录</button>
-            </div>
-            <div class="card">
-                <div style="font-size: 18px; font-weight: 600; margin-bottom: 15px;">系统状态</div>
-                <div class="status-box">
-                    <div class="status-row"><span>运行状态：</span><span>{{ runStatus }}</span></div>
-                    <div class="status-row"><span>接口状态：</span><span>{{ apiStatus }}</span></div>
-                </div>
-                <button class="btn btn-purple" @click="retryInit">重试初始化</button>
-            </div>
+    <div class="header">卡了电竞派单系统</div>
+
+    <!-- 未登录界面 -->
+    <div id="loginPage">
+        <div class="card">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">账号登录/注册</div>
+            <label class="input-label">邮箱</label>
+            <input type="email" id="email" placeholder="请输入邮箱">
+            <label class="input-label">密码</label>
+            <input type="password" id="password" placeholder="至少6位">
+            <label class="input-label">昵称（注册必填）</label>
+            <input type="text" id="nickname" placeholder="比如：小明">
+            <label class="input-label">角色</label>
+            <select id="role">
+                <option value="player">玩家</option>
+                <option value="worker">打手</option>
+                <option value="manager">经理</option>
+                <option value="admin">管理员</option>
+                <option value="boss">店长</option>
+            </select>
+            <button class="btn-purple" onclick="doRegister()">注册账号</button>
+            <button class="btn-green" onclick="doLogin()">登录账号</button>
         </div>
-        <van-action-sheet v-model:show="showRoleSheet" :actions="roleList" cancel-text="取消" @select="onRoleSelect" />
     </div>
 
+    <!-- 已登录界面（默认隐藏） -->
+    <div id="userPage" style="display: none;">
+        <div class="card">
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">欢迎回来</div>
+            <div class="info-box">
+                <div class="info-row"><span>昵称：</span><span id="showNickname"></span></div>
+                <div class="info-row"><span>角色：</span><span id="showRole"></span></div>
+                <div class="info-row"><span>用户ID：</span><span id="showUserId"></span></div>
+            </div>
+            <button class="btn-red" onclick="doLogout()">退出登录</button>
+        </div>
+    </div>
+
+    <!-- 状态提示 -->
+    <div class="card">
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">系统状态</div>
+        <div class="info-box">
+            <div class="info-row"><span>运行状态：</span><span id="runStatus">正常</span></div>
+            <div class="info-row"><span>接口状态：</span><span id="apiStatus">等待操作</span></div>
+        </div>
+        <button class="btn-gray" onclick="window.location.reload()">刷新重试</button>
+    </div>
+    <div class="tip">数据存储在云端，卸载/换设备也不会丢失</div>
+
     <script>
-        // ==========================================================
-        // 配置区（已替换为安全的 anon public 密钥）
-        // ==========================================================
-        const SUPABASE_URL = 'https://qyprklqzadevrybumwot.supabase.co';
+        // ====== 这里已经帮你填好了Supabase配置，不用改 ======
+        const SUPABASE_URL = https://qyprklqzadevrybumwot.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg';
 
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const vant = Vant;
-        const roleMap = {'player':'玩家','worker':'打手','manager':'经理','admin':'管理员','boss':'店长'};
+        // 角色中文映射
+        const roleNames = {
+            'player': '玩家', 'worker': '打手', 'manager': '经理',
+            'admin': '管理员', 'boss': '店长'
+        };
 
-        Vue.createApp({
-            data() {
-                return {
-                    email: '', password: '12345678', nickname: '', role: 'player', roleText: '玩家', showRoleSheet: false,
-                    profile: null, userId: '', isLogin: false, runStatus: '运行中', apiStatus: '等待操作',
-                    roleList: [{name:'玩家',value:'player'},{name:'打手',value:'worker'},{name:'经理',value:'manager'},{name:'管理员',value:'admin'},{name:'店长',value:'boss'}]
-                };
-            },
-            methods: {
-                onRoleSelect(item) { this.role = item.value; this.roleText = item.name; this.showRoleSheet = false; },
-                async doRegister() {
-                    if (!this.email || !this.password || !this.nickname) return vant.showToast('请填写完整信息');
-                    this.apiStatus = '注册中...';
-                    const { error } = await sb.auth.signUp({ email: this.email, password: this.password, options: { data: { nickname: this.nickname, role: this.role }, emailRedirectTo: null } });
-                    if (error) { vant.showToast('注册失败：' + error.message); this.apiStatus = '失败'; }
-                    else { vant.showToast('注册成功，请登录'); this.apiStatus = '成功'; this.password = ''; }
-                },
-                async doLogin() {
-                    if (!this.email || !this.password) return vant.showToast('请填写账号密码');
-                    this.apiStatus = '登录中...';
-                    const { data, error } = await sb.auth.signInWithPassword({ email: this.email, password: this.password });
-                    if (error) { vant.showToast('登录失败：' + error.message); this.apiStatus = '失败'; }
-                    else {
-                        this.userId = data.user.id;
-                        localStorage.setItem('sb_token', data.session.access_token);
-                        localStorage.setItem('sb_uid', data.user.id);
-                        const { data: p } = await sb.from('profiles').select('*').eq('id', data.user.id).single();
-                        this.profile = p || { nickname: data.user.user_metadata.nickname, role: data.user.user_metadata.role };
-                        this.isLogin = true;
-                        this.apiStatus = '成功';
-                    }
-                },
-                async doLogout() { await sb.auth.signOut(); localStorage.clear(); this.profile = null; this.isLogin = false; this.apiStatus = '已退出'; vant.showToast('已退出'); },
-                retryInit() { location.reload(); }
-            },
-            mounted() {
-                const token = localStorage.getItem('sb_token');
-                const uid = localStorage.getItem('sb_uid');
-                if (token && uid) {
-                    this.userId = uid;
-                    sb.from('profiles').select('*').eq('id', uid).single().then(({data}) => { this.profile = data; this.isLogin = true; this.apiStatus = '自动登录成功'; });
-                } else { this.apiStatus = '等待操作'; }
+        // 原生HTTP请求（不用任何框架，绝对稳定）
+        function sendRequest(url, method, data, callback) {
+            const xhr = new XMLHttpRequest();
+            xhr.open(method, SUPABASE_URL + url, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('apikey', SUPABASE_KEY);
+            xhr.setRequestHeader('Authorization', 'Bearer ' + (localStorage.getItem('sb_token') || SUPABASE_KEY));
+            xhr.onload = function() {
+                let result = null;
+                try { result = JSON.parse(xhr.responseText); } catch(e) {}
+                callback(xhr.status, result);
+            };
+            xhr.onerror = function() {
+                callback(0, { message: '网络错误，请检查网络' });
+            };
+            xhr.send(data ? JSON.stringify(data) : null);
+        }
+
+        // 注册
+        function doRegister() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const nickname = document.getElementById('nickname').value.trim();
+            const role = document.getElementById('role').value;
+
+            if (!email || !password || !nickname) {
+                alert('请填写邮箱、密码和昵称');
+                return;
             }
-        }).use(vant).mount('#app');
+            if (password.length < 6) {
+                alert('密码至少需要6位');
+                return;
+            }
+
+            document.getElementById('apiStatus').innerText = '注册中...';
+            sendRequest('/auth/v1/signup', 'POST', {
+                email: email,
+                password: password,
+                data: { nickname: nickname, role: role }
+            }, function(status, res) {
+                if (status === 200 || status === 201) {
+                    alert('注册成功！请登录');
+                    document.getElementById('apiStatus').innerText = '注册成功';
+                    document.getElementById('password').value = '';
+                } else {
+                    alert('注册失败：' + (res.message || res.error_description || '未知错误'));
+                    document.getElementById('apiStatus').innerText = '注册失败';
+                }
+            });
+        }
+
+        // 登录
+        function doLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                alert('请填写邮箱和密码');
+                return;
+            }
+
+            document.getElementById('apiStatus').innerText = '登录中...';
+            sendRequest('/auth/v1/token?grant_type=password', 'POST', {
+                email: email,
+                password: password
+            }, function(status, res) {
+                if (status === 200 && res.access_token) {
+                    // 保存登录态
+                    localStorage.setItem('sb_token', res.access_token);
+                    localStorage.setItem('sb_uid', res.user.id);
+                    // 加载用户信息
+                    loadUserInfo(res.user.id, res.access_token);
+                } else {
+                    alert('登录失败：' + (res.message || res.error_description || '账号或密码错误'));
+                    document.getElementById('apiStatus').innerText = '登录失败';
+                }
+            });
+        }
+
+        // 加载用户信息
+        function loadUserInfo(userId, token) {
+            sendRequest('/rest/v1/profiles?id=eq.' + userId + '&select=*', 'GET', null, function(status, res) {
+                if (status === 200 && res.length > 0) {
+                    const user = res[0];
+                    // 切换界面
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('userPage').style.display = 'block';
+                    // 显示信息
+                    document.getElementById('showNickname').innerText = user.nickname || '未设置';
+                    document.getElementById('showRole').innerText = roleNames[user.role] || user.role;
+                    document.getElementById('showUserId').innerText = userId;
+                    document.getElementById('apiStatus').innerText = '登录成功';
+                } else {
+                    alert('获取用户信息失败，请重试');
+                    document.getElementById('apiStatus').innerText = '获取信息失败';
+                }
+            });
+        }
+
+        // 退出登录
+        function doLogout() {
+            localStorage.clear();
+            window.location.reload();
+        }
+
+        // 页面加载时自动登录
+        window.onload = function() {
+            const token = localStorage.getItem('sb_token');
+            const uid = localStorage.getItem('sb_uid');
+            if (token && uid) {
+                document.getElementById('apiStatus').innerText = '自动登录中...';
+                loadUserInfo(uid, token);
+            } else {
+                document.getElementById('apiStatus').innerText = '等待操作';
+            }
+        };
     </script>
 </body>
 </html>
