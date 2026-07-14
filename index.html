@@ -90,29 +90,40 @@
     <div class="tip">数据存储在云端，卸载/换设备也不会丢失</div>
 
     <script>
-        // ✅ 已填好你的Supabase配置，不用改任何内容
+        // ✅ 已适配新版Supabase接口，解决登录失败问题
         const SUPABASE_URL = 'https://qyprklqzadevrybumwot.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cHJrbHF6YWRldnJ5YnVtd290Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMTAwNTksImV4cCI6MjA5OTU4NjA1OX0.AlAXca1CC9a6FCHOvg2Qf7iqnvA9l4TMUPMl6PqZ7lg';
         const roleNames = {'player':'玩家','worker':'打手','manager':'经理','admin':'管理员','boss':'店长'};
         let currentUserRole = '';
+        let currentUserId = '';
 
-        // 原生HTTP请求（无框架，彻底避免双大括号/加载失败问题）
-        function sendRequest(url, method, data, callback) {
+        // 原生HTTP请求（兼容新版Supabase，自动携带Token）
+        function sendRequest(url, method, data, callback, needAuth = true) {
             const xhr = new XMLHttpRequest();
             xhr.open(method, SUPABASE_URL + url, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.setRequestHeader('apikey', SUPABASE_KEY);
-            xhr.setRequestHeader('Authorization', 'Bearer ' + (localStorage.getItem('sb_token') || SUPABASE_KEY));
+            // 需要鉴权的请求才带Token
+            if (needAuth) {
+                const token = localStorage.getItem('sb_token');
+                if (!token) {
+                    callback(401, { message: '未登录或Token已过期' });
+                    return;
+                }
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+            } else {
+                xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY);
+            }
             xhr.onload = function() {
                 let result = null;
                 try { result = JSON.parse(xhr.responseText); } catch(e) {}
                 callback(xhr.status, result);
             };
-            xhr.onerror = function() { callback(0, {message: '网络错误，请检查网络'}); };
+            xhr.onerror = function() { callback(0, { message: '网络错误，请检查网络' }); };
             xhr.send(data ? JSON.stringify(data) : null);
         }
 
-        // 注册
+        // 注册（无需鉴权）
         function doRegister() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -122,37 +133,61 @@
             if (password.length < 6) { alert('密码至少需要6位'); return; }
             document.getElementById('apiStatus').innerText = '注册中...';
             sendRequest('/auth/v1/signup', 'POST', {
-                email: email, password: password, data: {nickname: nickname, role: role}
-            }, function(status) {
+                email: email, password: password, data: { nickname: nickname, role: role }
+            }, function(status, res) {
                 if (status === 200 || status === 201) {
                     alert('注册成功！请登录');
                     document.getElementById('apiStatus').innerText = '注册成功';
                     document.getElementById('password').value = '';
                 } else {
-                    alert('注册失败：店长/管理员名额已满或其他错误');
+                    alert('注册失败：' + (res.message || res.error_description || '店长/管理员名额已满'));
                     document.getElementById('apiStatus').innerText = '注册失败';
+                }
+            }, false);
+        }
+
+        // 登录（核心修复：适配新版Supabase接口结构）
+        function doLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            if (!email || !password) { alert('请填写邮箱和密码'); return; }
+            document.getElementById('apiStatus').innerText = '登录中...';
+            sendRequest('/auth/v1/token?grant_type=password', 'POST', {
+                email: email, password: password
+            }, function(status, res) {
+                if (status === 200 && res.session) {
+                    // 新版Supabase：token和user都在session对象里
+                    const token = res.session.access_token;
+                    const user = res.session.user;
+                    if (!token || !user?.id) {
+                        alert('登录失败：返回数据格式错误，请联系管理员');
+                        return;
+                    }
+                    // 保存登录态
+                    localStorage.setItem('sb_token', token);
+                    localStorage.setItem('sb_uid', user.id);
+                    currentUserId = user.id;
+                    // 加载用户信息
+                    loadUserInfo(user.id, token);
+                } else {
+                    alert('登录失败：' + (res.message || res.error_description || '账号或密码错误'));
+                    document.getElementById('apiStatus').innerText = '登录失败';
+                }
+            }, false);
+        }
+
+        // 校验Token有效性（自动登录用）
+        function validateToken(token, callback) {
+            sendRequest('/auth/v1/user', 'GET', null, function(status, res) {
+                if (status === 200 && res.id) {
+                    callback(true, res);
+                } else {
+                    // Token过期，清除本地存储
+                    localStorage.clear();
+                    callback(false, null);
                 }
             });
         }
-
-        // 登录
-        function doLogin() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    if (!email || !password) { alert('请填写邮箱和密码'); return; }
-    
-    document.getElementById('apiStatus').innerText = '登录中...';
-    sendRequest('/auth/v1/token?grant_type=password', 'POST', {
-        email: email, password: password
-    }, function(status, res) {
-        // 👇 关键：把收到的原始数据弹出来给我们看
-        alert("状态码：" + status + "\n返回数据：" + JSON.stringify(res));
-        
-        // 暂时注释掉后面的逻辑，只看弹窗
-        // if (status === 200 && res.access_token) { ... }
-    });
-}
-
 
         // 加载用户信息+订单
         function loadUserInfo(userId, token) {
@@ -174,6 +209,9 @@
                         (user.role === 'player' || user.role === 'boss') ? 'block' : 'none';
                     // 加载订单列表
                     loadOrders();
+                } else {
+                    alert('加载用户信息失败：' + (res?.message || '无权限访问'));
+                    document.getElementById('apiStatus').innerText = '加载信息失败';
                 }
             });
         }
@@ -182,10 +220,9 @@
         function createOrder() {
             const content = document.getElementById('orderContent').value.trim();
             const price = document.getElementById('orderPrice').value.trim();
-            const userId = localStorage.getItem('sb_uid');
             if (!content || !price) { alert('请填写订单内容和金额'); return; }
             sendRequest('/rest/v1/orders', 'POST', {
-                sender_id: userId, content: content, price: parseFloat(price), status: '待接单'
+                sender_id: currentUserId, content: content, price: parseFloat(price), status: '待接单'
             }, function(status) {
                 if (status === 201) {
                     alert('发单成功！');
@@ -200,9 +237,8 @@
 
         // 接单
         function takeOrder(orderId) {
-            const userId = localStorage.getItem('sb_uid');
             sendRequest('/rest/v1/orders?id=eq.' + orderId, 'PATCH', {
-                worker_id: userId, status: '已接单'
+                worker_id: currentUserId, status: '已接单'
             }, function(status) {
                 if (status === 200) {
                     alert('接单成功！');
@@ -215,11 +251,10 @@
 
         // 加载订单列表
         function loadOrders() {
-            const userId = localStorage.getItem('sb_uid');
             let url = '/rest/v1/orders?select=*&order=created_at.desc';
             // 非店长/管理员只看自己的订单
             if (currentUserRole !== 'boss' && currentUserRole !== 'admin') {
-                url += '&or=(sender_id.eq.' + userId + ',worker_id.eq.' + userId + ')';
+                url += '&or=(sender_id.eq.' + currentUserId + ',worker_id.eq.' + currentUserId + ')';
             }
             sendRequest(url, 'GET', null, function(status, res) {
                 if (status === 200) {
@@ -245,6 +280,8 @@
                         `;
                         orderList.appendChild(div);
                     });
+                } else {
+                    alert('加载订单失败：' + (res?.message || '无权限访问'));
                 }
             });
         }
@@ -252,16 +289,26 @@
         // 退出登录
         function doLogout() {
             localStorage.clear();
+            currentUserId = '';
+            currentUserRole = '';
             window.location.reload();
         }
 
-        // 自动登录
+        // 自动登录（核心修复：先校验Token有效性）
         window.onload = function() {
             const token = localStorage.getItem('sb_token');
             const uid = localStorage.getItem('sb_uid');
             if (token && uid) {
                 document.getElementById('apiStatus').innerText = '自动登录中...';
-                loadUserInfo(uid, token);
+                // 先校验Token是否有效
+                validateToken(token, function(isValid, user) {
+                    if (isValid) {
+                        currentUserId = uid;
+                        loadUserInfo(uid, token);
+                    } else {
+                        document.getElementById('apiStatus').innerText = 'Token已过期，请重新登录';
+                    }
+                });
             } else {
                 document.getElementById('apiStatus').innerText = '等待操作';
             }
