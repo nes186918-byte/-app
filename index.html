@@ -149,31 +149,61 @@
             }, false);
         }
 
-        // 登录
+                // 登录（账号密码）
         function doLogin() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    if (!email || !password) { alert('请填写邮箱和密码'); return; }
-    document.getElementById('apiStatus').innerText = '登录中...';
-    // 直接用 XHR 打登录接口，不走 sendRequest 那层封装，排除封装干扰
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', SUPABASE_URL + '/auth/v1/token?grant_type=password', true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
-    xhr.onload = function() {
-        let res = null;
-        try { res = JSON.parse(xhr.responseText); } catch(e) {}
-        // 把原始信息弹出来，这就是我们要的线索
-        alert(
-            'HTTP状态码: ' + xhr.status + '\n' +
-            'error: ' + (res?.error || '无') + '\n' +
-            'error_desc: ' + (res?.error_description || '无') + '\n' +
-            'msg: ' + (res?.msg || '无')
-        );
-    };
-    xhr.onerror = function() { alert('网络层错误，连不到 Supabase'); };
-    xhr.send(JSON.stringify({ email, password }));
-}
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            if (!email || !password) { alert('请填写邮箱和密码'); return; }
+            
+            document.getElementById('apiStatus').innerText = '登录中...';
+            
+            // 构造请求体
+            const body = JSON.stringify({ email, password });
+            
+            sendRequest('/auth/v1/token?grant_type=password', 'POST', body, function(status, res) {
+                // 【关键修改】新版 Supabase 会把数据包在 data 里，或者直接返回
+                // 这里做一下兼容处理，优先取 data 里的 session，没有就直接取 res 里的
+                const session = res?.data?.session || res?.session;
+                
+                if (status === 200 && session) {
+                    // 保存登录态
+                    localStorage.setItem('sb_token', session.access_token);
+                    localStorage.setItem('sb_uid', session.user.id);
+                    
+                    // 获取用户信息（异步）
+                    loadUserInfo(session.user.id, session.access_token);
+                } else {
+                    // 打印详细错误方便排查
+                    console.log('登录失败详情:', res);
+                    alert('登录失败：' + (res?.error_description || res?.error || '账号或密码错误'));
+                }
+            });
+        }
+
+        // 自动登录（onload时调用）
+        window.onload = function() {
+            const token = localStorage.getItem('sb_token');
+            const uid = localStorage.getItem('sb_uid');
+            if (token && uid) {
+                document.getElementById('apiStatus').innerText = '自动登录中...';
+                
+                // 验证Token
+                sendRequest('/auth/v1/user', 'GET', null, function(status, user) {
+                    // 【关键修改】新版 user 可能在 user.data 里，也可能直接是 user
+                    const realUser = user?.data?.user || user;
+                    
+                    if (status === 200 && realUser && realUser.id) {
+                        currentUserId = uid;
+                        loadUserInfo(uid, token);
+                    } else {
+                        localStorage.clear();
+                        document.getElementById('apiStatus').innerText = '登录过期，请重新登录';
+                    }
+                });
+            } else {
+                document.getElementById('apiStatus').innerText = '等待操作';
+            }
+        };
 
 
         // 加载用户信息
