@@ -49,8 +49,7 @@
             <h2>卡了电竞欢迎您</h2>
             <input id="email" placeholder="邮箱">
             <input id="pass" type="password" placeholder="密码">
-            <!-- 双重绑定事件：addEventListener + onclick兜底，彻底解决点击无响应 -->
-            <button id="loginBtn" onclick="handleLogin()">登录</button>
+            <button id="loginBtn">登录</button>
             <div class="link">没账号？<span id="showRegLink">点此注册</span></div>
             
             <!-- 诊断面板（连接失败时自动显示） -->
@@ -71,7 +70,7 @@
                 <option value="admin">管理员</option>
                 <option value="owner">店长</option>
             </select>
-            <button id="regBtn" onclick="handleRegister()">注册</button>
+            <button id="regBtn">注册</button>
             <div class="link">有账号？<span id="showLoginLink">点此登录</span></div>
         </div>
     </div>
@@ -89,7 +88,7 @@
                 <input id="orderContent" placeholder="订单内容">
                 <input id="orderGameId" placeholder="游戏ID（必填）">
                 <input id="orderPrice" type="number" placeholder="价格">
-                <button id="orderBtn" onclick="createOrder()">发布订单</button>
+                <button id="orderBtn">发布订单</button>
             </div>
             <h3 style="margin:15px 0 10px 0; color:#00f0ff;">订单列表</h3>
             <div id="orderList"></div>
@@ -99,7 +98,7 @@
     <!-- 底部栏 -->
     <div class="footer-bar" id="footerBar">
         <span id="footerUser"></span>
-        <button id="logoutBtn" onclick="handleLogout()">退出</button>
+        <button id="logoutBtn">退出</button>
     </div>
 
     <!-- 订单详情弹窗 -->
@@ -107,7 +106,7 @@
         <div class="box">
             <h2>订单详情</h2>
             <div id="detailContent"></div>
-            <button id="closeDetailBtn" onclick="closeDetailModal()">关闭</button>
+            <button id="closeDetailBtn">关闭</button>
         </div>
     </div>
 
@@ -118,8 +117,8 @@
 /* ==========================================
    🔴 配置区（仅需修改以下2行）
    ========================================== */
-const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co'; // 你的项目URL，比如 https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy'; // 你截图里那个 sb_publishable_... 开头的Key
+const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
 
 /* ==========================================
    全局变量
@@ -130,27 +129,13 @@ let userProfile = null;
 let realtimeChannel = null;
 
 /* ==========================================
-   DOM元素缓存
-   ========================================== */
-const elements = {
-    loginBtn: null, regBtn: null, orderBtn: null, logoutBtn: null,
-    showRegLink: null, showLoginLink: null, closeDetailBtn: null,
-    loadingOverlay: null, diagnosticPanel: null, diagnosticContent: null,
-    emailInput: null, passInput: null, regEmailInput: null, regPassInput: null,
-    regNameInput: null, regRoleSelect: null, orderContentInput: null,
-    orderGameIdInput: null, orderPriceInput: null, userInfoEl: null,
-    footerUserEl: null, orderPanelEl: null, ownerPanelEl: null,
-    auditListEl: null, orderListEl: null, detailContentEl: null, detailModalEl: null
-};
-
-/* ==========================================
    工具函数
    ========================================== */
-// 显示提示（点击按钮后必有反馈）
+// 显示提示
 function showMessage(text, isSuccess = false) {
     const el = document.getElementById('msg');
     if (!el) {
-        alert(text); // 极端情况兜底提示
+        alert(text);
         return;
     }
     el.textContent = text;
@@ -162,9 +147,8 @@ function showMessage(text, isSuccess = false) {
 
 // 切换加载动画
 function toggleLoading(show) {
-    if (elements.loadingOverlay) {
-        elements.loadingOverlay.style.display = show ? 'flex' : 'none';
-    }
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.style.display = show ? 'flex' : 'none';
 }
 
 // 切换视图
@@ -177,7 +161,7 @@ function setView(view) {
     if (footerEl) footerEl.style.display = view === 'app' ? 'flex' : 'none';
 }
 
-// 订单状态映射（中文）
+// 订单状态映射
 function mapStatus(status) {
     const map = {
         'pending': '待接单',
@@ -191,15 +175,20 @@ function mapStatus(status) {
 
 // 更新UI
 function updateUI(profile) {
-    if (elements.userInfoEl) elements.userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
-    if (elements.footerUserEl) elements.footerUserEl.textContent = profile.nickname;
-    if (elements.orderPanelEl) elements.orderPanelEl.style.display = (profile.role === 'owner' || profile.role === 'player') ? 'block' : 'none';
-    if (elements.ownerPanelEl) elements.ownerPanelEl.style.display = profile.role === 'owner' ? 'block' : 'none';
+    const userInfoEl = document.getElementById('userInfo');
+    const footerUserEl = document.getElementById('footerUser');
+    const orderPanelEl = document.getElementById('orderPanel');
+    const ownerPanelEl = document.getElementById('ownerPanel');
+    
+    if (userInfoEl) userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
+    if (footerUserEl) footerUserEl.textContent = profile.nickname;
+    if (orderPanelEl) orderPanelEl.style.display = (profile.role === 'owner' || profile.role === 'player') ? 'block' : 'none';
+    if (ownerPanelEl) ownerPanelEl.style.display = profile.role === 'owner' ? 'block' : 'none';
     if (profile.role === 'owner') loadAuditList();
 }
 
 /* ==========================================
-   诊断功能（连接失败时自动触发）
+   诊断功能
    ========================================== */
 async function runDiagnostics() {
     toggleLoading(true);
@@ -208,6 +197,7 @@ async function runDiagnostics() {
         info += `1. 配置检查:\n`;
         info += `   URL: ${SUPABASE_URL ? '✅ 已设置' : '❌ 未设置'}\n`;
         info += `   Key: ${SUPABASE_ANON_KEY ? '✅ 已设置（长度:' + SUPABASE_ANON_KEY.length + '）' : '❌ 未设置'}\n\n`;
+        
         if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
             info += "❌ 错误：请先填写正确的URL和Key\n";
             showDiagnostic(info);
@@ -223,6 +213,7 @@ async function runDiagnostics() {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
+        
         if (res.ok) {
             info += `   ✅ REST API连接成功（状态码: ${res.status}）\n`;
         } else {
@@ -240,7 +231,7 @@ async function runDiagnostics() {
             info += `   ❌ Auth服务异常（状态码: ${authRes.status}）\n`;
         }
 
-        info += `\n✅ 诊断完成，若仍有问题请联系管理员\n`;
+        info += `\n✅ 诊断完成\n`;
         showDiagnostic(info);
     } catch (e) {
         info += `\n❌ 诊断失败: ${e.name} - ${e.message}\n`;
@@ -252,16 +243,18 @@ async function runDiagnostics() {
 }
 
 function showDiagnostic(info) {
-    if (elements.diagnosticPanel && elements.diagnosticContent) {
-        elements.diagnosticPanel.style.display = 'block';
-        elements.diagnosticContent.innerHTML = `<pre>${info}</pre>`;
+    const panel = document.getElementById('diagnosticPanel');
+    const content = document.getElementById('diagnosticContent');
+    if (panel && content) {
+        panel.style.display = 'block';
+        content.innerHTML = `<pre>${info}</pre>`;
     }
 }
 
 /* ==========================================
-   核心业务功能（100%保留原有逻辑）
+   核心业务功能
    ========================================== */
-// 自动登录（页面加载时触发）
+// 自动登录
 async function autoLogin() {
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -291,19 +284,26 @@ async function autoLogin() {
     }
 }
 
-// 手动登录（双重绑定确保点击有响应）
+// 手动登录
 async function handleLogin() {
-    // 第一步：先给即时反馈，证明按钮被点击了
-    const email = elements.emailInput?.value.trim();
-    const password = elements.passInput?.value.trim();
+    const emailInput = document.getElementById('email');
+    const passInput = document.getElementById('pass');
+    
+    if (!emailInput || !passInput) {
+        showMessage('页面元素加载异常', false);
+        return;
+    }
+    
+    const email = emailInput.value.trim();
+    const password = passInput.value.trim();
     
     if (!email || !password) {
         showMessage('请输入邮箱和密码', false);
         return;
     }
+    
     if (!supabase) {
         showMessage('系统未初始化，请刷新页面', false);
-        runDiagnostics();
         return;
     }
 
@@ -327,10 +327,9 @@ async function handleLogin() {
         loadOrders();
         setupRealtime();
         showMessage(`欢迎您，${profile.nickname}`, true);
-        if (elements.passInput) elements.passInput.value = '';
+        passInput.value = '';
     } catch (e) {
         showMessage(`登录失败：${e.message}`, false);
-        runDiagnostics();
     } finally {
         toggleLoading(false);
     }
@@ -338,14 +337,26 @@ async function handleLogin() {
 
 // 注册
 async function handleRegister() {
-    const email = elements.regEmailInput?.value.trim();
-    const password = elements.regPassInput?.value.trim();
-    const nickname = elements.regNameInput?.value.trim();
-    const role = elements.regRoleSelect?.value;
+    const emailInput = document.getElementById('regEmail');
+    const passInput = document.getElementById('regPass');
+    const nameInput = document.getElementById('regName');
+    const roleSelect = document.getElementById('regRole');
+    
+    if (!emailInput || !passInput || !nameInput || !roleSelect) {
+        showMessage('页面元素加载异常', false);
+        return;
+    }
+    
+    const email = emailInput.value.trim();
+    const password = passInput.value.trim();
+    const nickname = nameInput.value.trim();
+    const role = roleSelect.value;
+    
     if (!email || !password || !nickname) {
         showMessage('请填写完整信息', false);
         return;
     }
+    
     toggleLoading(true);
     try {
         // 店长唯一性校验
@@ -363,8 +374,8 @@ async function handleRegister() {
             status: role === 'admin' ? 'pending' : 'approved'
         });
         showMessage('注册成功！请登录', true);
-        if (elements.regBox) elements.regBox.style.display = 'none';
-        if (elements.emailInput) elements.emailInput.value = email;
+        document.getElementById('regBox').style.display = 'none';
+        document.getElementById('email').value = email;
     } catch (e) {
         showMessage(`注册失败：${e.message}`, false);
     } finally {
@@ -385,13 +396,14 @@ async function loadOrders() {
         }
         const { data: orders, error } = await query;
         if (error) throw error;
-        if (!elements.orderListEl) return;
+        const orderListEl = document.getElementById('orderList');
+        if (!orderListEl) return;
 
         if (!orders?.length) {
-            elements.orderListEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
+            orderListEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
             return;
         }
-        elements.orderListEl.innerHTML = orders.map(order => {
+        orderListEl.innerHTML = orders.map(order => {
             const isOwner = order.sender_id === currentUser.id;
             const isWorker = order.worker_id === currentUser.id;
             const canTake = ['owner','admin','worker'].includes(userProfile.role) && order.status === 'pending' && !order.worker_id && !isOwner;
@@ -418,22 +430,33 @@ async function loadOrders() {
 
 // 发布订单
 async function createOrder() {
-    const content = elements.orderContentInput?.value.trim();
-    const gameId = elements.orderGameIdInput?.value.trim();
-    const price = elements.orderPriceInput?.value.trim();
+    const contentInput = document.getElementById('orderContent');
+    const gameIdInput = document.getElementById('orderGameId');
+    const priceInput = document.getElementById('orderPrice');
+    
+    if (!contentInput || !gameIdInput || !priceInput) {
+        showMessage('页面元素加载异常', false);
+        return;
+    }
+    
+    const content = contentInput.value.trim();
+    const gameId = gameIdInput.value.trim();
+    const price = priceInput.value.trim();
+    
     if (!content || !gameId || !price) {
         showMessage('请填写完整订单信息', false);
         return;
     }
+    
     try {
         const { error } = await supabase.from('orders').insert({
             sender_id: currentUser.id, content, game_id: gameId, price: parseFloat(price), status: 'pending'
         });
         if (error) throw error;
         showMessage('订单发布成功', true);
-        if (elements.orderContentInput) elements.orderContentInput.value = '';
-        if (elements.orderGameIdInput) elements.orderGameIdInput.value = '';
-        if (elements.orderPriceInput) elements.orderPriceInput.value = '';
+        contentInput.value = '';
+        gameIdInput.value = '';
+        priceInput.value = '';
         loadOrders();
     } catch (e) {
         showMessage(`发布失败：${e.message}`, false);
@@ -501,8 +524,10 @@ async function showOrderDetail(orderId) {
         const isOwner = order.sender_id === currentUser.id;
         const isWorker = order.worker_id === currentUser.id;
         const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-        if (elements.detailContentEl) {
-            elements.detailContentEl.innerHTML = `
+        const detailContentEl = document.getElementById('detailContent');
+        const detailModalEl = document.getElementById('detailModal');
+        if (detailContentEl) {
+            detailContentEl.innerHTML = `
                 <div class="detail-line"><b>内容:</b> ${order.content}</div>
                 <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
                 <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
@@ -512,7 +537,7 @@ async function showOrderDetail(orderId) {
                 ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
             `;
         }
-        if (elements.detailModalEl) elements.detailModalEl.style.display = 'block';
+        if (detailModalEl) detailModalEl.style.display = 'block';
     } catch (e) {
         showMessage(`加载详情失败：${e.message}`, false);
     }
@@ -520,12 +545,16 @@ async function showOrderDetail(orderId) {
 
 // 关闭详情弹窗
 function closeDetailModal() {
-    if (elements.detailModalEl) elements.detailModalEl.style.display = 'none';
+    const detailModalEl = document.getElementById('detailModal');
+    if (detailModalEl) detailModalEl.style.display = 'none';
 }
 
 // 加载待审核管理员
 async function loadAuditList() {
-    if (userProfile?.role !== 'owner' || !elements.auditListEl) return;
+    if (userProfile?.role !== 'owner') return;
+    const auditListEl = document.getElementById('auditList');
+    if (!auditListEl) return;
+    
     try {
         const { data: admins, error } = await supabase
             .from('profiles')
@@ -535,10 +564,10 @@ async function loadAuditList() {
             .order('created_at', { ascending: false });
         if (error) throw error;
         if (!admins?.length) {
-            elements.auditListEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
+            auditListEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
             return;
         }
-        elements.auditListEl.innerHTML = admins.map(admin => `
+        auditListEl.innerHTML = admins.map(admin => `
             <div class="order">
                 <div><b>${admin.nickname}</b> (${admin.email})</div>
                 <div style="font-size:12px; color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
@@ -563,10 +592,9 @@ async function approveAdmin(adminId) {
     }
 }
 
-// 实时订阅（仅保留订单删除后的自动刷新，已移除新订单提醒）
+// 实时订阅
 function setupRealtime() {
     if (!currentUser || !userProfile) return;
-    // 仅订阅删除事件，用于取消订单后自动刷新列表，不触发任何消息提醒
     if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     realtimeChannel = supabase.channel('orders-realtime')
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => {
@@ -586,79 +614,106 @@ async function handleLogout() {
 }
 
 /* ==========================================
-   初始化（页面加载完成后执行，加容错）
+   初始化（修复事件绑定问题）
    ========================================== */
 function init() {
+    console.log('初始化开始...');
+    
+    // 1. 初始化Supabase客户端
     try {
-        // 1. 初始化Supabase客户端
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('Supabase客户端初始化成功');
     } catch (e) {
+        console.error('Supabase初始化失败:', e);
         showMessage('系统初始化失败：请检查配置', false);
         runDiagnostics();
         return;
     }
 
-    // 2. 缓存DOM元素
-    elements.loginBtn = document.getElementById('loginBtn');
-    elements.regBtn = document.getElementById('regBtn');
-    elements.orderBtn = document.getElementById('orderBtn');
-    elements.logoutBtn = document.getElementById('logoutBtn');
-    elements.showRegLink = document.getElementById('showRegLink');
-    elements.showLoginLink = document.getElementById('showLoginLink');
-    elements.closeDetailBtn = document.getElementById('closeDetailBtn');
-    elements.loadingOverlay = document.getElementById('loadingOverlay');
-    elements.diagnosticPanel = document.getElementById('diagnosticPanel');
-    elements.diagnosticContent = document.getElementById('diagnosticContent');
-    elements.emailInput = document.getElementById('email');
-    elements.passInput = document.getElementById('pass');
-    elements.regEmailInput = document.getElementById('regEmail');
-    elements.regPassInput = document.getElementById('regPass');
-    elements.regNameInput = document.getElementById('regName');
-    elements.regRoleSelect = document.getElementById('regRole');
-    elements.orderContentInput = document.getElementById('orderContent');
-    elements.orderGameIdInput = document.getElementById('orderGameId');
-    elements.orderPriceInput = document.getElementById('orderPrice');
-    elements.userInfoEl = document.getElementById('userInfo');
-    elements.footerUserEl = document.getElementById('footerUser');
-    elements.orderPanelEl = document.getElementById('orderPanel');
-    elements.ownerPanelEl = document.getElementById('ownerPanel');
-    elements.auditListEl = document.getElementById('auditList');
-    elements.orderListEl = document.getElementById('orderList');
-    elements.detailContentEl = document.getElementById('detailContent');
-    elements.detailModalEl = document.getElementById('detailModal');
+    // 2. 绑定按钮事件（使用addEventListener，避免onclick冲突）
+    const loginBtn = document.getElementById('loginBtn');
+    const regBtn = document.getElementById('regBtn');
+    const orderBtn = document.getElementById('orderBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const showRegLink = document.getElementById('showRegLink');
+    const showLoginLink = document.getElementById('showLoginLink');
+    const closeDetailBtn = document.getElementById('closeDetailBtn');
 
-    // 3. 绑定事件监听（双重绑定，确保手机浏览器兼容）
-    if (elements.loginBtn) {
-        elements.loginBtn.addEventListener('click', handleLogin);
-    }
-    if (elements.regBtn) {
-        elements.regBtn.addEventListener('click', handleRegister);
-    }
-    if (elements.orderBtn) {
-        elements.orderBtn.addEventListener('click', createOrder);
-    }
-    if (elements.logoutBtn) {
-        elements.logoutBtn.addEventListener('click', handleLogout);
-    }
-    if (elements.showRegLink) {
-        elements.showRegLink.addEventListener('click', () => {
-            if (elements.regBox) elements.regBox.style.display = 'block';
+    if (loginBtn) {
+        loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('登录按钮被点击');
+            handleLogin();
         });
-    }
-    if (elements.showLoginLink) {
-        elements.showLoginLink.addEventListener('click', () => {
-            if (elements.regBox) elements.regBox.style.display = 'none';
-        });
-    }
-    if (elements.closeDetailBtn) {
-        elements.closeDetailBtn.addEventListener('click', closeDetailModal);
+        console.log('登录按钮事件绑定成功');
+    } else {
+        console.error('登录按钮未找到');
     }
 
-    // 4. 尝试自动登录
+    if (regBtn) {
+        regBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('注册按钮被点击');
+            handleRegister();
+        });
+        console.log('注册按钮事件绑定成功');
+    } else {
+        console.error('注册按钮未找到');
+    }
+
+    if (orderBtn) {
+        orderBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('发布订单按钮被点击');
+            createOrder();
+        });
+        console.log('发布订单按钮事件绑定成功');
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('退出按钮被点击');
+            handleLogout();
+        });
+        console.log('退出按钮事件绑定成功');
+    }
+
+    if (showRegLink) {
+        showRegLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('显示注册链接被点击');
+            const regBox = document.getElementById('regBox');
+            if (regBox) regBox.style.display = 'block';
+        });
+        console.log('显示注册链接事件绑定成功');
+    }
+
+    if (showLoginLink) {
+        showLoginLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('显示登录链接被点击');
+            const regBox = document.getElementById('regBox');
+            if (regBox) regBox.style.display = 'none';
+        });
+        console.log('显示登录链接事件绑定成功');
+    }
+
+    if (closeDetailBtn) {
+        closeDetailBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('关闭详情按钮被点击');
+            closeDetailModal();
+        });
+        console.log('关闭详情按钮事件绑定成功');
+    }
+
+    // 3. 尝试自动登录
     autoLogin();
+    console.log('初始化完成');
 }
 
-// 等待DOM加载完成后初始化
+// 页面加载完成后初始化
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
