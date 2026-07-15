@@ -95,22 +95,22 @@
 
 <script>
 /* ==========================================
-   🔴 配置区（完全保留）
+   🔴 配置区
    ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
 /* ==========================================
-   全局变量（新增订单昵称缓存，修复详情页报错）
+   全局变量
    ========================================== */
 window.supabaseClient = null;
 window.currentUser = null;
 window.userProfile = null;
-window.senderMap = {}; // 全局缓存发单人昵称
-window.workerMap = {}; // 全局缓存接单人昵称
+window.senderMap = {};
+window.workerMap = {};
 
 /* ==========================================
-   初始化（完全保留）
+   初始化
    ========================================== */
 function init() {
     if (typeof window.supabase === 'undefined') {
@@ -126,7 +126,7 @@ function init() {
 }
 
 /* ==========================================
-   工具函数（完全保留）
+   工具函数
    ========================================== */
 function showFatalError(msg) {
     const el = document.getElementById('fatalError');
@@ -168,14 +168,11 @@ window.updateUI = function() {
 };
 
 /* ==========================================
-   登录/注册逻辑（完全保留，不动）
+   登录/注册逻辑
    ========================================== */
 window.autoLogin = async function() {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
-    if (!session) {
-        window.setView('auth');
-        return;
-    }
+    if (!session) { window.setView('auth'); return; }
     let { data: profile } = await window.supabaseClient.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
     if (!profile) {
         const meta = session.user.user_metadata || {};
@@ -264,34 +261,21 @@ window.handleRegister = async function() {
 };
 
 /* ==========================================
-   订单逻辑（仅修复查询/渲染，其他不动）
+   订单逻辑
    ========================================== */
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
-    
-    // 🔴 调试提示1：显示当前角色和用户ID（不用控制台）
-    window.showMessage(`当前角色：${window.userProfile.role}，正在加载订单...`, true);
-
-    // 1. 查订单本体（无关联，避免RLS拦截）
     let query = window.supabaseClient.from('orders').select('*').order('created_at', { ascending: false });
     if (window.userProfile.role === 'owner') {
         // 店长看所有
     } else if (window.userProfile.role === 'worker' || window.userProfile.role === 'admin') {
-        // 打手/管理员：看自己接的单 + 所有pending抢单池
         query = query.or(`worker_id.eq.${window.currentUser.id},and(status.eq.pending)`);
     } else {
-        // 玩家看自己发的+自己接的
         query = query.or(`sender_id.eq.${window.currentUser.id},worker_id.eq.${window.currentUser.id}`);
     }
 
     const { data: orders, error } = await query;
-    if (error) {
-        window.showMessage(`加载订单失败：${error.message}`, false);
-        return;
-    }
-
-    // 🔴 调试提示2：显示查到的订单数量（核心排查点）
-    window.showMessage(`查到${orders?.length || 0}条订单`, true);
+    if (error) { window.showMessage(`加载订单失败：${error.message}`, false); return; }
 
     const el = document.getElementById('orderList');
     if (!orders?.length) {
@@ -299,17 +283,14 @@ window.loadOrders = async function() {
         return;
     }
 
-    // 2. 单独查发单人昵称（容错：查不到也不影响渲染）
     const senderIds = [...new Set(orders.map(o => o.sender_id))];
     const { data: senders } = await window.supabaseClient.from('profiles').select('id,nickname').in('id', senderIds);
     window.senderMap = Object.fromEntries(senders?.map(s => [s.id, s.nickname]) || []);
 
-    // 3. 单独查接单人昵称（容错：查不到也不影响渲染）
     const workerIds = [...new Set(orders.map(o => o.worker_id).filter(Boolean))];
     const { data: workers } = await window.supabaseClient.from('profiles').select('id,nickname').in('id', workerIds);
     window.workerMap = Object.fromEntries(workers?.map(w => [w.id, w.nickname]) || []);
 
-    // 4. 渲染订单列表（完全保留原有样式和按钮逻辑）
     el.innerHTML = orders.map(order => {
         const isOwner = order.sender_id === window.currentUser.id;
         const isWorker = order.worker_id === window.currentUser.id;
@@ -349,12 +330,37 @@ window.createOrder = async function() {
     } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
 };
 
+// ✅ 核心修复：接单逻辑（增加权限校验和错误提示）
 window.takeOrder = async function(orderId) {
+    window.showMessage(`正在尝试接单...`, true);
     try {
-        await window.supabaseClient.from('orders').update({worker_id: window.currentUser.id, status: 'accepted'}).eq('id', orderId).eq('status', 'pending');
-        window.showMessage('接单成功', true);
-        window.loadOrders();
-    } catch (e) { window.showMessage(`接单失败：${e.message}`, false); }
+        const { data, error } = await window.supabaseClient
+            .from('orders')
+            .update({ 
+                worker_id: window.currentUser.id, 
+                status: 'accepted' 
+            })
+            .eq('id', orderId)           // 锁定订单ID
+            .eq('status', 'pending')     // 必须是待接单状态
+            .eq('worker_id', null)       // 必须没人接（防止并发抢单）
+            .select();
+
+        if (error) {
+            window.showMessage(`接单失败：${error.message}`, false);
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            window.showMessage('接单失败：订单可能已被其他打手接走', false);
+            window.loadOrders(); // 刷新列表，同步最新状态
+            return;
+        }
+
+        window.showMessage('接单成功！', true);
+        window.loadOrders(); // 刷新列表，显示已接单状态
+    } catch (e) {
+        window.showMessage(`接单异常：${e.message}`, false);
+    }
 };
 
 window.completeOrder = async function(orderId) {
@@ -377,7 +383,6 @@ window.deleteOrder = async function(orderId) {
     } catch (e) { window.showMessage(`取消失败：${e.message}`, false); }
 };
 
-// 🔴 修复详情页报错：用全局的senderMap/workerMap
 window.showOrderDetail = async function(orderId) {
     try {
         const { data: order } = await window.supabaseClient.from('orders').select('*').eq('id', orderId).single();
@@ -434,7 +439,7 @@ window.showReg = function() { document.getElementById('regBox').style.display = 
 window.showLogin = function() { document.getElementById('regBox').style.display = 'none'; };
 
 /* ==========================================
-   启动（完全保留）
+   启动
    ========================================== */
 init();
 </script>
