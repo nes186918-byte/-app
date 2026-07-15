@@ -3,14 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>测试页</title>
+    <title>Supabase测试</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
 <body style="background:#050510;color:#fff;padding:20px;">
-    <h2 style="color:#00f0ff;">测试按钮点击</h2>
-    <!-- 原生onclick，兼容性拉满，只要浏览器支持JS就一定有反应 -->
-    <button onclick="alert('✅ 按钮点击成功！JS正常运行')" style="width:100%;padding:15px;background:#00f0ff;font-size:18px;border:none;border-radius:5px;">
-        点我测试
+    <h2 style="color:#00f0ff;">Supabase连接测试</h2>
+    <input id="email" placeholder="邮箱" style="width:100%;padding:10px;margin-top:10px;">
+    <input id="pass" type="password" placeholder="密码" style="width:100%;padding:10px;margin-top:10px;">
+    <!-- 原生onclick，绝对生效 -->
+    <button onclick="doTest()" style="width:100%;padding:15px;margin-top:10px;background:#00f0ff;font-size:18px;border:none;border-radius:5px;">
+        测试登录
     </button>
-    <p style="margin-top:20px;">如果没弹窗，说明你浏览器禁用了JS，换个Chrome/Safari浏览器就行</p>
+    <p id="log" style="margin-top:20px;color:#ff00ff;"></p>
+
+<script>
+// 配置你自己的Key
+const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
+
+// 测试函数，每一步都弹窗
+function doTest() {
+    alert('✅ 按钮点击生效，开始测试Supabase连接');
+    
+    // 1. 检查SDK有没有加载
+    if (typeof window.supabase === 'undefined') {
+        alert('❌ Supabase SDK加载失败！\n1. 检查网络\n2. 换Chrome浏览器\n3. 确认不是本地打开的文件');
+        return;
+    }
+    alert('✅ Supabase SDK加载成功');
+    
+    // 2. 初始化客户端
+    try {
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        alert('✅ Supabase客户端初始化成功');
+        
+        // 3. 测试登录
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
+        if (!email || !pass) {
+            alert('❌ 请输入邮箱和密码');
+            return;
+        }
+        
+        // 4. 发登录请求
+        supabase.auth.signInWithPassword({email: email, password: pass})
+            .then(res => {
+                if (res.error) {
+                    alert('❌ 登录失败：' + res.error.message);
+                } else {
+                    alert('✅ 登录成功！用户ID：' + res.data.user.id);
+                }
+            })
+            .catch(err => {
+                alert('❌ 请求失败：' + err.message);
+            });
+            
+    } catch (e) {
+        alert('❌ 初始化失败：' + e.message);
+    }
+}
+</script>
 </body>
 </html>
