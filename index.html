@@ -14,7 +14,8 @@
         button:active { background: #00c0cc; }
         .link { text-align: center; margin-top: 15px; color: #888; }
         .link span { color: #00f0ff; cursor: pointer; }
-        #msg { text-align: center; margin-top: 15px; padding: 10px; border-radius: 5px; display: none; position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 1000; }
+        /* 弹窗样式（复用现有toast，适配登录成功提示） */
+        #msg { text-align: center; margin-top: 15px; padding: 12px 24px; border-radius: 8px; display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         #app { display: none; padding-bottom: 80px; }
         .order { background: #111; padding: 12px; margin-top: 10px; border-radius: 5px; border-left: 3px solid #00f0ff; }
         .order-btn { margin-top: 8px; padding: 8px 10px; font-size: 13px; width: auto; margin-right: 8px; display: inline-block; }
@@ -66,7 +67,7 @@
 
     <div id="app">
         <div class="box">
-            <h2>派单系统</h2>
+            <h2>派单、点单系统</h2>
             <p id="userInfo"></p>
             <div id="ownerPanel" style="display:none; margin-top:10px; border:1px solid #ff00ff; padding:10px;">
                 <h3 style="color:#ff00ff; margin: 0 0 10px 0;">待审核管理员</h3>
@@ -96,21 +97,35 @@
         </div>
     </div>
 
+    <!-- 弹窗容器 -->
     <div id="msg"></div>
 
 <script defer>
 const URL = "https://aqotjkekuvkkbqvsxagt.supabase.co";
 const KEY = "sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy";
-let token = "", userId = "", userRole = "";
-let supabase = null; // 声明supabase实例，用于实时订阅
+let token = "";
+let userId = "";
+let userRole = "";
+let supabase = null;
 let realtimeChannel = null;
 
+/**
+ * 统一弹窗提示（复用现有样式，新增登录成功提示）
+ * @param {string} txt 提示内容
+ * @param {boolean} ok 是否为成功提示（绿色样式）
+ */
 function msg(txt, ok=false) {
     const m = document.getElementById("msg");
-    m.innerText = txt; m.style.background = ok ? "#003300" : "#330000"; m.style.display = "block";
-    setTimeout(()=>m.style.display="none", 3000);
+    m.innerText = txt;
+    m.style.background = ok ? "rgba(0, 255, 136, 0.9)" : "rgba(255, 0, 85, 0.9)";
+    m.style.color = ok ? "#000" : "#fff";
+    m.style.display = "block";
+    setTimeout(()=>m.style.display="none", ok ? 2000 : 3000); // 成功提示显示2秒，错误3秒
 }
 
+/**
+ * 顶部消息提醒（新订单通知，保留原有功能）
+ */
 function showNotifyBanner(text) {
     const old = document.querySelector('.notify-banner');
     if(old) old.remove();
@@ -122,6 +137,9 @@ function showNotifyBanner(text) {
     setTimeout(() => banner.remove(), 5000);
 }
 
+/**
+ * 订单状态映射（保留原有功能）
+ */
 function mapStatus(status) {
     const map = {
         'pending': '待接单',
@@ -133,44 +151,78 @@ function mapStatus(status) {
     return map[status] || '未知状态';
 }
 
+/**
+ * 切换视图（保留原有功能）
+ */
 function setView(view) {
     document.getElementById("auth").style.display = view === 'auth' ? 'block' : 'none';
     document.getElementById("app").style.display = view === 'app' ? 'block' : 'none';
     document.getElementById("footerBar").style.display = view === 'app' ? 'flex' : 'none';
 }
 
+/**
+ * 自动登录核心逻辑（新增：登录成功弹窗）
+ * 页面加载时自动校验本地token，有效则直接进入主页面
+ */
 async function autoLogin() {
     const storedToken = localStorage.getItem('sb_token');
     if (!storedToken) return false;
+    
     try {
-        // 初始化supabase客户端
+        // 初始化Supabase客户端
         supabase = window.supabase.createClient(URL, KEY, {
             auth: { persistSession: false }
         });
-        const res = await fetch(URL + '/auth/v1/user', { headers: { 'Authorization': `Bearer ${storedToken}`, 'apikey': KEY } });
+        
+        // 校验token有效性
+        const res = await fetch(URL + '/auth/v1/user', { 
+            headers: { 'Authorization': `Bearer ${storedToken}`, 'apikey': KEY } 
+        });
         const user = await res.json();
         if (!user.id) return false;
-        token = storedToken; userId = user.id;
-        const profRes = await fetch(URL + `/rest/v1/profiles?id=eq.${userId}&select=*`, { headers: { 'apikey': KEY, 'Authorization': `Bearer ${token}` } });
+
+        token = storedToken;
+        userId = user.id;
+        
+        // 拉取用户资料
+        const profRes = await fetch(URL + `/rest/v1/profiles?id=eq.${userId}&select=*`, { 
+            headers: { 'apikey': KEY, 'Authorization': `Bearer ${token}` } 
+        });
         const profile = (await profRes.json())[0];
         if (!profile || profile.status !== 'approved') return false;
+
+        // 赋值全局变量
         userRole = profile.role;
         document.getElementById("userInfo").innerText = `欢迎: ${profile.nickname}（${profile.role}）`;
         document.getElementById("footerUser").innerText = profile.nickname;
+        
+        // 权限控制（保留原有功能）
         if (userRole === "owner" || userRole === "player") document.getElementById("orderPanel").style.display = "block";
-        if (userRole === "owner") { document.getElementById("ownerPanel").style.display = "block"; loadAudit(); }
+        if (userRole === "owner") { 
+            document.getElementById("ownerPanel").style.display = "block"; 
+            loadAudit(); 
+        }
+        
         setView('app');
         loadOrders();
         setupRealtime();
+        
+        // 新增：自动登录成功弹窗
+        msg(`欢迎回来，${profile.nickname}`, true);
         return true;
-    } catch { return false; }
+    } catch (e) {
+        console.error("自动登录失败:", e);
+        return false;
+    }
 }
 
+/**
+ * 实时订阅（保留原有功能，新订单/订单删除通知）
+ */
 function setupRealtime() {
-    if (!supabase || !userId) return;
+    if (!supabase || !userId || !['worker', 'admin', 'owner'].includes(userRole)) return;
     if (realtimeChannel) supabase.removeChannel(realtimeChannel);
-    // 仅打手/管理员/店长接收新订单提醒
-    if (!['worker', 'admin', 'owner'].includes(userRole)) return;
+    
     realtimeChannel = supabase.channel('orders-realtime')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
             showNotifyBanner(`🔔 新订单：${payload.new.content}`);
@@ -182,61 +234,105 @@ function setupRealtime() {
         .subscribe();
 }
 
+// ==================== 登录/注册逻辑 ====================
 document.getElementById("showReg").onclick = () => document.getElementById("regBox").style.display = "block";
 document.getElementById("showLogin").onclick = () => document.getElementById("regBox").style.display = "none";
 
+/**
+ * 注册逻辑（保留原有功能）
+ */
 document.getElementById("regBtn").onclick = async () => {
     const email = regEmail.value, pass = regPass.value, name = regName.value, role = regRole.value;
-    if (!email || !pass || !name) return msg("请填完信息");
+    if (!email || !pass || !name) return msg("请填完所有信息");
+    
+    // 店长唯一性校验
     if (role === "owner") {
         const r = await fetch(URL+"/rest/v1/profiles?select=id&role=eq.owner", {headers:{"apikey":KEY}});
-        if ((await r.json()).length > 0) return msg("店长已存在");
+        if ((await r.json()).length > 0) return msg("店长账号已存在，无法重复注册");
     }
+
     const res = await fetch(URL+"/auth/v1/signup", {
         method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY},
         body: JSON.stringify({email, password:pass, data:{nickname:name, role:role}})
     });
     const j = await res.json();
+    
     if (j.user) {
         await fetch(URL+"/rest/v1/profiles", {
             method: "POST", headers: {"apikey":KEY, "Authorization":"Bearer "+j.session.access_token, "Content-Type":"application/json"},
             body: JSON.stringify({id:j.user.id, email, nickname:name, role, status:(role==="admin"?"pending":"approved")})
         });
-        msg("注册成功", true); document.getElementById("regBox").style.display = "none";
-    } else msg(j.msg || "注册失败");
+        msg("注册成功，请登录", true);
+        document.getElementById("regBox").style.display = "none";
+    } else {
+        msg(j.msg || "注册失败，请重试");
+    }
 };
 
+/**
+ * 手动登录逻辑（新增：登录成功弹窗）
+ */
 document.getElementById("loginBtn").onclick = async () => {
     const email = document.getElementById("email").value;
     const pass = document.getElementById("pass").value;
+    if (!email || !pass) return msg("请输入邮箱和密码");
+
     const res = await fetch(URL+"/auth/v1/token?grant_type=password", {
         method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY},
         body: JSON.stringify({email, password:pass})
     });
     const j = await res.json();
+    
     if (j.access_token) {
+        // 保存token到本地（自动登录依赖这个）
         localStorage.setItem('sb_token', j.access_token);
-        token = j.access_token; userId = j.user.id;
-        const prof = (await (await fetch(URL+`/rest/v1/profiles?id=eq.${userId}`, {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json())[0];
-        if (prof.status !== "approved") return msg("审核中");
-        userRole = prof.role;
-        document.getElementById("userInfo").innerText = `欢迎: ${prof.nickname}`;
-        document.getElementById("footerUser").innerText = prof.nickname;
-        if (userRole === "owner" || userRole === "player") orderPanel.style.display = "block";
-        if (userRole === "owner") { ownerPanel.style.display = "block"; loadAudit(); }
-        setView('app'); loadOrders();
+        token = j.access_token;
+        userId = j.user.id;
+        
+        // 拉取用户资料
+        const profRes = await fetch(URL+`/rest/v1/profiles?id=eq.${userId}&select=*`, { 
+            headers: {"apikey":KEY, "Authorization":`Bearer ${token}`}
+        });
+        const profile = (await profRes.json())[0];
+        
+        if (!profile) return msg("用户资料不存在，请联系店长");
+        if (profile.status !== "approved") return msg("账号正在审核中，请耐心等待");
+        
+        // 赋值全局变量
+        userRole = profile.role;
+        document.getElementById("userInfo").innerText = `欢迎: ${profile.nickname}（${profile.role}）`;
+        document.getElementById("footerUser").innerText = profile.nickname;
+        
+        // 权限控制（保留原有功能）
+        if (userRole === "owner" || userRole === "player") document.getElementById("orderPanel").style.display = "block";
+        if (userRole === "owner") { 
+            document.getElementById("ownerPanel").style.display = "block"; 
+            loadAudit(); 
+        }
+        
+        setView('app');
+        loadOrders();
         setupRealtime();
-    } else msg("登录失败");
+        
+        // 新增：手动登录成功弹窗
+        msg(`欢迎您，${profile.nickname}`, true);
+    } else {
+        msg(j.msg || "账号或密码错误，请重试");
+    }
 };
 
+// ==================== 订单逻辑（全部保留原有功能） ====================
 document.getElementById("orderBtn").onclick = async () => {
     const c = orderContent.value, g = orderGameId.value, p = orderPrice.value;
-    if (!c || !g || !p) return msg("请填写完整");
+    if (!c || !g || !p) return msg("请填写完整的订单信息");
+    
     await fetch(URL+"/rest/v1/orders", {
         method: "POST", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
         body: JSON.stringify({sender_id:userId, content:c, game_id:g, price:p, status:"pending"})
     });
-    msg("发布成功", true); orderContent.value = orderGameId.value = orderPrice.value = ""; loadOrders();
+    msg("订单发布成功", true);
+    orderContent.value = orderGameId.value = orderPrice.value = "";
+    loadOrders();
 };
 
 async function loadOrders() {
@@ -247,6 +343,7 @@ async function loadOrders() {
         const canTake = ['owner','admin','worker'].includes(userRole) && o.status === 'pending' && !o.worker_id && !isOwner;
         const canComplete = isWorker && o.status === 'accepted';
         const canDelete = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
+        
         return `<div class="order">
             <div><b>内容:</b> ${o.content}</div>
             <div><b>游戏ID:</b> ${o.game_id}</div>
@@ -266,7 +363,8 @@ window.takeOrder = async (id) => {
         method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
         body: JSON.stringify({worker_id:userId, status:"accepted"})
     });
-    msg("接单成功", true); loadOrders();
+    msg("接单成功", true);
+    loadOrders();
 };
 
 window.completeOrder = async (id) => {
@@ -275,22 +373,28 @@ window.completeOrder = async (id) => {
         method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
         body: JSON.stringify({status: "completed"})
     });
-    msg("订单已结单", true); loadOrders(); closeDetail();
+    msg("订单已结单", true);
+    loadOrders();
+    closeDetail();
 };
 
 window.deleteOrder = async (id) => {
-    if (!confirm("确认取消？取消后订单将彻底删除")) return;
+    if (!confirm("确认取消订单？取消后订单将彻底删除")) return;
     await fetch(URL+`/rest/v1/orders?id=eq.${id}`, {
         method: "DELETE", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`}
     });
-    msg("订单已取消", true); loadOrders(); closeDetail();
+    msg("订单已取消", true);
+    loadOrders();
+    closeDetail();
 };
 
+// ==================== 详情/审核/退出逻辑（全部保留原有功能） ====================
 window.showDetail = async (id) => {
     const o = (await (await fetch(URL+`/rest/v1/orders?id=eq.${id}&select=*,sender:sender_id(nickname),worker:worker_id(nickname)`, {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json())[0];
     const isOwner = o.sender_id === userId;
     const isWorker = o.worker_id === userId;
     const canDelete = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
+    
     detailContent.innerHTML = `
         <div class="detail-line"><b>内容:</b> ${o.content}</div>
         <div class="detail-line"><b>游戏ID:</b> ${o.game_id}</div>
@@ -302,24 +406,37 @@ window.showDetail = async (id) => {
     `;
     detailModal.style.display = "block";
 };
+
 window.closeDetail = () => detailModal.style.display = "none";
 
 async function loadAudit() {
     const d = await (await fetch(URL+"/rest/v1/profiles?role=eq.admin&status=eq.pending", {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json();
-    auditList.innerHTML = d.map(u => `<div class="order">${u.nickname} <button class="order-btn btn-purple" onclick="approve('${u.id}')">批准</button></div>`).join('') || "无";
+    auditList.innerHTML = d.map(u => `<div class="order">${u.nickname} <button class="order-btn btn-purple" onclick="approve('${u.id}')">批准</button></div>`).join('') || "暂无待审核的管理员";
 }
+
 window.approve = async (id) => {
     await fetch(URL+`/rest/v1/profiles?id=eq.${id}`, {
         method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
         body: JSON.stringify({status:"approved"})
     });
-    msg("已批准", true); loadAudit();
+    msg("管理员已批准", true);
+    loadAudit();
 };
-document.getElementById("logoutBtn").onclick = () => { localStorage.removeItem('sb_token'); location.reload(); };
 
-window.onload = () => { if (!autoLogin()) setView('auth'); };
+document.getElementById("logoutBtn").onclick = () => {
+    localStorage.removeItem('sb_token');
+    // 清理实时订阅
+    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+    location.reload();
+};
+
+// ==================== 页面加载入口 ====================
+window.onload = () => { 
+    // 优先尝试自动登录，失败则显示登录页
+    if (!autoLogin()) setView('auth'); 
+};
 </script>
-<!-- 引入Supabase JS SDK，用于实时订阅 -->
+<!-- Supabase SDK（实时订阅依赖，保留原有） -->
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </body>
 </html>
