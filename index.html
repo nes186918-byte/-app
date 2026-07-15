@@ -106,7 +106,7 @@
 const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
 
-// 初始化 Supabase 客户端（关键修复点）
+// 初始化 Supabase 客户端
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 全局变量
@@ -157,26 +157,20 @@ function setView(view) {
 }
 
 // ==========================================
-// 核心修复：自动登录逻辑（使用官方SDK）
+// 修复：简化的自动登录逻辑
 // ==========================================
 async function checkAutoLogin() {
     try {
-        // 使用 Supabase SDK 获取当前会话（关键修复）
+        // 直接从本地存储获取会话
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-            console.error('获取会话失败:', error);
+        if (error || !session) {
+            console.log('无有效会话，显示登录页');
             setView('auth');
-            return false;
+            return;
         }
         
-        if (!session) {
-            console.log('没有活跃会话，显示登录页');
-            setView('auth');
-            return false;
-        }
-        
-        console.log('检测到活跃会话，尝试自动登录...');
+        console.log('发现有效会话，尝试自动登录...');
         
         // 获取用户资料
         const { data: profile, error: profileError } = await supabase
@@ -187,17 +181,8 @@ async function checkAutoLogin() {
         
         if (profileError || !profile) {
             console.error('获取用户资料失败:', profileError);
-            msg('获取用户资料失败，请重新登录', false);
-            await supabase.auth.signOut();
             setView('auth');
-            return false;
-        }
-        
-        if (profile.status !== 'approved') {
-            msg('账号等待审核，暂无法登录', false);
-            await supabase.auth.signOut();
-            setView('auth');
-            return false;
+            return;
         }
         
         // 保存用户信息
@@ -205,17 +190,7 @@ async function checkAutoLogin() {
         userProfile = profile;
         
         // 更新UI
-        document.getElementById('userInfo').textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
-        document.getElementById('footerUser').textContent = profile.nickname;
-        
-        // 根据角色显示相应功能
-        if (profile.role === 'owner' || profile.role === 'player') {
-            document.getElementById('orderPanel').style.display = 'block';
-        }
-        if (profile.role === 'owner') {
-            document.getElementById('ownerPanel').style.display = 'block';
-            loadAuditList();
-        }
+        updateUIAfterLogin(profile);
         
         // 显示主界面
         setView('app');
@@ -225,17 +200,15 @@ async function checkAutoLogin() {
         // 显示欢迎消息
         msg(`欢迎回来，${profile.nickname}`, true);
         console.log('自动登录成功！');
-        return true;
         
     } catch (err) {
         console.error('自动登录异常:', err);
         setView('auth');
-        return false;
     }
 }
 
 // ==========================================
-// 手动登录
+// 修复：简化的登录逻辑
 // ==========================================
 async function handleLogin() {
     const email = document.getElementById('email').value.trim();
@@ -246,6 +219,12 @@ async function handleLogin() {
         return;
     }
     
+    // 禁用按钮防止重复点击
+    const loginBtn = document.getElementById('loginBtn');
+    const originalText = loginBtn.textContent;
+    loginBtn.disabled = true;
+    loginBtn.textContent = '登录中...';
+    
     try {
         const { data, error } = await supabase.auth.signInWithPassword({
             email: email,
@@ -254,6 +233,8 @@ async function handleLogin() {
         
         if (error) {
             msg('登录失败：' + error.message, false);
+            loginBtn.disabled = false;
+            loginBtn.textContent = originalText;
             return;
         }
         
@@ -267,12 +248,16 @@ async function handleLogin() {
         if (profileError || !profile) {
             msg('获取用户资料失败', false);
             await supabase.auth.signOut();
+            loginBtn.disabled = false;
+            loginBtn.textContent = originalText;
             return;
         }
         
         if (profile.status !== 'approved') {
             msg('账号等待审核，暂无法登录', false);
             await supabase.auth.signOut();
+            loginBtn.disabled = false;
+            loginBtn.textContent = originalText;
             return;
         }
         
@@ -281,17 +266,7 @@ async function handleLogin() {
         userProfile = profile;
         
         // 更新UI
-        document.getElementById('userInfo').textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
-        document.getElementById('footerUser').textContent = profile.nickname;
-        
-        // 根据角色显示相应功能
-        if (profile.role === 'owner' || profile.role === 'player') {
-            document.getElementById('orderPanel').style.display = 'block';
-        }
-        if (profile.role === 'owner') {
-            document.getElementById('ownerPanel').style.display = 'block';
-            loadAuditList();
-        }
+        updateUIAfterLogin(profile);
         
         // 显示主界面
         setView('app');
@@ -307,6 +282,26 @@ async function handleLogin() {
     } catch (err) {
         console.error('登录异常:', err);
         msg('登录失败，请重试', false);
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = originalText;
+    }
+}
+
+// ==========================================
+// UI更新函数
+// ==========================================
+function updateUIAfterLogin(profile) {
+    document.getElementById('userInfo').textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
+    document.getElementById('footerUser').textContent = profile.nickname;
+    
+    // 根据角色显示相应功能
+    if (profile.role === 'owner' || profile.role === 'player') {
+        document.getElementById('orderPanel').style.display = 'block';
+    }
+    if (profile.role === 'owner') {
+        document.getElementById('ownerPanel').style.display = 'block';
+        loadAuditList();
     }
 }
 
@@ -329,6 +324,12 @@ async function handleRegister() {
         return;
     }
     
+    // 禁用按钮防止重复点击
+    const regBtn = document.getElementById('regBtn');
+    const originalText = regBtn.textContent;
+    regBtn.disabled = true;
+    regBtn.textContent = '注册中...';
+    
     // 检查店长是否已存在
     if (role === 'owner') {
         const { data: owners, error } = await supabase
@@ -338,6 +339,8 @@ async function handleRegister() {
         
         if (owners && owners.length > 0) {
             msg('店长账号已存在，无法重复注册', false);
+            regBtn.disabled = false;
+            regBtn.textContent = originalText;
             return;
         }
     }
@@ -356,6 +359,8 @@ async function handleRegister() {
         
         if (error) {
             msg('注册失败：' + error.message, false);
+            regBtn.disabled = false;
+            regBtn.textContent = originalText;
             return;
         }
         
@@ -372,6 +377,8 @@ async function handleRegister() {
         
         if (profileError) {
             msg('资料保存失败：' + profileError.message, false);
+            regBtn.disabled = false;
+            regBtn.textContent = originalText;
             return;
         }
         
@@ -382,6 +389,9 @@ async function handleRegister() {
     } catch (err) {
         console.error('注册异常:', err);
         msg('注册失败，请重试', false);
+    } finally {
+        regBtn.disabled = false;
+        regBtn.textContent = originalText;
     }
 }
 
@@ -730,46 +740,51 @@ async function handleLogout() {
 }
 
 // ==========================================
-// 事件绑定
+// 修复：使用onclick属性绑定事件（最可靠的方式）
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 切换登录/注册
-    document.getElementById('showReg').addEventListener('click', () => {
-        document.getElementById('regBox').style.display = 'block';
-    });
+window.onload = function() {
+    console.log('页面加载完成，开始初始化...');
     
-    document.getElementById('showLogin').addEventListener('click', () => {
-        document.getElementById('regBox').style.display = 'none';
-    });
-    
-    // 登录按钮
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    
-    // 注册按钮
-    document.getElementById('regBtn').addEventListener('click', handleRegister);
-    
-    // 发布订单按钮
-    document.getElementById('orderBtn').addEventListener('click', createOrder);
-    
-    // 退出登录按钮
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-    
-    // 页面加载时检查自动登录
+    // 检查自动登录
     checkAutoLogin();
     
-    // 监听认证状态变化（关键：处理token刷新等）
-    supabase.auth.onAuthStateChange((event, session) => {
-        console.log('认证状态变化:', event, session?.user?.id);
-        
-        if (event === 'SIGNED_OUT') {
-            currentUser = null;
-            userProfile = null;
-            setView('auth');
-        } else if (event === 'TOKEN_REFRESHED' && session) {
-            console.log('Token已刷新');
-        }
-    });
-});
+    // 绑定登录按钮事件
+    document.getElementById('loginBtn').onclick = function() {
+        console.log('登录按钮被点击');
+        handleLogin();
+    };
+    
+    // 绑定注册按钮事件
+    document.getElementById('regBtn').onclick = function() {
+        console.log('注册按钮被点击');
+        handleRegister();
+    };
+    
+    // 绑定发布订单按钮事件
+    document.getElementById('orderBtn').onclick = function() {
+        console.log('发布订单按钮被点击');
+        createOrder();
+    };
+    
+    // 绑定退出登录按钮事件
+    document.getElementById('logoutBtn').onclick = function() {
+        console.log('退出登录按钮被点击');
+        handleLogout();
+    };
+    
+    // 绑定切换登录/注册事件
+    document.getElementById('showReg').onclick = function() {
+        console.log('切换到注册');
+        document.getElementById('regBox').style.display = 'block';
+    };
+    
+    document.getElementById('showLogin').onclick = function() {
+        console.log('切换到登录');
+        document.getElementById('regBox').style.display = 'none';
+    };
+    
+    console.log('事件绑定完成');
+};
 </script>
 </body>
 </html>
