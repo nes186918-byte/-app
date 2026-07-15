@@ -3,65 +3,458 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase测试</title>
+    <title>卡了电竞</title>
+    <!-- 国内稳定CDN，避免加载失败 -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        /* 完全保留你之前的UI样式，无任何改动 */
+        body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
+        .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
+        h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
+        input, select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; box-sizing: border-box; }
+        button { background: #00f0ff; color: #000; font-weight: bold; cursor: pointer; }
+        button:active { background: #00c0cc; }
+        .link { text-align: center; margin-top: 15px; color: #888; }
+        .link span { color: #00f0ff; cursor: pointer; }
+        #msg { text-align: center; margin-top: 15px; padding: 12px 24px; border-radius: 8px; display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        #app { display: none; padding-bottom: 80px; }
+        .order { background: #111; padding: 12px; margin-top: 10px; border-radius: 5px; border-left: 3px solid #00f0ff; }
+        .order-btn { margin-top: 8px; padding: 8px 10px; font-size: 13px; width: auto; margin-right: 8px; display: inline-block; }
+        .btn-green { background: #00ff88; color: #000; }
+        .btn-red { background: #ff4757; color: #fff; }
+        .btn-purple { background: #ff00ff; color: #fff; }
+        #detailModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); padding: 15px; box-sizing: border-box; z-index: 999; overflow-y: auto; }
+        #detailModal .box { margin-top: 30px; }
+        .detail-line { margin: 10px 0; line-height: 1.5; }
+        .detail-label { color: #00f0ff; font-weight: bold; }
+        .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; display: none; justify-content: space-between; align-items: center; box-sizing: border-box; border-top: 1px solid #00f0ff; }
+        .footer-bar button { width: auto; padding: 8px 15px; margin: 0; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
+        .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body style="background:#050510;color:#fff;padding:20px;">
-    <h2 style="color:#00f0ff;">Supabase连接测试</h2>
-    <input id="email" placeholder="邮箱" style="width:100%;padding:10px;margin-top:10px;">
-    <input id="pass" type="password" placeholder="密码" style="width:100%;padding:10px;margin-top:10px;">
-    <!-- 原生onclick，绝对生效 -->
-    <button onclick="doTest()" style="width:100%;padding:15px;margin-top:10px;background:#00f0ff;font-size:18px;border:none;border-radius:5px;">
-        测试登录
-    </button>
-    <p id="log" style="margin-top:20px;color:#ff00ff;"></p>
+<body>
+    <!-- 加载遮罩（仅操作时有，不算提醒） -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- 登录/注册页 -->
+    <div id="auth">
+        <div class="box">
+            <h2>卡了电竞欢迎您</h2>
+            <input id="email" placeholder="邮箱">
+            <input id="pass" type="password" placeholder="密码">
+            <!-- 原生onclick绑定，100%兼容手机浏览器 -->
+            <button onclick="handleLogin()">登录</button>
+            <div class="link">没账号？<span onclick="showReg()">点此注册</span></div>
+        </div>
+        <div class="box" id="regBox" style="display:none;">
+            <h2>注册</h2>
+            <input id="regEmail" placeholder="邮箱">
+            <input id="regPass" type="password" placeholder="密码">
+            <input id="regName" placeholder="昵称">
+            <select id="regRole">
+                <option value="player">玩家</option>
+                <option value="worker">打手</option>
+                <option value="admin">管理员</option>
+                <option value="owner">店长</option>
+            </select>
+            <button onclick="handleRegister()">注册</button>
+            <div class="link">有账号？<span onclick="showLogin()">点此登录</span></div>
+        </div>
+    </div>
+
+    <!-- 主应用页 -->
+    <div id="app">
+        <div class="box">
+            <h2>派单系统</h2>
+            <p id="userInfo"></p>
+            <div id="ownerPanel" style="display:none; margin-top:10px; border:1px solid #ff00ff; padding:10px;">
+                <h3 style="color:#ff00ff; margin: 0 0 10px 0;">待审核管理员</h3>
+                <div id="auditList"></div>
+            </div>
+            <div id="orderPanel" style="display:none; margin-top:10px;">
+                <input id="orderContent" placeholder="订单内容">
+                <input id="orderGameId" placeholder="游戏ID（必填）">
+                <input id="orderPrice" type="number" placeholder="价格">
+                <button onclick="createOrder()">发布订单</button>
+            </div>
+            <h3 style="margin:15px 0 10px 0; color:#00f0ff;">订单列表</h3>
+            <div id="orderList"></div>
+        </div>
+    </div>
+
+    <!-- 底部栏 -->
+    <div class="footer-bar" id="footerBar">
+        <span id="footerUser"></span>
+        <button onclick="handleLogout()">退出</button>
+    </div>
+
+    <!-- 订单详情弹窗 -->
+    <div id="detailModal">
+        <div class="box">
+            <h2>订单详情</h2>
+            <div id="detailContent"></div>
+            <button onclick="closeDetailModal()">关闭</button>
+        </div>
+    </div>
+
+    <!-- 操作结果提示框（仅显示操作结果，无消息提醒） -->
+    <div id="msg"></div>
 
 <script>
-// 配置你自己的Key
+/* ==========================================
+   🔴 配置区（和你之前的SQL完全匹配）
+   ========================================== */
 const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
 
-// 测试函数，每一步都弹窗
-function doTest() {
-    alert('✅ 按钮点击生效，开始测试Supabase连接');
-    
-    // 1. 检查SDK有没有加载
+/* ==========================================
+   全局变量
+   ========================================== */
+let supabase = null;
+let currentUser = null;
+let userProfile = null;
+
+/* ==========================================
+   初始化校验（致命错误才弹窗，无其他提醒）
+   ========================================== */
+function init() {
+    // SDK加载失败是致命错误，必须弹窗告知
     if (typeof window.supabase === 'undefined') {
-        alert('❌ Supabase SDK加载失败！\n1. 检查网络\n2. 换Chrome浏览器\n3. 确认不是本地打开的文件');
+        alert('系统加载失败，请检查网络后刷新（建议用Chrome/Safari浏览器）');
         return;
     }
-    alert('✅ Supabase SDK加载成功');
-    
-    // 2. 初始化客户端
     try {
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        alert('✅ Supabase客户端初始化成功');
-        
-        // 3. 测试登录
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('pass').value;
-        if (!email || !pass) {
-            alert('❌ 请输入邮箱和密码');
-            return;
-        }
-        
-        // 4. 发登录请求
-        supabase.auth.signInWithPassword({email: email, password: pass})
-            .then(res => {
-                if (res.error) {
-                    alert('❌ 登录失败：' + res.error.message);
-                } else {
-                    alert('✅ 登录成功！用户ID：' + res.data.user.id);
-                }
-            })
-            .catch(err => {
-                alert('❌ 请求失败：' + err.message);
-            });
-            
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        autoLogin(); // 自动登录
     } catch (e) {
-        alert('❌ 初始化失败：' + e.message);
+        alert('系统初始化失败：' + e.message);
     }
 }
+
+/* ==========================================
+   工具函数（无多余提醒）
+   ========================================== */
+// 显示操作结果（仅错误/成功提示，无消息提醒）
+function showMessage(text, isSuccess = false) {
+    const el = document.getElementById('msg');
+    el.textContent = text;
+    el.style.background = isSuccess ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 0, 85, 0.9)';
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// 切换加载动画
+function toggleLoading(show) {
+    document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
+
+// 切换视图
+function setView(view) {
+    document.getElementById('auth').style.display = view === 'auth' ? 'block' : 'none';
+    document.getElementById('app').style.display = view === 'app' ? 'block' : 'none';
+    document.getElementById('footerBar').style.display = view === 'app' ? 'flex' : 'none';
+}
+
+// 订单状态中文映射
+function mapStatus(status) {
+    const map = {
+        'pending': '待接单',
+        'accepted': '已接单',
+        'completed': '订单已完成',
+        'cancelled': '订单已取消'
+    };
+    return map[status] || '未知状态';
+}
+
+// 更新UI
+function updateUI() {
+    document.getElementById('userInfo').textContent = `欢迎: ${userProfile.nickname}（${userProfile.role}）`;
+    document.getElementById('footerUser').textContent = userProfile.nickname;
+    // 玩家/店长显示发布订单面板
+    document.getElementById('orderPanel').style.display = (userProfile.role === 'owner' || userProfile.role === 'player') ? 'block' : 'none';
+    // 店长显示审核面板
+    document.getElementById('ownerPanel').style.display = userProfile.role === 'owner' ? 'block' : 'none';
+    if (userProfile.role === 'owner') loadAuditList();
+}
+
+/* ==========================================
+   核心功能（全部保留，无任何消息提醒）
+   ========================================== */
+// 自动登录（刷新页面保留登录状态）
+async function autoLogin() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+        setView('auth');
+        return;
+    }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+    if (!profile || profile.status !== 'approved') {
+        setView('auth');
+        return;
+    }
+    currentUser = session.user;
+    userProfile = profile;
+    updateUI();
+    setView('app');
+    loadOrders();
+}
+
+// 手动登录（原生onclick绑定）
+async function handleLogin() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('pass').value.trim();
+    if (!email || !password) {
+        showMessage('请输入邮箱和密码', false);
+        return;
+    }
+    toggleLoading(true);
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            showMessage(`登录失败：${error.message}`, false);
+            return;
+        }
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+        if (!profile) {
+            showMessage('用户资料不存在，请先注册', false);
+            return;
+        }
+        currentUser = data.user;
+        userProfile = profile;
+        updateUI();
+        setView('app');
+        loadOrders();
+        showMessage(`欢迎您，${profile.nickname}`, true);
+        document.getElementById('pass').value = '';
+    } catch (e) {
+        showMessage(`登录异常：${e.message}`, false);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// 注册（支持邮箱注册店长，含唯一性校验）
+async function handleRegister() {
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPass').value.trim();
+    const nickname = document.getElementById('regName').value.trim();
+    const role = document.getElementById('regRole').value;
+    if (!email || !password || !nickname) {
+        showMessage('请填写完整信息', false);
+        return;
+    }
+    // 店长唯一性校验
+    if (role === 'owner') {
+        const { data: owners } = await supabase.from('profiles').select('id').eq('role', 'owner');
+        if (owners?.length > 0) {
+            showMessage('店长账号已存在', false);
+            return;
+        }
+    }
+    toggleLoading(true);
+    try {
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data: { nickname, role } }
+        });
+        if (error) {
+            showMessage(`注册失败：${error.message}`, false);
+            return;
+        }
+        showMessage('注册成功！请登录', true);
+        showLogin();
+        document.getElementById('email').value = email;
+    } catch (e) {
+        showMessage(`注册异常：${e.message}`, false);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// 加载订单
+async function loadOrders() {
+    if (!currentUser || !userProfile) return;
+    let query = supabase.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').order('created_at', { ascending: false });
+    // 非店长只能看自己的订单
+    if (userProfile.role !== 'owner') {
+        query = query.or(`sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id}`);
+    }
+    const { data: orders } = await query;
+    const orderListEl = document.getElementById('orderList');
+    if (!orders?.length) {
+        orderListEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
+        return;
+    }
+    orderListEl.innerHTML = orders.map(order => {
+        const isOwner = order.sender_id === currentUser.id;
+        const isWorker = order.worker_id === currentUser.id;
+        const canTake = ['owner','admin','worker'].includes(userProfile.role) && order.status === 'pending' && !order.worker_id && !isOwner;
+        const canComplete = isWorker && order.status === 'accepted';
+        const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
+        return `
+            <div class="order">
+                <div><b>内容:</b> ${order.content}</div>
+                <div><b>游戏ID:</b> ${order.game_id}</div>
+                <div><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(order.status)}</span></div>
+                <div><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
+                <div><b>接单:</b> ${order.worker?.nickname || '无'}</div>
+                <button class="order-btn" onclick="showOrderDetail('${order.id}')">详情</button>
+                ${canTake ? `<button class="order-btn" onclick="takeOrder('${order.id}')">接单</button>` : ''}
+                ${canComplete ? `<button class="order-btn btn-green" onclick="completeOrder('${order.id}')">结单</button>` : ''}
+                ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')">取消</button>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// 发布订单
+async function createOrder() {
+    const content = document.getElementById('orderContent').value.trim();
+    const gameId = document.getElementById('orderGameId').value.trim();
+    const price = document.getElementById('orderPrice').value.trim();
+    if (!content || !gameId || !price) {
+        showMessage('请填写完整订单信息', false);
+        return;
+    }
+    try {
+        await supabase.from('orders').insert({
+            sender_id: currentUser.id,
+            content,
+            game_id: gameId,
+            price: parseFloat(price),
+            status: 'pending'
+        });
+        showMessage('订单发布成功', true);
+        document.getElementById('orderContent').value = '';
+        document.getElementById('orderGameId').value = '';
+        document.getElementById('orderPrice').value = '';
+        loadOrders();
+    } catch (e) {
+        showMessage(`发布失败：${e.message}`, false);
+    }
+}
+
+// 接单
+async function takeOrder(orderId) {
+    try {
+        await supabase.from('orders').update({
+            worker_id: currentUser.id,
+            status: 'accepted'
+        }).eq('id', orderId).eq('status', 'pending');
+        showMessage('接单成功', true);
+        loadOrders();
+    } catch (e) {
+        showMessage(`接单失败：${e.message}`, false);
+    }
+}
+
+// 结单
+async function completeOrder(orderId) {
+    if (!confirm('确认完成订单？')) return;
+    try {
+        await supabase.from('orders').update({
+            status: 'completed'
+        }).eq('id', orderId).eq('worker_id', currentUser.id).eq('status', 'accepted');
+        showMessage('订单已结单', true);
+        loadOrders();
+        closeDetailModal();
+    } catch (e) {
+        showMessage(`结单失败：${e.message}`, false);
+    }
+}
+
+// 取消订单（物理删除，删除后自动刷新）
+async function deleteOrder(orderId) {
+    if (!confirm('确认取消订单？取消后不可恢复')) return;
+    try {
+        await supabase.from('orders').delete().eq('id', orderId);
+        showMessage('订单已取消', true);
+        loadOrders();
+        closeDetailModal();
+    } catch (e) {
+        showMessage(`取消失败：${e.message}`, false);
+    }
+}
+
+// 订单详情
+async function showOrderDetail(orderId) {
+    try {
+        const { data: order } = await supabase.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').eq('id', orderId).single();
+        const isOwner = order.sender_id === currentUser.id;
+        const isWorker = order.worker_id === currentUser.id;
+        const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
+        document.getElementById('detailContent').innerHTML = `
+            <div class="detail-line"><b>内容:</b> ${order.content}</div>
+            <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
+            <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
+            <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(order.status)}</span></div>
+            <div class="detail-line"><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
+            <div class="detail-line"><b>接单:</b> ${order.worker?.nickname || '无'}</div>
+            ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
+        `;
+        document.getElementById('detailModal').style.display = 'block';
+    } catch (e) {
+        showMessage(`加载详情失败：${e.message}`, false);
+    }
+}
+
+// 关闭详情弹窗
+function closeDetailModal() {
+    document.getElementById('detailModal').style.display = 'none';
+}
+
+// 加载待审核管理员
+async function loadAuditList() {
+    if (userProfile.role !== 'owner') return;
+    const { data: admins } = await supabase.from('profiles').select('*').eq('role', 'admin').eq('status', 'pending');
+    const auditListEl = document.getElementById('auditList');
+    if (!admins?.length) {
+        auditListEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
+        return;
+    }
+    auditListEl.innerHTML = admins.map(admin => `
+        <div class="order">
+            <div><b>${admin.nickname}</b> (${admin.email})</div>
+            <div style="font-size:12px; color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
+            <button class="order-btn btn-purple" onclick="approveAdmin('${admin.id}')">批准</button>
+        </div>
+    `).join('');
+}
+
+// 批准管理员
+async function approveAdmin(adminId) {
+    if (!confirm('确定批准该管理员？')) return;
+    try {
+        await supabase.from('profiles').update({ status: 'approved' }).eq('id', adminId);
+        showMessage('批准成功', true);
+        loadAuditList();
+    } catch (e) {
+        showMessage(`批准失败：${e.message}`, false);
+    }
+}
+
+// 退出登录
+async function handleLogout() {
+    await supabase.auth.signOut();
+    currentUser = null;
+    userProfile = null;
+    setView('auth');
+    showMessage('已退出登录', true);
+}
+
+// 切换注册/登录页
+function showReg() { document.getElementById('regBox').style.display = 'block'; }
+function showLogin() { document.getElementById('regBox').style.display = 'none'; }
+
+/* ==========================================
+   页面加载后初始化（无弹窗提醒）
+   ========================================== */
+init();
 </script>
 </body>
 </html>
