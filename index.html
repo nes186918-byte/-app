@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
-    <!-- 使用国内CDN，增加完整性校验 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <style>
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
@@ -31,6 +29,9 @@
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
         .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .diagnostic-panel { background: rgba(255, 0, 0, 0.1); border: 1px solid #ff4757; padding: 15px; margin-top: 15px; border-radius: 5px; display: none; }
+        .diagnostic-panel h3 { color: #ff4757; margin: 0 0 10px 0; }
+        .diagnostic-panel pre { background: rgba(0,0,0,0.5); padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -48,6 +49,13 @@
             <input id="pass" type="password" placeholder="密码">
             <button id="loginBtn">登录</button>
             <div class="link">没账号？<span id="showRegLink">点此注册</span></div>
+            
+            <!-- 诊断面板 -->
+            <div class="diagnostic-panel" id="diagnosticPanel">
+                <h3>🔧 连接诊断</h3>
+                <div id="diagnosticContent"></div>
+                <button onclick="runDiagnostics()" style="margin-top: 10px; background: #ff4757;">重新检测</button>
+            </div>
         </div>
         <div class="box" id="regBox" style="display:none;">
             <h2>注册</h2>
@@ -107,14 +115,13 @@
 // ==========================================
 // 🔴 必须替换成你的 Supabase 配置！
 // ==========================================
-const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
+const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';  // 例如: https://xyzcompany.supabase.co
+const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';  // 例如: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 // 全局变量
-let supabaseClient = null;
 let currentUser = null;
 let userProfile = null;
-let realtimeChannel = null;
+let isConnected = false;
 
 // DOM元素引用
 const elements = {
@@ -125,7 +132,9 @@ const elements = {
     showRegLink: null,
     showLoginLink: null,
     closeDetailBtn: null,
-    loadingOverlay: null
+    loadingOverlay: null,
+    diagnosticPanel: null,
+    diagnosticContent: null
 };
 
 // 显示/隐藏加载遮罩
@@ -143,7 +152,7 @@ function showMessage(text, isSuccess = false) {
     el.style.background = isSuccess ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 0, 85, 0.9)';
     el.style.color = isSuccess ? '#000' : '#fff';
     el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', isSuccess ? 2000 : 3000);
+    setTimeout(() => el.style.display = 'none', isSuccess ? 2000 : 4000);
 }
 
 // 切换视图
@@ -157,26 +166,122 @@ function setView(view) {
     footerEl.style.display = view === 'app' ? 'flex' : 'none';
 }
 
-// 更新UI
-function updateUI(profile) {
-    const userInfoEl = document.getElementById('userInfo');
-    const footerUserEl = document.getElementById('footerUser');
-    const orderPanelEl = document.getElementById('orderPanel');
-    const ownerPanelEl = document.getElementById('ownerPanel');
-    if (!userInfoEl || !footerUserEl || !orderPanelEl || !ownerPanelEl) return;
-
-    userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
-    footerUserEl.textContent = profile.nickname;
-    if (profile.role === 'owner' || profile.role === 'player') {
-        orderPanelEl.style.display = 'block';
-    }
-    if (profile.role === 'owner') {
-        ownerPanelEl.style.display = 'block';
-        loadAuditList();
+// 显示诊断面板
+function showDiagnostic(info) {
+    if (elements.diagnosticPanel && elements.diagnosticContent) {
+        elements.diagnosticPanel.style.display = 'block';
+        elements.diagnosticContent.innerHTML = `<pre>${info}</pre>`;
     }
 }
 
-// 登录功能
+// 运行连接诊断
+async function runDiagnostics() {
+    toggleLoading(true);
+    let diagnosticInfo = "🔍 开始连接诊断...\n\n";
+    
+    try {
+        // 1. 检查配置
+        diagnosticInfo += `1. 配置检查:\n`;
+        diagnosticInfo += `   SUPABASE_URL: ${SUPABASE_URL ? '✅ 已设置' : '❌ 未设置'}\n`;
+        diagnosticInfo += `   SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY ? '✅ 已设置' : '❌ 未设置'}\n\n`;
+        
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            diagnosticInfo += "❌ 错误: 请先在代码中设置SUPABASE_URL和SUPABASE_ANON_KEY\n";
+            showDiagnostic(diagnosticInfo);
+            toggleLoading(false);
+            return;
+        }
+        
+        // 2. 测试网络连接
+        diagnosticInfo += `2. 网络连接测试:\n`;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                diagnosticInfo += `   ✅ 成功连接到 Supabase REST API (状态码: ${response.status})\n`;
+                isConnected = true;
+            } else {
+                diagnosticInfo += `   ❌ 连接失败 (状态码: ${response.status})\n`;
+                const errorText = await response.text();
+                diagnosticInfo += `   错误信息: ${errorText}\n`;
+            }
+        } catch (networkError) {
+            diagnosticInfo += `   ❌ 网络错误: ${networkError.name}: ${networkError.message}\n`;
+            if (networkError.name === 'AbortError') {
+                diagnosticInfo += `   💡 提示: 连接超时，可能是网络较慢或Supabase服务器在国外\n`;
+            }
+        }
+        
+        // 3. 测试Auth端点
+        diagnosticInfo += `\n3. Auth端点测试:\n`;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
+                method: 'GET',
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (authResponse.ok) {
+                diagnosticInfo += `   ✅ Auth服务正常 (状态码: ${authResponse.status})\n`;
+            } else {
+                diagnosticInfo += `   ❌ Auth服务异常 (状态码: ${authResponse.status})\n`;
+            }
+        } catch (authError) {
+            diagnosticInfo += `   ❌ Auth服务错误: ${authError.message}\n`;
+        }
+        
+        // 4. 测试DNS解析
+        diagnosticInfo += `\n4. DNS解析测试:\n`;
+        try {
+            const url = new URL(SUPABASE_URL);
+            diagnosticInfo += `   域名: ${url.hostname}\n`;
+            diagnosticInfo += `   💡 如果无法连接，请尝试:\n`;
+            diagnosticInfo += `   - 检查手机网络是否正常\n`;
+            diagnosticInfo += `   - 尝试切换WiFi/移动数据\n`;
+            diagnosticInfo += `   - 确认Supabase项目未被暂停\n`;
+        } catch (urlError) {
+            diagnosticInfo += `   ❌ URL格式错误: ${urlError.message}\n`;
+        }
+        
+        // 5. 解决方案建议
+        diagnosticInfo += `\n📋 解决方案建议:\n`;
+        if (!isConnected) {
+            diagnosticInfo += `   1. 确认SUPABASE_URL和SUPABASE_ANON_KEY是否正确\n`;
+            diagnosticInfo += `   2. 检查Supabase项目是否处于活动状态\n`;
+            diagnosticInfo += `   3. 尝试使用VPN或代理连接\n`;
+            diagnosticInfo += `   4. 如果是国内访问国外Supabase，建议使用国内云服务自建后端\n`;
+            diagnosticInfo += `   5. 临时解决方案: 使用本地Mock数据进行测试\n`;
+        } else {
+            diagnosticInfo += `   ✅ 连接正常，可以正常使用系统\n`;
+        }
+        
+        showDiagnostic(diagnosticInfo);
+        
+    } catch (error) {
+        diagnosticInfo += `\n❌ 诊断过程出错: ${error.message}\n`;
+        showDiagnostic(diagnosticInfo);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// 简化的登录功能（不使用Supabase SDK，直接用fetch）
 async function handleLogin() {
     console.log('登录按钮被点击 - 开始执行');
     
@@ -196,8 +301,9 @@ async function handleLogin() {
         return;
     }
 
-    if (!supabaseClient) {
-        showMessage('系统未初始化，请刷新页面', false);
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+        showMessage('系统未配置，请检查代码', false);
+        runDiagnostics();
         return;
     }
 
@@ -206,34 +312,53 @@ async function handleLogin() {
     try {
         console.log('正在发送登录请求...');
         
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
+        // 直接使用fetch调用Supabase Auth API
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
         });
 
-        console.log('登录响应:', error ? `错误: ${error.message}` : '成功');
+        console.log('登录响应状态:', response.status);
         
-        if (error) {
-            showMessage(`登录失败：${error.message}`, false);
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('登录失败:', errorData);
+            showMessage(`登录失败：${errorData.error_description || errorData.message || '未知错误'}`, false);
             return;
         }
 
+        const data = await response.json();
+        console.log('登录成功，获取用户资料...');
+        
         // 获取用户资料
-        const { data: profile, error: profileError } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
+        const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=*`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${data.access_token}`
+            }
+        });
 
-        if (profileError || !profile) {
-            showMessage('登录失败：用户资料不存在', false);
-            await supabaseClient.auth.signOut();
+        if (!profileResponse.ok) {
+            showMessage('登录失败：无法获取用户资料', false);
             return;
         }
 
+        const profiles = await profileResponse.json();
+        if (!profiles || profiles.length === 0) {
+            showMessage('登录失败：用户资料不存在', false);
+            return;
+        }
+
+        const profile = profiles[0];
         if (profile.status !== 'approved') {
             showMessage('账号审核中，暂无法登录', false);
-            await supabaseClient.auth.signOut();
             return;
         }
 
@@ -241,20 +366,20 @@ async function handleLogin() {
         userProfile = profile;
         updateUI(profile);
         setView('app');
-        loadOrders();
-        setupRealtime();
+        loadOrders(data.access_token);
         showMessage(`欢迎您，${profile.nickname}`, true);
         passInput.value = '';
         
     } catch (e) {
         console.error('登录异常:', e);
-        showMessage(`登录异常：${e.message || '网络错误'}`, false);
+        showMessage(`登录异常：${e.message}`, false);
+        runDiagnostics();
     } finally {
         toggleLoading(false);
     }
 }
 
-// 注册功能
+// 简化的注册功能
 async function handleRegister() {
     const emailInput = document.getElementById('regEmail');
     const passInput = document.getElementById('regPass');
@@ -276,70 +401,110 @@ async function handleRegister() {
         return;
     }
 
-    if (!supabaseClient) {
-        showMessage('系统未初始化，请刷新页面', false);
-        return;
-    }
-
     toggleLoading(true);
     
     try {
         // 检查店长唯一性
         if (role === 'owner') {
-            const { data: owners } = await supabaseClient
-                .from('profiles')
-                .select('id')
-                .eq('role', 'owner');
-            if (owners && owners.length > 0) {
-                showMessage('店长账号已存在', false);
-                return;
+            const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=id&role=eq.owner`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY
+                }
+            });
+            
+            if (checkResponse.ok) {
+                const owners = await checkResponse.json();
+                if (owners && owners.length > 0) {
+                    showMessage('店长账号已存在', false);
+                    return;
+                }
             }
         }
 
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { nickname, role } }
+        // 注册用户
+        const signupResponse = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password,
+                data: {
+                    nickname: nickname,
+                    role: role
+                }
+            })
         });
 
-        if (error) {
-            showMessage(`注册失败：${error.message}`, false);
+        if (!signupResponse.ok) {
+            const errorData = await signupResponse.json();
+            showMessage(`注册失败：${errorData.error_description || errorData.message}`, false);
             return;
         }
 
-        await supabaseClient.from('profiles').insert([{
-            id: data.user.id,
-            email: email,
-            nickname: nickname,
-            role: role,
-            status: role === 'admin' ? 'pending' : 'approved'
-        }]);
+        const signupData = await signupResponse.json();
+        
+        // 创建用户资料
+        const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${signupData.session.access_token}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                id: signupData.user.id,
+                email: email,
+                nickname: nickname,
+                role: role,
+                status: role === 'admin' ? 'pending' : 'approved'
+            })
+        });
+
+        if (!profileResponse.ok) {
+            showMessage('注册失败：无法创建用户资料', false);
+            return;
+        }
 
         showMessage('注册成功！请登录', true);
         document.getElementById('regBox').style.display = 'none';
         emailInput.value = email;
     } catch (e) {
-        showMessage(`注册异常：${e.message || '网络错误'}`, false);
+        showMessage(`注册异常：${e.message}`, false);
+        runDiagnostics();
     } finally {
         toggleLoading(false);
     }
 }
 
 // 加载订单
-async function loadOrders() {
-    if (!currentUser || !userProfile || !supabaseClient) return;
+async function loadOrders(token) {
+    if (!token) return;
     
     try {
-        let query = supabaseClient
-            .from('orders')
-            .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
-            .order('created_at', { ascending: false });
-
+        let query = `${SUPABASE_URL}/rest/v1/orders?select=*,sender:sender_id(nickname),worker:worker_id(nickname)&order=created_at.desc`;
+        
+        // 非店长只能看自己的订单
         if (userProfile.role !== 'owner') {
-            query = query.or(`sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id}`);
+            query += `&or=(sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id})`;
         }
 
-        const { data: orders } = await query;
+        const response = await fetch(query, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            showMessage('加载订单失败', false);
+            return;
+        }
+
+        const orders = await response.json();
         const listEl = document.getElementById('orderList');
         if (!listEl) return;
 
@@ -393,32 +558,98 @@ async function createOrder() {
     }
 
     try {
-        await supabaseClient.from('orders').insert([{
-            sender_id: currentUser.id,
-            content: content,
-            game_id: gameId,
-            price: parseFloat(price),
-            status: 'pending'
-        }]);
+        // 先获取当前token
+        const session = await getCurrentSession();
+        if (!session) {
+            showMessage('请先登录', false);
+            return;
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                sender_id: currentUser.id,
+                content: content,
+                game_id: gameId,
+                price: parseFloat(price),
+                status: 'pending'
+            })
+        });
+
+        if (!response.ok) {
+            showMessage('发布失败', false);
+            return;
+        }
+
         showMessage('订单发布成功', true);
         contentInput.value = '';
         gameIdInput.value = '';
         priceInput.value = '';
-        loadOrders();
+        loadOrders(session.access_token);
     } catch (e) {
         showMessage(`发布失败：${e.message}`, false);
     }
 }
 
+// 获取当前会话
+async function getCurrentSession() {
+    try {
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
+            }
+        });
+        
+        if (response.ok) {
+            const user = await response.json();
+            return {
+                user: user,
+                access_token: localStorage.getItem('sb-access-token')
+            };
+        }
+    } catch (e) {
+        console.error('获取会话失败:', e);
+    }
+    return null;
+}
+
 // 接单
 async function takeOrder(orderId) {
     try {
-        await supabaseClient.from('orders')
-            .update({ worker_id: currentUser.id, status: 'accepted' })
-            .eq('id', orderId)
-            .eq('status', 'pending');
+        const session = await getCurrentSession();
+        if (!session) {
+            showMessage('请先登录', false);
+            return;
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                worker_id: currentUser.id,
+                status: 'accepted'
+            })
+        });
+
+        if (!response.ok) {
+            showMessage('接单失败', false);
+            return;
+        }
+
         showMessage('接单成功', true);
-        loadOrders();
+        loadOrders(session.access_token);
     } catch (e) {
         showMessage(`接单失败：${e.message}`, false);
     }
@@ -428,13 +659,32 @@ async function takeOrder(orderId) {
 async function completeOrder(orderId) {
     if (!confirm('确认完成订单？')) return;
     try {
-        await supabaseClient.from('orders')
-            .update({ status: 'completed' })
-            .eq('id', orderId)
-            .eq('worker_id', currentUser.id)
-            .eq('status', 'accepted');
+        const session = await getCurrentSession();
+        if (!session) {
+            showMessage('请先登录', false);
+            return;
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                status: 'completed'
+            })
+        });
+
+        if (!response.ok) {
+            showMessage('结单失败', false);
+            return;
+        }
+
         showMessage('订单已结单', true);
-        loadOrders();
+        loadOrders(session.access_token);
         closeDetailModal();
     } catch (e) {
         showMessage(`结单失败：${e.message}`, false);
@@ -445,9 +695,28 @@ async function completeOrder(orderId) {
 async function deleteOrder(orderId) {
     if (!confirm('确认取消订单？')) return;
     try {
-        await supabaseClient.from('orders').delete().eq('id', orderId);
+        const session = await getCurrentSession();
+        if (!session) {
+            showMessage('请先登录', false);
+            return;
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+                'Prefer': 'return=minimal'
+            }
+        });
+
+        if (!response.ok) {
+            showMessage('取消失败', false);
+            return;
+        }
+
         showMessage('订单已取消', true);
-        loadOrders();
+        loadOrders(session.access_token);
         closeDetailModal();
     } catch (e) {
         showMessage(`取消失败：${e.message}`, false);
@@ -457,12 +726,31 @@ async function deleteOrder(orderId) {
 // 显示订单详情
 async function showOrderDetail(orderId) {
     try {
-        const { data: order } = await supabaseClient
-            .from('orders')
-            .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
-            .eq('id', orderId)
-            .single();
+        const session = await getCurrentSession();
+        if (!session) {
+            showMessage('请先登录', false);
+            return;
+        }
 
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=*,sender:sender_id(nickname),worker:worker_id(nickname)`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        if (!response.ok) {
+            showMessage('加载详情失败', false);
+            return;
+        }
+
+        const orders = await response.json();
+        if (!orders || orders.length === 0) {
+            showMessage('订单不存在', false);
+            return;
+        }
+
+        const order = orders[0];
         const isOwner = order.sender_id === currentUser.id;
         const isWorker = order.worker_id === currentUser.id;
         const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
@@ -492,17 +780,42 @@ function closeDetailModal() {
     if (detailModalEl) detailModalEl.style.display = 'none';
 }
 
+// 更新UI
+function updateUI(profile) {
+    const userInfoEl = document.getElementById('userInfo');
+    const footerUserEl = document.getElementById('footerUser');
+    const orderPanelEl = document.getElementById('orderPanel');
+    const ownerPanelEl = document.getElementById('ownerPanel');
+    if (!userInfoEl || !footerUserEl || !orderPanelEl || !ownerPanelEl) return;
+
+    userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
+    footerUserEl.textContent = profile.nickname;
+    if (profile.role === 'owner' || profile.role === 'player') {
+        orderPanelEl.style.display = 'block';
+    }
+    if (profile.role === 'owner') {
+        ownerPanelEl.style.display = 'block';
+        loadAuditList();
+    }
+}
+
 // 加载审核列表
 async function loadAuditList() {
-    if (!currentUser || userProfile.role !== 'owner' || !supabaseClient) return;
+    if (!currentUser || userProfile.role !== 'owner') return;
     try {
-        const { data: admins } = await supabaseClient
-            .from('profiles')
-            .select('id, nickname, email, created_at')
-            .eq('role', 'admin')
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
+        const session = await getCurrentSession();
+        if (!session) return;
 
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?role=eq.admin&status=eq.pending&order=created_at.desc`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        if (!response.ok) return;
+
+        const admins = await response.json();
         const listEl = document.getElementById('auditList');
         if (!listEl) return;
 
@@ -519,7 +832,7 @@ async function loadAuditList() {
             </div>
         `).join('');
     } catch (e) {
-        showMessage(`加载审核列表失败：${e.message}`, false);
+        console.error('加载审核列表失败:', e);
     }
 }
 
@@ -527,9 +840,30 @@ async function loadAuditList() {
 async function approveAdmin(adminId) {
     if (!confirm('确定批准该管理员？')) return;
     try {
-        await supabaseClient.from('profiles')
-            .update({ status: 'approved' })
-            .eq('id', adminId);
+        const session = await getCurrentSession();
+        if (!session) {
+            showMessage('请先登录', false);
+            return;
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${adminId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session.access_token}`,
+                'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+                status: 'approved'
+            })
+        });
+
+        if (!response.ok) {
+            showMessage('批准失败', false);
+            return;
+        }
+
         showMessage('批准成功', true);
         loadAuditList();
     } catch (e) {
@@ -537,36 +871,25 @@ async function approveAdmin(adminId) {
     }
 }
 
-// 实时订阅
-function setupRealtime() {
-    if (!currentUser || !userProfile || !supabaseClient) return;
-    if (!['worker','admin','owner'].includes(userProfile.role)) return;
-    
-    if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
-    
-    realtimeChannel = supabaseClient.channel('orders')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
-            loadOrders();
-        })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => {
-            loadOrders();
-        })
-        .subscribe();
-}
-
 // 退出登录
 async function handleLogout() {
-    if (supabaseClient) {
-        await supabaseClient.auth.signOut();
+    try {
+        await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${localStorage.getItem('sb-access-token')}`
+            }
+        });
+    } catch (e) {
+        console.error('退出登录请求失败:', e);
+    } finally {
+        localStorage.removeItem('sb-access-token');
+        currentUser = null;
+        userProfile = null;
+        setView('auth');
+        showMessage('已退出登录', true);
     }
-    currentUser = null;
-    userProfile = null;
-    if (realtimeChannel && supabaseClient) {
-        supabaseClient.removeChannel(realtimeChannel);
-        realtimeChannel = null;
-    }
-    setView('auth');
-    showMessage('已退出登录', true);
 }
 
 // 状态映射
@@ -585,43 +908,60 @@ function mapStatus(status) {
 async function autoLogin() {
     console.log('尝试自动登录...');
     
-    if (!supabaseClient) {
-        console.log('Supabase客户端未初始化');
+    const savedToken = localStorage.getItem('sb-access-token');
+    if (!savedToken) {
+        console.log('无保存的令牌');
+        setView('auth');
         return;
     }
     
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) {
-            console.log('无有效会话');
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${savedToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            console.log('令牌无效');
+            localStorage.removeItem('sb-access-token');
             setView('auth');
             return;
         }
 
-        const { data: profile, error: profileError } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+        const user = await response.json();
+        currentUser = user;
+        
+        // 获取用户资料
+        const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=*`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${savedToken}`
+            }
+        });
 
-        if (profileError || !profile) {
-            console.log('获取用户资料失败');
+        if (!profileResponse.ok) {
             setView('auth');
             return;
         }
 
+        const profiles = await profileResponse.json();
+        if (!profiles || profiles.length === 0) {
+            setView('auth');
+            return;
+        }
+
+        const profile = profiles[0];
         if (profile.status !== 'approved') {
-            console.log('账号未审核');
             setView('auth');
             return;
         }
 
-        currentUser = session.user;
         userProfile = profile;
         updateUI(profile);
         setView('app');
-        loadOrders();
-        setupRealtime();
+        loadOrders(savedToken);
         showMessage(`欢迎回来，${profile.nickname}`, true);
     } catch (e) {
         console.error('自动登录异常:', e);
@@ -633,21 +973,6 @@ async function autoLogin() {
 function init() {
     console.log('初始化应用...');
     
-    // 检查Supabase SDK
-    if (typeof window.supabase === 'undefined') {
-        showMessage('系统加载失败：无法连接服务器，请检查网络后刷新', false);
-        return;
-    }
-    
-    // 初始化Supabase客户端
-    try {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase客户端初始化成功');
-    } catch (e) {
-        showMessage('系统初始化失败：' + e.message, false);
-        return;
-    }
-    
     // 获取DOM元素引用
     elements.loginBtn = document.getElementById('loginBtn');
     elements.regBtn = document.getElementById('regBtn');
@@ -657,17 +982,16 @@ function init() {
     elements.showLoginLink = document.getElementById('showLoginLink');
     elements.closeDetailBtn = document.getElementById('closeDetailBtn');
     elements.loadingOverlay = document.getElementById('loadingOverlay');
+    elements.diagnosticPanel = document.getElementById('diagnosticPanel');
+    elements.diagnosticContent = document.getElementById('diagnosticContent');
     
-    // 绑定事件监听器（最稳妥的方式）
+    // 绑定事件监听器
     if (elements.loginBtn) {
         elements.loginBtn.addEventListener('click', function(e) {
             e.preventDefault();
             console.log('登录按钮点击事件触发');
             handleLogin();
         });
-        console.log('登录按钮事件绑定成功');
-    } else {
-        console.error('登录按钮未找到');
     }
     
     if (elements.regBtn) {
@@ -718,6 +1042,15 @@ function init() {
         });
     }
     
+    // 检查配置并显示诊断面板
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('YOUR_SUPABASE')) {
+        showDiagnostic('⚠️ 请先配置Supabase信息！\n\n请在代码顶部替换：\n1. YOUR_SUPABASE_URL\n2. YOUR_SUPABASE_ANON_KEY\n\n配置后可点击"重新检测"按钮测试连接。');
+        elements.diagnosticPanel.style.display = 'block';
+    } else {
+        // 延迟运行诊断，确保页面已加载
+        setTimeout(runDiagnostics, 1000);
+    }
+    
     // 尝试自动登录
     autoLogin();
 }
@@ -729,12 +1062,13 @@ if (document.readyState === 'loading') {
     init();
 }
 
-// 暴露必要的函数到全局作用域（用于onclick）
+// 暴露必要的函数到全局作用域
 window.showOrderDetail = showOrderDetail;
 window.takeOrder = takeOrder;
 window.completeOrder = completeOrder;
 window.deleteOrder = deleteOrder;
 window.approveAdmin = approveAdmin;
+window.runDiagnostics = runDiagnostics;
 </script>
 </body>
 </html>
