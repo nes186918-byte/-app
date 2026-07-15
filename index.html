@@ -95,20 +95,20 @@
 
 <script>
 /* ==========================================
-   🔴 配置区
+   🔴 配置区（完全保留你原来的配置）
    ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
 /* ==========================================
-   全局变量
+   全局变量（完全保留）
    ========================================== */
 window.supabaseClient = null;
 window.currentUser = null;
 window.userProfile = null;
 
 /* ==========================================
-   初始化
+   初始化（完全保留）
    ========================================== */
 function init() {
     if (typeof window.supabase === 'undefined') {
@@ -124,7 +124,7 @@ function init() {
 }
 
 /* ==========================================
-   工具函数
+   工具函数（完全保留）
    ========================================== */
 function showFatalError(msg) {
     const el = document.getElementById('fatalError');
@@ -166,24 +166,65 @@ window.updateUI = function() {
 };
 
 /* ==========================================
-   核心功能（已修复登录逻辑）
+   核心功能（仅修改登录逻辑，其他完全保留）
    ========================================== */
 
-// 自动登录（修复：先查profile，再判断status）
+// 自动登录（仅新增profiles兜底逻辑，其他完全不变）
 window.autoLogin = async function() {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     if (!session) {
         window.setView('auth');
         return;
     }
-    // 关键修复：使用 maybeSingle 避免 RLS 拦截导致报错
-    const { data: profile } = await window.supabaseClient
+    // 查profiles表，没有则自动创建（解决触发器失效问题）
+    let { data: profile } = await window.supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .maybeSingle();
-    
-    if (!profile || profile.status !== 'approved') {
+
+    if (!profile) {
+        const meta = session.user.user_metadata || {};
+        const nickname = meta.nickname || session.user.email.split('@')[0];
+        let role = meta.role || 'player';
+        let status = 'approved';
+
+        // 保留原有店长唯一性校验逻辑
+        if (role === 'owner') {
+            const { data: owners } = await window.supabaseClient
+                .from('profiles')
+                .select('id')
+                .eq('role', 'owner')
+                .eq('status', 'approved');
+            if (owners?.length > 0) {
+                window.setView('auth');
+                return;
+            }
+        } else if (role === 'admin') {
+            status = 'pending'; // 保留原有管理员审核逻辑
+        }
+
+        // 自动创建profiles兜底数据
+        const { data: newProfile, error: insertErr } = await window.supabaseClient
+            .from('profiles')
+            .insert({
+                id: session.user.id,
+                email: session.user.email,
+                nickname: nickname,
+                role: role,
+                status: status
+            })
+            .select()
+            .single();
+
+        if (insertErr || !newProfile) {
+            window.setView('auth');
+            return;
+        }
+        profile = newProfile;
+    }
+
+    if (profile.status !== 'approved') {
         window.setView('auth');
         return;
     }
@@ -194,7 +235,7 @@ window.autoLogin = async function() {
     window.loadOrders();
 };
 
-// 手动登录（修复：先查profile，再判断status）
+// 手动登录（仅新增profiles兜底逻辑，其他完全不变）
 window.handleLogin = async function() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('pass').value.trim();
@@ -209,18 +250,55 @@ window.handleLogin = async function() {
             window.showMessage(`登录失败：${error.message}`, false);
             return;
         }
-        // 关键修复：先查profile，不管status是什么
-        const { data: profile } = await window.supabaseClient
+        // 查profiles表，没有则自动创建（解决触发器失效问题）
+        let { data: profile } = await window.supabaseClient
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
             .maybeSingle();
 
         if (!profile) {
-            window.showMessage('用户资料不存在，请先注册', false);
-            return;
+            const meta = data.user.user_metadata || {};
+            const nickname = meta.nickname || email.split('@')[0];
+            let role = meta.role || 'player';
+            let status = 'approved';
+
+            // 保留原有店长唯一性校验逻辑
+            if (role === 'owner') {
+                const { data: owners } = await window.supabaseClient
+                    .from('profiles')
+                    .select('id')
+                    .eq('role', 'owner')
+                    .eq('status', 'approved');
+                if (owners?.length > 0) {
+                    window.showMessage('店长账号已存在', false);
+                    return;
+                }
+            } else if (role === 'admin') {
+                status = 'pending'; // 保留原有管理员审核逻辑
+            }
+
+            // 自动创建profiles兜底数据
+            const { data: newProfile, error: insertErr } = await window.supabaseClient
+                .from('profiles')
+                .insert({
+                    id: data.user.id,
+                    email: data.user.email,
+                    nickname: nickname,
+                    role: role,
+                    status: status
+                })
+                .select()
+                .single();
+
+            if (insertErr) {
+                window.showMessage(`创建资料失败：${insertErr.message}`, false);
+                return;
+            }
+            profile = newProfile;
         }
-        // 在这里判断审核状态
+
+        // 保留原有审核状态校验逻辑
         if (profile.status !== 'approved') {
             window.showMessage('账号审核中，暂无法登录', false);
             return;
@@ -239,7 +317,7 @@ window.handleLogin = async function() {
     }
 };
 
-// 注册
+// 注册（完全保留你原来的逻辑）
 window.handleRegister = async function() {
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPass').value.trim();
@@ -265,7 +343,6 @@ window.handleRegister = async function() {
             window.showMessage(`注册失败：${error.message}`, false);
             return;
         }
-        // 提示区分角色
         if (role === 'admin') {
             window.showMessage('注册成功！请等待店长审核', true);
         } else {
@@ -280,7 +357,7 @@ window.handleRegister = async function() {
     }
 };
 
-// 加载订单
+// 加载订单（完全保留）
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
     let query = window.supabaseClient.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').order('created_at', { ascending: false });
@@ -310,7 +387,7 @@ window.loadOrders = async function() {
     }).join('');
 };
 
-// 发布订单
+// 发布订单（完全保留）
 window.createOrder = async function() {
     const content = document.getElementById('orderContent').value.trim();
     const gameId = document.getElementById('orderGameId').value.trim();
@@ -331,7 +408,7 @@ window.createOrder = async function() {
     } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
 };
 
-// 接单
+// 接单（完全保留）
 window.takeOrder = async function(orderId) {
     try {
         await window.supabaseClient.from('orders').update({worker_id: window.currentUser.id, status: 'accepted'}).eq('id', orderId).eq('status', 'pending');
@@ -340,7 +417,7 @@ window.takeOrder = async function(orderId) {
     } catch (e) { window.showMessage(`接单失败：${e.message}`, false); }
 };
 
-// 结单
+// 结单（完全保留）
 window.completeOrder = async function(orderId) {
     if (!confirm('确认完成订单？')) return;
     try {
@@ -351,7 +428,7 @@ window.completeOrder = async function(orderId) {
     } catch (e) { window.showMessage(`结单失败：${e.message}`, false); }
 };
 
-// 取消订单
+// 取消订单（完全保留）
 window.deleteOrder = async function(orderId) {
     if (!confirm('确认取消订单？取消后不可恢复')) return;
     try {
@@ -362,7 +439,7 @@ window.deleteOrder = async function(orderId) {
     } catch (e) { window.showMessage(`取消失败：${e.message}`, false); }
 };
 
-// 订单详情
+// 订单详情（完全保留）
 window.showOrderDetail = async function(orderId) {
     try {
         const { data: order } = await window.supabaseClient.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').eq('id', orderId).single();
@@ -384,7 +461,7 @@ window.showOrderDetail = async function(orderId) {
 
 window.closeDetailModal = function() { document.getElementById('detailModal').style.display = 'none'; };
 
-// 加载待审核管理员
+// 加载待审核管理员（完全保留）
 window.loadAuditList = async function() {
     if (window.userProfile.role !== 'owner') return;
     const { data: admins } = await window.supabaseClient.from('profiles').select('*').eq('role', 'admin').eq('status', 'pending');
@@ -399,7 +476,7 @@ window.loadAuditList = async function() {
     `).join('');
 };
 
-// 批准管理员
+// 批准管理员（完全保留）
 window.approveAdmin = async function(adminId) {
     if (!confirm('确定批准该管理员？')) return;
     try {
@@ -409,7 +486,7 @@ window.approveAdmin = async function(adminId) {
     } catch (e) { window.showMessage(`批准失败：${e.message}`, false); }
 };
 
-// 退出
+// 退出（完全保留）
 window.handleLogout = async function() {
     await window.supabaseClient.auth.signOut();
     window.currentUser = null;
@@ -418,12 +495,12 @@ window.handleLogout = async function() {
     window.showMessage('已退出登录', true);
 };
 
-// 切换注册/登录
+// 切换注册/登录（完全保留）
 window.showReg = function() { document.getElementById('regBox').style.display = 'block'; };
 window.showLogin = function() { document.getElementById('regBox').style.display = 'none'; };
 
 /* ==========================================
-   启动
+   启动（完全保留）
    ========================================== */
 init();
 </script>
