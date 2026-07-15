@@ -5,23 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
     <style>
-        body { background: #050510; color: #fff; font-family: sans-serif; padding: 20px; margin: 0; }
-        .box { background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 20px; }
-        h2 { color: #00f0ff; text-align: center; margin-bottom: 15px; }
+        body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
+        .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
+        h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
         input, select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 5px; border: 1px solid #333; background: #111; color: #fff; font-size: 16px; box-sizing: border-box; }
         button { background: #00f0ff; color: #000; font-weight: bold; cursor: pointer; }
         button:active { background: #00c0cc; }
         .link { text-align: center; margin-top: 15px; color: #888; }
         .link span { color: #00f0ff; cursor: pointer; }
-        #msg { text-align: center; margin-top: 15px; padding: 10px; border-radius: 5px; display: none; }
-        #app { display: none; }
-        .order { background: #111; padding: 15px; margin-top: 10px; border-radius: 5px; border-left: 3px solid #00f0ff; }
-        .order-btn { margin-top: 10px; padding: 8px 12px; font-size: 14px; width: auto; margin-right: 10px; }
-        /* 详情弹窗 */
-        #detailModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); padding: 20px; box-sizing: border-box; z-index: 999; }
-        #detailModal .box { margin-top: 50px; max-height: 80vh; overflow-y: auto; }
+        #msg { text-align: center; margin-top: 15px; padding: 10px; border-radius: 5px; display: none; position: fixed; bottom: 20px; left: 20px; right: 20px; z-index: 1000; }
+        #app { display: none; padding-bottom: 80px; }
+        .order { background: #111; padding: 12px; margin-top: 10px; border-radius: 5px; border-left: 3px solid #00f0ff; }
+        .order-btn { margin-top: 8px; padding: 8px 10px; font-size: 13px; width: auto; margin-right: 8px; display: inline-block; }
+        .btn-green { background: #00ff88; color: #000; }
+        .btn-red { background: #ff4757; color: #fff; }
+        .btn-purple { background: #ff00ff; color: #fff; }
+        #detailModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); padding: 15px; box-sizing: border-box; z-index: 999; overflow-y: auto; }
+        #detailModal .box { margin-top: 30px; }
         .detail-line { margin: 10px 0; line-height: 1.5; }
         .detail-label { color: #00f0ff; font-weight: bold; }
+        .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; display: none; justify-content: space-between; align-items: center; box-sizing: border-box; border-top: 1px solid #00f0ff; }
+        .footer-bar button { width: auto; padding: 8px 15px; margin: 0; }
     </style>
 </head>
 <body>
@@ -41,10 +45,10 @@
             <input id="regPass" type="password" placeholder="密码">
             <input id="regName" placeholder="昵称">
             <select id="regRole">
-                <option value="player">玩家（可发单）</option>
-                <option value="worker">打手（可接单）</option>
-                <option value="admin">管理员（可接单/审核）</option>
-                <option value="owner">店长（最高权限）</option>
+                <option value="player">玩家</option>
+                <option value="worker">打手</option>
+                <option value="admin">管理员</option>
+                <option value="owner">店长</option>
             </select>
             <button id="regBtn">注册</button>
             <div class="link">有账号？<span id="showLogin">点此登录</span></div>
@@ -56,29 +60,28 @@
         <div class="box">
             <h2>派单系统</h2>
             <p id="userInfo"></p>
-            <button id="logoutBtn">退出登录</button>
-            
-            <!-- 店长审核面板 -->
-            <div id="ownerPanel" style="display:none; margin-top:15px; border:1px solid #ff00ff; padding:10px;">
-                <h3 style="color:#ff00ff;">待审核管理员</h3>
+            <div id="ownerPanel" style="display:none; margin-top:10px; border:1px solid #ff00ff; padding:10px;">
+                <h3 style="color:#ff00ff; margin: 0 0 10px 0;">待审核管理员</h3>
                 <div id="auditList"></div>
             </div>
-
-            <!-- 发单面板（仅玩家/店长可见） -->
-            <div id="orderPanel" style="display:none; margin-top:15px;">
-                <input id="orderContent" placeholder="订单内容（如：王者荣耀上星耀）">
-                <input id="orderGameId" placeholder="游戏ID（必填，如：123456（微信1区））">
-                <input id="orderPrice" type="number" placeholder="价格（元）">
+            <div id="orderPanel" style="display:none; margin-top:10px;">
+                <input id="orderContent" placeholder="订单内容">
+                <input id="orderGameId" placeholder="游戏ID（必填）">
+                <input id="orderPrice" type="number" placeholder="价格">
                 <button id="orderBtn">发布订单</button>
             </div>
-
-            <!-- 订单列表 -->
-            <h3 style="margin-top:20px; color:#00f0ff;">订单列表</h3>
+            <h3 style="margin:15px 0 10px 0; color:#00f0ff;">订单列表</h3>
             <div id="orderList"></div>
         </div>
     </div>
 
-    <!-- 订单详情弹窗 -->
+    <!-- 底部栏 -->
+    <div class="footer-bar" id="footerBar">
+        <span id="footerUser"></span>
+        <button id="logoutBtn">退出</button>
+    </div>
+
+    <!-- 详情弹窗 -->
     <div id="detailModal">
         <div class="box">
             <h2>订单详情</h2>
@@ -91,267 +94,155 @@
     <div id="msg"></div>
 
 <script defer>
-// ==========================================
-// 🔴 替换为你的 Supabase 配置
-// ==========================================
 const URL = "https://aqotjkekuvkkbqvsxagt.supabase.co";
 const KEY = "sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy";
+let token = "", userId = "", userRole = "";
 
-let token = "";
-let userId = "";
-let userRole = "";
-let takingOrder = false; // 防重复接单
-
-// 提示框
+// ====== 工具函数 ======
 function msg(txt, ok=false) {
     const m = document.getElementById("msg");
-    m.innerText = txt;
-    m.style.background = ok ? "#003300" : "#330000";
-    m.style.display = "block";
+    m.innerText = txt; m.style.background = ok ? "#003300" : "#330000"; m.style.display = "block";
     setTimeout(()=>m.style.display="none", 3000);
 }
+function setView(view) {
+    document.getElementById("auth").style.display = view === 'auth' ? 'block' : 'none';
+    document.getElementById("app").style.display = view === 'app' ? 'block' : 'none';
+    document.getElementById("footerBar").style.display = view === 'app' ? 'flex' : 'none';
+}
 
-// 切换登录/注册
-document.getElementById("showReg").onclick = ()=>{ document.getElementById("regBox").style.display="block"; };
-document.getElementById("showLogin").onclick = ()=>{ document.getElementById("regBox").style.display="none"; };
+// ====== 自动登录 ======
+async function autoLogin() {
+    const storedToken = localStorage.getItem('sb_token');
+    if (!storedToken) return false;
+    try {
+        const res = await fetch(URL + '/auth/v1/user', { headers: { 'Authorization': `Bearer ${storedToken}`, 'apikey': KEY } });
+        const user = await res.json();
+        if (!user.id) return false;
+        token = storedToken; userId = user.id;
+        const profRes = await fetch(URL + `/rest/v1/profiles?id=eq.${userId}&select=*`, { headers: { 'apikey': KEY, 'Authorization': `Bearer ${token}` } });
+        const profile = (await profRes.json())[0];
+        if (!profile || profile.status !== 'approved') return false;
+        userRole = profile.role;
+        document.getElementById("userInfo").innerText = `欢迎: ${profile.nickname}（${profile.role}）`;
+        document.getElementById("footerUser").innerText = profile.nickname;
+        if (userRole === "owner" || userRole === "player") document.getElementById("orderPanel").style.display = "block";
+        if (userRole === "owner") { document.getElementById("ownerPanel").style.display = "block"; loadAudit(); }
+        setView('app'); loadOrders();
+        return true;
+    } catch { return false; }
+}
 
-// 注册
-document.getElementById("regBtn").onclick = async ()=>{
-    const email = document.getElementById("regEmail").value;
-    const pass = document.getElementById("regPass").value;
-    const name = document.getElementById("regName").value;
-    const role = document.getElementById("regRole").value;
-    
-    if(!email || !pass || !name){ msg("请填完所有信息"); return; }
-    
-    // 店长唯一性校验
-    if(role === "owner"){
-        const r = await fetch(URL+"/rest/v1/profiles?select=id&role=eq.owner", {headers:{"apikey":KEY}});
-        const d = await r.json();
-        if(d.length > 0){ msg("店长已存在"); return; }
-    }
+// ====== 登录/注册 ======
+document.getElementById("showReg").onclick = () => document.getElementById("regBox").style.display = "block";
+document.getElementById("showLogin").onclick = () => document.getElementById("regBox").style.display = "none";
 
-    // 注册Auth
-    const res = await fetch(URL+"/auth/v1/signup", {
-        method: "POST",
-        headers: {"Content-Type":"application/json", "apikey":KEY},
-        body: JSON.stringify({email, password:pass, data:{nickname:name, role:role}})
-    });
+document.getElementById("regBtn").onclick = async () => {
+    const email = regEmail.value, pass = regPass.value, name = regName.value, role = regRole.value;
+    if (!email || !pass || !name) return msg("请填完信息");
+    if (role === "owner") { const r = await fetch(URL+"/rest/v1/profiles?select=id&role=eq.owner", {headers:{"apikey":KEY}}); if ((await r.json()).length > 0) return msg("店长已存在"); }
+    const res = await fetch(URL+"/auth/v1/signup", { method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY}, body: JSON.stringify({email, password:pass, data:{nickname:name, role:role}}) });
     const j = await res.json();
-    
-    if(j.user){
-        // 写入资料表
-        await fetch(URL+"/rest/v1/profiles", {
-            method: "POST",
-            headers: {"apikey":KEY, "Authorization":"Bearer "+j.session.access_token, "Content-Type":"application/json"},
-            body: JSON.stringify({id:j.user.id, email, nickname:name, role, status:(role==="admin"?"pending":"approved")})
-        });
-        msg("注册成功，请登录", true);
-        document.getElementById("regBox").style.display="none";
-    } else {
-        msg(j.msg || "注册失败");
-    }
+    if (j.user) {
+        await fetch(URL+"/rest/v1/profiles", { method: "POST", headers: {"apikey":KEY, "Authorization":"Bearer "+j.session.access_token, "Content-Type":"application/json"}, body: JSON.stringify({id:j.user.id, email, nickname:name, role, status:(role==="admin"?"pending":"approved")}) });
+        msg("注册成功", true); document.getElementById("regBox").style.display = "none";
+    } else msg(j.msg || "注册失败");
 };
 
-// 登录
-document.getElementById("loginBtn").onclick = async ()=>{
+document.getElementById("loginBtn").onclick = async () => {
     const email = document.getElementById("email").value;
     const pass = document.getElementById("pass").value;
-    
-    const res = await fetch(URL+"/auth/v1/token?grant_type=password", {
-        method: "POST",
-        headers: {"Content-Type":"application/json", "apikey":KEY},
-        body: JSON.stringify({email, password:pass})
-    });
+    const res = await fetch(URL+"/auth/v1/token?grant_type=password", { method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY}, body: JSON.stringify({email, password:pass}) });
     const j = await res.json();
-    
-    if(j.access_token){
-        token = j.access_token;
-        userId = j.user.id;
-        
-        // 获取用户资料
-        const p = await fetch(URL+"/rest/v1/profiles?id=eq."+userId+"&select=*", {headers:{"apikey":KEY, "Authorization":"Bearer "+token}});
-        const prof = (await p.json())[0];
-        
-        if(prof.status !== "approved"){ msg("账号审核中，请联系店长"); return; }
-        
+    if (j.access_token) {
+        localStorage.setItem('sb_token', j.access_token);
+        token = j.access_token; userId = j.user.id;
+        const prof = (await (await fetch(URL+`/rest/v1/profiles?id=eq.${userId}`, {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json())[0];
+        if (prof.status !== "approved") return msg("审核中");
         userRole = prof.role;
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("app").style.display = "block";
-        document.getElementById("userInfo").innerText = "欢迎: "+prof.nickname+"（"+prof.role+"）";
-        
-        // 权限控制：玩家/店长可见发单面板
-        if(userRole === "owner" || userRole === "player"){
-            document.getElementById("orderPanel").style.display = "block";
-        }
-        // 店长可见审核面板
-        if(userRole === "owner"){
-            document.getElementById("ownerPanel").style.display = "block";
-            loadAudit();
-        }
-        loadOrders();
-    } else {
-        msg("登录失败：账号或密码错误");
-    }
+        document.getElementById("userInfo").innerText = `欢迎: ${prof.nickname}`;
+        document.getElementById("footerUser").innerText = prof.nickname;
+        if (userRole === "owner" || userRole === "player") orderPanel.style.display = "block";
+        if (userRole === "owner") { ownerPanel.style.display = "block"; loadAudit(); }
+        setView('app'); loadOrders();
+    } else msg("登录失败");
 };
 
-// 发布订单（玩家/店长）
-document.getElementById("orderBtn").onclick = async ()=>{
-    const content = document.getElementById("orderContent").value;
-    const gameId = document.getElementById("orderGameId").value;
-    const price = document.getElementById("orderPrice").value;
-    
-    if(!content || !gameId || !price){ msg("请填写订单内容、游戏ID和价格"); return; }
-    
-    const res = await fetch(URL+"/rest/v1/orders", {
-        method: "POST",
-        headers: {"apikey":KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json"},
-        body: JSON.stringify({
-            sender_id: userId,
-            content: content,
-            game_id: gameId,
-            price: price,
-            status: "pending"
-        })
-    });
-    
-    if(res.ok){
-        msg("发布成功！", true);
-        document.getElementById("orderContent").value = "";
-        document.getElementById("orderGameId").value = "";
-        document.getElementById("orderPrice").value = "";
-        loadOrders();
-    } else {
-        msg("发布失败");
-    }
+// ====== 订单逻辑 ======
+document.getElementById("orderBtn").onclick = async () => {
+    const c = orderContent.value, g = orderGameId.value, p = orderPrice.value;
+    if (!c || !g || !p) return msg("请填写完整");
+    await fetch(URL+"/rest/v1/orders", { method: "POST", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({sender_id:userId, content:c, game_id:g, price:p, status:"pending"}) });
+    msg("发布成功", true); orderContent.value = orderGameId.value = orderPrice.value = ""; loadOrders();
 };
 
-// 加载订单列表
-async function loadOrders(){
-    // 注意：这里使用了左连接来获取发单人的昵称
-    const r = await fetch(URL+"/rest/v1/orders?select=*,profiles:sender_id(nickname)&order=created_at.desc", {headers:{"apikey":KEY, "Authorization":"Bearer "+token}});
-    const d = await r.json();
-    let html = "";
-    
-    d.forEach(o=>{
-        // 接单按钮显示条件：店长/管理员/打手 + 订单未接 + 不是自己发的单
-        const canTake = (userRole === "owner" || userRole === "admin" || userRole === "worker") 
-            && o.status === "pending" 
-            && o.worker_id === null 
-            && o.sender_id !== userId;
+async function loadOrders() {
+    const d = await (await fetch(URL+"/rest/v1/orders?select=*,sender:sender_id(nickname),worker:worker_id(nickname)&order=created_at.desc", {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json();
+    orderList.innerHTML = d.map(o => {
+        const isOwner = o.sender_id === userId;
+        const isWorker = o.worker_id === userId;
         
-        html += `<div class="order">
-            <div><b>内容：</b>${o.content}</div>
-            <div><b>价格：</b>¥${o.price}</div>
-            <div><b>游戏ID：</b>${o.game_id || '未填写'}</div>
-            <div><b>状态：</b>${o.status}</div>
-            <div><b>发单人：</b>${o.profiles?.nickname || "未知"}</div>
-            <button class="order-btn" onclick="showDetail('${o.id}')">查看详情</button>
-            ${canTake ? `<button class="order-btn" onclick="takeOrder('${o.id}')">立即接单</button>` : ""}
+        // 按钮逻辑
+        const canTake = ['owner','admin','worker'].includes(userRole) && o.status === 'pending' && !o.worker_id && !isOwner;
+        const canComplete = isWorker && o.status === 'accepted';
+        const canCancel = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
+        
+        return `<div class="order">
+            <div><b>内容:</b> ${o.content}</div>
+            <div><b>游戏ID:</b> ${o.game_id}</div>
+            <div><b>状态:</b> ${o.status}</div>
+            <div><b>发单:</b> ${o.sender?.nickname||'未知'}</div>
+            <div><b>接单:</b> ${o.worker?.nickname||'无'}</div>
+            <button class="order-btn" onclick="showDetail('${o.id}')">详情</button>
+            ${canTake ? `<button class="order-btn" onclick="takeOrder('${o.id}')">接单</button>` : ''}
+            ${canComplete ? `<button class="order-btn btn-green" onclick="completeOrder('${o.id}')">结单</button>` : ''}
+            ${canCancel ? `<button class="order-btn btn-red" onclick="cancelOrder('${o.id}')">取消</button>` : ''}
         </div>`;
-    });
-    
-    document.getElementById("orderList").innerHTML = html || "<div style='text-align:center; color:#888;'>暂无订单</div>";
+    }).join('') || "<div style='text-align:center; color:#888;'>暂无订单</div>";
 }
 
-// 查看订单详情
-window.showDetail = async (id)=>{
-    // 连接 profiles 表两次，分别获取发单人和接单人的昵称
-    const res = await fetch(URL+`/rest/v1/orders?id=eq.${id}&select=*,sender:sender_id(nickname),worker:worker_id(nickname)`, {
-        headers:{"apikey":KEY, "Authorization":"Bearer "+token}
-    });
-    const d = (await res.json())[0];
+window.takeOrder = async (id) => {
+    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({worker_id:userId, status:"accepted"}) });
+    msg("接单成功", true); loadOrders();
+};
+
+window.completeOrder = async (id) => {
+    if (!confirm("确认完成订单？")) return;
+    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({status: "completed"}) });
+    msg("订单已结单", true); loadOrders(); closeDetail();
+};
+
+window.cancelOrder = async (id) => {
+    if (!confirm("确认取消该订单？")) return;
+    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({status: "cancelled"}) });
+    msg("订单已取消", true); loadOrders(); closeDetail();
+};
+
+// ====== 详情/审核/退出 ======
+window.showDetail = async (id) => {
+    const o = (await (await fetch(URL+`/rest/v1/orders?id=eq.${id}&select=*,sender:sender_id(nickname),worker:worker_id(nickname)`, {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json())[0];
+    const isOwner = o.sender_id === userId;
+    const isWorker = o.worker_id === userId;
+    const canCancel = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
     
-    if(!d){ msg("订单不存在"); return; }
-    
-    document.getElementById("detailContent").innerHTML = `
-        <div class="detail-line"><span class="detail-label">订单内容：</span>${d.content}</div>
-        <div class="detail-line"><span class="detail-label">游戏ID：</span>${d.game_id || '未填写'}</div>
-        <div class="detail-line"><span class="detail-label">价格：</span>¥${d.price}</div>
-        <div class="detail-line"><span class="detail-label">发单人：</span>${d.sender?.nickname || "未知"}</div>
-        <div class="detail-line"><span class="detail-label">接单人：</span>${d.worker?.nickname || "暂无"}</div>
-        <div class="detail-line"><span class="detail-label">状态：</span>${d.status}</div>
-        <div class="detail-line"><span class="detail-label">创建时间：</span>${new Date(d.created_at).toLocaleString()}</div>
+    detailContent.innerHTML = `
+        <div class="detail-line"><b>内容:</b> ${o.content}</div>
+        <div class="detail-line"><b>游戏ID:</b> ${o.game_id}</div>
+        <div class="detail-line"><b>价格:</b> ¥${o.price}</div>
+        <div class="detail-line"><b>状态:</b> ${o.status}</div>
+        <div class="detail-line"><b>发单:</b> ${o.sender?.nickname||'未知'}</div>
+        <div class="detail-line"><b>接单:</b> ${o.worker?.nickname||'无'}</div>
+        ${canCancel ? `<button class="order-btn btn-red" onclick="cancelOrder('${o.id}')" style="margin-top:15px;">取消订单</button>` : ''}
     `;
-    document.getElementById("detailModal").style.display = "block";
-}
-
-// 关闭详情弹窗
-window.closeDetail = ()=>{
-    document.getElementById("detailModal").style.display = "none";
-}
-
-// 接单（仅店长/管理员/打手可操作）
-window.takeOrder = async (id)=>{
-    if(userRole === "player"){ msg("玩家不能接单哦~"); return; }
-    if(takingOrder) return; // 防重复点击
-    takingOrder = true;
-    
-    try{
-        // 先校验订单状态（防止并发接单）
-        const check = await fetch(URL+`/rest/v1/orders?id=eq.${id}&select=status,worker_id,sender_id`, {
-            headers:{"apikey":KEY, "Authorization":"Bearer "+token}
-        });
-        const order = (await check.json())[0];
-        
-        if(!order){ msg("订单不存在"); return; }
-        if(order.status !== "pending"){ msg("订单已被接或已完成"); return; }
-        if(order.worker_id !== null){ msg("手慢了，订单已被接"); return; }
-        if(order.sender_id === userId){ msg("不能接自己发的单哦~"); return; }
-        
-        // 执行接单
-        const res = await fetch(URL+`/rest/v1/orders?id=eq.${id}`, {
-            method: "PATCH",
-            headers: {"apikey":KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json"},
-            body: JSON.stringify({
-                worker_id: userId,
-                status: "accepted"
-            })
-        });
-        
-        if(res.ok){
-            msg("接单成功！赶紧联系玩家吧~", true);
-            loadOrders();
-            // 如果详情弹窗开着，刷新详情
-            if(document.getElementById("detailModal").style.display === "block"){
-                showDetail(id);
-            }
-        } else {
-            msg("接单失败，请重试");
-        }
-    }catch(e){
-        msg("接单出错：" + e.message);
-    }finally{
-        takingOrder = false;
-    }
+    detailModal.style.display = "block";
 };
+window.closeDetail = () => detailModal.style.display = "none";
 
-// 加载待审核管理员（店长专用）
-async function loadAudit(){
-    const r = await fetch(URL+"/rest/v1/profiles?role=eq.admin&status=eq.pending", {headers:{"apikey":KEY, "Authorization":"Bearer "+token}});
-    const d = await r.json();
-    let html = "";
-    d.forEach(u=>{
-        html += `<div class="order">${u.nickname}（${u.email}）<button class="order-btn" onclick="approve('${u.id}')">批准</button></div>`;
-    });
-    document.getElementById("auditList").innerHTML = html || "<div style='color:#888;'>暂无待审核管理员</div>";
-}
+async function loadAudit() { const d = await (await fetch(URL+"/rest/v1/profiles?role=eq.admin&status=eq.pending", {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json(); auditList.innerHTML = d.map(u => `<div class="order">${u.nickname} <button class="order-btn btn-purple" onclick="approve('${u.id}')">批准</button></div>`).join('') || "无"; }
+window.approve = async (id) => { await fetch(URL+`/rest/v1/profiles?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({status:"approved"}) }); msg("已批准", true); loadAudit(); };
+document.getElementById("logoutBtn").onclick = () => { localStorage.removeItem('sb_token'); location.reload(); };
 
-// 批准管理员（店长专用）
-window.approve = async (id)=>{
-    await fetch(URL+"/rest/v1/profiles?id=eq."+id, {
-        method: "PATCH",
-        headers: {"apikey":KEY, "Authorization":"Bearer "+token, "Content-Type":"application/json"},
-        body: JSON.stringify({status:"approved"})
-    });
-    msg("批准成功！", true);
-    loadAudit();
-};
-
-// 退出登录
-document.getElementById("logoutBtn").onclick = ()=>{
-    location.reload();
-};
+// ====== 页面加载入口 ======
+window.onload = () => { if (!autoLogin()) setView('auth'); };
 </script>
 </body>
 </html>
