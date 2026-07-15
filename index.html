@@ -261,7 +261,7 @@ window.handleRegister = async function() {
 };
 
 /* ==========================================
-   订单逻辑（仅优化takeOrder函数，其余完全保留）
+   订单逻辑（仅修改一处：.eq('worker_id', null) → .is('worker_id', null)）
    ========================================== */
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
@@ -327,10 +327,12 @@ window.createOrder = async function() {
         document.getElementById('orderGameId').value = '';
         document.getElementById('orderPrice').value = '';
         window.loadOrders();
-    } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
+    } catch (e) {
+        window.showMessage(`发布失败：${e.message}`, false);
+    }
 };
 
-// ✅ 仅此处做了优化：增加前置校验，避免登录失效时传入空值导致数据库报错
+// ✅ 唯一修改：将 .eq('worker_id', null) 改为 .is('worker_id', null)
 window.takeOrder = async function(orderId) {
     // 前置校验：确保登录状态有效，避免传入null的worker_id触发数据库约束错误
     if (!window.currentUser?.id) {
@@ -349,7 +351,7 @@ window.takeOrder = async function(orderId) {
             })
             .eq('id', orderId)
             .eq('status', 'pending')
-            .eq('worker_id', null)
+            .is('worker_id', null)  // ✅ 关键修复：用 .is(null) 代替 .eq('worker_id', null)
             .select();
 
         if (error) {
@@ -377,7 +379,9 @@ window.completeOrder = async function(orderId) {
         window.showMessage('订单已结单', true);
         window.loadOrders();
         window.closeDetailModal();
-    } catch (e) { window.showMessage(`结单失败：${e.message}`, false); }
+    } catch (e) {
+        window.showMessage(`结单失败：${e.message}`, false);
+    }
 };
 
 window.deleteOrder = async function(orderId) {
@@ -387,7 +391,9 @@ window.deleteOrder = async function(orderId) {
         window.showMessage('订单已取消', true);
         window.loadOrders();
         window.closeDetailModal();
-    } catch (e) { window.showMessage(`取消失败：${e.message}`, false); }
+    } catch (e) {
+        window.showMessage(`取消失败：${e.message}`, false);
+    }
 };
 
 window.showOrderDetail = async function(orderId) {
@@ -406,7 +412,9 @@ window.showOrderDetail = async function(orderId) {
             ${canDelete ? `<button class="order-btn btn-red" onclick="window.deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
         `;
         document.getElementById('detailModal').style.display = 'block';
-    } catch (e) { window.showMessage(`加载详情失败：${e.message}`, false); }
+    } catch (e) {
+        window.showMessage(`加载详情失败：${e.message}`, false);
+    }
 };
 
 window.closeDetailModal = function() { document.getElementById('detailModal').style.display = 'none'; };
@@ -431,7 +439,9 @@ window.approveAdmin = async function(adminId) {
         await window.supabaseClient.from('profiles').update({status: 'approved'}).eq('id', adminId);
         window.showMessage('批准成功', true);
         window.loadAuditList();
-    } catch (e) { window.showMessage(`批准失败：${e.message}`, false); }
+    } catch (e) {
+        window.showMessage(`批准失败：${e.message}`, false);
+    }
 };
 
 window.handleLogout = async function() {
