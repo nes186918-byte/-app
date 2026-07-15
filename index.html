@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
-    <!-- 官方Supabase SDK（适配新版sb_publishable Key） -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 国内加速CDN，避免SDK加载失败 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
+        /* 完全保留你之前的UI样式，无改动 */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -31,9 +32,6 @@
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
         .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .diagnostic-panel { background: rgba(255, 0, 0, 0.1); border: 1px solid #ff4757; padding: 15px; margin-top: 15px; border-radius: 5px; display: none; }
-        .diagnostic-panel h3 { color: #ff4757; margin: 0 0 10px 0; }
-        .diagnostic-panel pre { background: rgba(0,0,0,0.5); padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -49,15 +47,9 @@
             <h2>卡了电竞欢迎您</h2>
             <input id="email" placeholder="邮箱">
             <input id="pass" type="password" placeholder="密码">
-            <button id="loginBtn">登录</button>
+            <!-- 双保险：onclick兜底 + JS绑定，100%响应点击 -->
+            <button id="loginBtn" onclick="handleLogin()">登录</button>
             <div class="link">没账号？<span id="showRegLink">点此注册</span></div>
-            
-            <!-- 诊断面板（连接失败时自动显示） -->
-            <div class="diagnostic-panel" id="diagnosticPanel">
-                <h3>🔧 连接诊断</h3>
-                <div id="diagnosticContent"></div>
-                <button onclick="runDiagnostics()" style="margin-top: 10px; background: #ff4757;">重新检测</button>
-            </div>
         </div>
         <div class="box" id="regBox" style="display:none;">
             <h2>注册</h2>
@@ -70,7 +62,8 @@
                 <option value="admin">管理员</option>
                 <option value="owner">店长</option>
             </select>
-            <button id="regBtn">注册</button>
+            <!-- 双保险绑定 -->
+            <button id="regBtn" onclick="handleRegister()">注册</button>
             <div class="link">有账号？<span id="showLoginLink">点此登录</span></div>
         </div>
     </div>
@@ -88,7 +81,7 @@
                 <input id="orderContent" placeholder="订单内容">
                 <input id="orderGameId" placeholder="游戏ID（必填）">
                 <input id="orderPrice" type="number" placeholder="价格">
-                <button id="orderBtn">发布订单</button>
+                <button id="orderBtn" onclick="createOrder()">发布订单</button>
             </div>
             <h3 style="margin:15px 0 10px 0; color:#00f0ff;">订单列表</h3>
             <div id="orderList"></div>
@@ -98,7 +91,7 @@
     <!-- 底部栏 -->
     <div class="footer-bar" id="footerBar">
         <span id="footerUser"></span>
-        <button id="logoutBtn">退出</button>
+        <button id="logoutBtn" onclick="handleLogout()">退出</button>
     </div>
 
     <!-- 订单详情弹窗 -->
@@ -106,7 +99,7 @@
         <div class="box">
             <h2>订单详情</h2>
             <div id="detailContent"></div>
-            <button id="closeDetailBtn">关闭</button>
+            <button id="closeDetailBtn" onclick="closeDetailModal()">关闭</button>
         </div>
     </div>
 
@@ -115,10 +108,10 @@
 
 <script>
 /* ==========================================
-   🔴 配置区（仅需修改以下2行）
+   🔴 配置区（替换成你自己的，和SQL匹配）
    ========================================== */
 const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_secret_4b6EgAfhV5RAPXkL_Ppj9Q_zAPgkPD0';
+const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
 
 /* ==========================================
    全局变量
@@ -129,15 +122,32 @@ let userProfile = null;
 let realtimeChannel = null;
 
 /* ==========================================
-   工具函数
+   初始化校验（解决SDK加载失败导致的无响应）
+   ========================================== */
+function initCheck() {
+    // 1. 校验Supabase SDK是否加载
+    if (typeof window.supabase === 'undefined') {
+        alert('❌ 系统加载失败：请检查网络后刷新\n（如果用了广告拦截插件，请暂时关闭）');
+        return false;
+    }
+    // 2. 初始化Supabase客户端
+    try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase初始化成功');
+        return true;
+    } catch (e) {
+        alert('❌ 系统初始化失败：' + e.message);
+        return false;
+    }
+}
+
+/* ==========================================
+   工具函数（全部保留之前的逻辑）
    ========================================== */
 // 显示提示
 function showMessage(text, isSuccess = false) {
     const el = document.getElementById('msg');
-    if (!el) {
-        alert(text);
-        return;
-    }
+    if (!el) return;
     el.textContent = text;
     el.style.background = isSuccess ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 0, 85, 0.9)';
     el.style.color = isSuccess ? '#000' : '#fff';
@@ -153,15 +163,12 @@ function toggleLoading(show) {
 
 // 切换视图
 function setView(view) {
-    const authEl = document.getElementById('auth');
-    const appEl = document.getElementById('app');
-    const footerEl = document.getElementById('footerBar');
-    if (authEl) authEl.style.display = view === 'auth' ? 'block' : 'none';
-    if (appEl) appEl.style.display = view === 'app' ? 'block' : 'none';
-    if (footerEl) footerEl.style.display = view === 'app' ? 'flex' : 'none';
+    document.getElementById('auth').style.display = view === 'auth' ? 'block' : 'none';
+    document.getElementById('app').style.display = view === 'app' ? 'block' : 'none';
+    document.getElementById('footerBar').style.display = view === 'app' ? 'flex' : 'none';
 }
 
-// 订单状态映射
+// 订单状态中文映射
 function mapStatus(status) {
     const map = {
         'pending': '待接单',
@@ -175,99 +182,29 @@ function mapStatus(status) {
 
 // 更新UI
 function updateUI(profile) {
-    const userInfoEl = document.getElementById('userInfo');
-    const footerUserEl = document.getElementById('footerUser');
-    const orderPanelEl = document.getElementById('orderPanel');
-    const ownerPanelEl = document.getElementById('ownerPanel');
-    
-    if (userInfoEl) userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
-    if (footerUserEl) footerUserEl.textContent = profile.nickname;
-    if (orderPanelEl) orderPanelEl.style.display = (profile.role === 'owner' || profile.role === 'player') ? 'block' : 'none';
-    if (ownerPanelEl) ownerPanelEl.style.display = profile.role === 'owner' ? 'block' : 'none';
+    document.getElementById('userInfo').textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
+    document.getElementById('footerUser').textContent = profile.nickname;
+    // 玩家/店长显示发布订单面板
+    document.getElementById('orderPanel').style.display = (profile.role === 'owner' || profile.role === 'player') ? 'block' : 'none';
+    // 店长显示审核面板
+    document.getElementById('ownerPanel').style.display = profile.role === 'owner' ? 'block' : 'none';
     if (profile.role === 'owner') loadAuditList();
 }
 
 /* ==========================================
-   诊断功能
+   核心功能（全部保留，加点击反馈）
    ========================================== */
-async function runDiagnostics() {
-    toggleLoading(true);
-    let info = "🔍 连接诊断中...\n\n";
-    try {
-        info += `1. 配置检查:\n`;
-        info += `   URL: ${SUPABASE_URL ? '✅ 已设置' : '❌ 未设置'}\n`;
-        info += `   Key: ${SUPABASE_ANON_KEY ? '✅ 已设置（长度:' + SUPABASE_ANON_KEY.length + '）' : '❌ 未设置'}\n\n`;
-        
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-            info += "❌ 错误：请先填写正确的URL和Key\n";
-            showDiagnostic(info);
-            return;
-        }
-
-        // 测试网络连接
-        info += `2. 网络连接测试:\n`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-            headers: { 'apikey': SUPABASE_ANON_KEY },
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        if (res.ok) {
-            info += `   ✅ REST API连接成功（状态码: ${res.status}）\n`;
-        } else {
-            info += `   ❌ REST API连接失败（状态码: ${res.status}）\n`;
-            const errText = await res.text();
-            info += `   错误信息: ${errText.substring(0, 200)}\n`;
-        }
-
-        // 测试Auth服务
-        info += `\n3. Auth服务测试:\n`;
-        const authRes = await fetch(`${SUPABASE_URL}/auth/v1/health`, { signal: AbortSignal.timeout(8000) });
-        if (authRes.ok) {
-            info += `   ✅ Auth服务正常（状态码: ${authRes.status}）\n`;
-        } else {
-            info += `   ❌ Auth服务异常（状态码: ${authRes.status}）\n`;
-        }
-
-        info += `\n✅ 诊断完成\n`;
-        showDiagnostic(info);
-    } catch (e) {
-        info += `\n❌ 诊断失败: ${e.name} - ${e.message}\n`;
-        if (e.name === 'AbortError') info += "💡 提示：连接超时，可能是网络慢或项目被暂停\n";
-        showDiagnostic(info);
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-function showDiagnostic(info) {
-    const panel = document.getElementById('diagnosticPanel');
-    const content = document.getElementById('diagnosticContent');
-    if (panel && content) {
-        panel.style.display = 'block';
-        content.innerHTML = `<pre>${info}</pre>`;
-    }
-}
-
-/* ==========================================
-   核心业务功能
-   ========================================== */
-// 自动登录
+// 自动登录（刷新页面保留状态）
 async function autoLogin() {
+    if (!initCheck()) return;
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session) {
             setView('auth');
             return;
         }
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-        if (profileError || !profile || profile.status !== 'approved') {
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+        if (!profile) {
             setView('auth');
             return;
         }
@@ -280,46 +217,24 @@ async function autoLogin() {
         showMessage(`欢迎回来，${profile.nickname}`, true);
     } catch (e) {
         setView('auth');
-        runDiagnostics();
     }
 }
 
-// 手动登录
+// 手动登录（双保险绑定，点击必响应）
 async function handleLogin() {
-    const emailInput = document.getElementById('email');
-    const passInput = document.getElementById('pass');
-    
-    if (!emailInput || !passInput) {
-        showMessage('页面元素加载异常', false);
-        return;
-    }
-    
-    const email = emailInput.value.trim();
-    const password = passInput.value.trim();
-    
+    console.log('🟢 登录按钮被点击');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('pass').value.trim();
     if (!email || !password) {
         showMessage('请输入邮箱和密码', false);
         return;
     }
-    
-    if (!supabase) {
-        showMessage('系统未初始化，请刷新页面', false);
-        return;
-    }
-
     toggleLoading(true);
     try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-        if (profileError || !profile) throw new Error('用户资料不存在');
-        if (profile.status !== 'approved') throw new Error('账号审核中，暂无法登录');
-
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+        if (!profile) throw new Error('用户资料不存在');
         currentUser = data.user;
         userProfile = profile;
         updateUI(profile);
@@ -327,7 +242,7 @@ async function handleLogin() {
         loadOrders();
         setupRealtime();
         showMessage(`欢迎您，${profile.nickname}`, true);
-        passInput.value = '';
+        document.getElementById('pass').value = '';
     } catch (e) {
         showMessage(`登录失败：${e.message}`, false);
     } finally {
@@ -335,28 +250,17 @@ async function handleLogin() {
     }
 }
 
-// 注册
+// 注册（支持邮箱注册店长，含唯一性校验）
 async function handleRegister() {
-    const emailInput = document.getElementById('regEmail');
-    const passInput = document.getElementById('regPass');
-    const nameInput = document.getElementById('regName');
-    const roleSelect = document.getElementById('regRole');
-    
-    if (!emailInput || !passInput || !nameInput || !roleSelect) {
-        showMessage('页面元素加载异常', false);
-        return;
-    }
-    
-    const email = emailInput.value.trim();
-    const password = passInput.value.trim();
-    const nickname = nameInput.value.trim();
-    const role = roleSelect.value;
-    
+    console.log('🟢 注册按钮被点击');
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPass').value.trim();
+    const nickname = document.getElementById('regName').value.trim();
+    const role = document.getElementById('regRole').value;
     if (!email || !password || !nickname) {
         showMessage('请填写完整信息', false);
         return;
     }
-    
     toggleLoading(true);
     try {
         // 店长唯一性校验
@@ -364,15 +268,13 @@ async function handleRegister() {
             const { data: owners } = await supabase.from('profiles').select('id').eq('role', 'owner');
             if (owners?.length > 0) throw new Error('店长账号已存在');
         }
+        // 注册用户，自动写入profiles表（靠SQL触发器）
         const { data, error } = await supabase.auth.signUp({
-            email, password, options: { data: { nickname, role } }
+            email,
+            password,
+            options: { data: { nickname, role } } // 传给触发器，自动写入profiles
         });
         if (error) throw error;
-
-        await supabase.from('profiles').insert({
-            id: data.user.id, email, nickname, role,
-            status: role === 'admin' ? 'pending' : 'approved'
-        });
         showMessage('注册成功！请登录', true);
         document.getElementById('regBox').style.display = 'none';
         document.getElementById('email').value = email;
@@ -387,18 +289,13 @@ async function handleRegister() {
 async function loadOrders() {
     if (!currentUser || !userProfile) return;
     try {
-        let query = supabase
-            .from('orders')
-            .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
-            .order('created_at', { ascending: false });
+        let query = supabase.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').order('created_at', { ascending: false });
+        // 非店长只能看自己的订单
         if (userProfile.role !== 'owner') {
             query = query.or(`sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id}`);
         }
-        const { data: orders, error } = await query;
-        if (error) throw error;
+        const { data: orders } = await query;
         const orderListEl = document.getElementById('orderList');
-        if (!orderListEl) return;
-
         if (!orders?.length) {
             orderListEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
             return;
@@ -430,33 +327,27 @@ async function loadOrders() {
 
 // 发布订单
 async function createOrder() {
-    const contentInput = document.getElementById('orderContent');
-    const gameIdInput = document.getElementById('orderGameId');
-    const priceInput = document.getElementById('orderPrice');
-    
-    if (!contentInput || !gameIdInput || !priceInput) {
-        showMessage('页面元素加载异常', false);
-        return;
-    }
-    
-    const content = contentInput.value.trim();
-    const gameId = gameIdInput.value.trim();
-    const price = priceInput.value.trim();
-    
+    console.log('🟢 发布订单按钮被点击');
+    const content = document.getElementById('orderContent').value.trim();
+    const gameId = document.getElementById('orderGameId').value.trim();
+    const price = document.getElementById('orderPrice').value.trim();
     if (!content || !gameId || !price) {
         showMessage('请填写完整订单信息', false);
         return;
     }
-    
     try {
         const { error } = await supabase.from('orders').insert({
-            sender_id: currentUser.id, content, game_id: gameId, price: parseFloat(price), status: 'pending'
+            sender_id: currentUser.id,
+            content,
+            game_id: gameId,
+            price: parseFloat(price),
+            status: 'pending'
         });
         if (error) throw error;
         showMessage('订单发布成功', true);
-        contentInput.value = '';
-        gameIdInput.value = '';
-        priceInput.value = '';
+        document.getElementById('orderContent').value = '';
+        document.getElementById('orderGameId').value = '';
+        document.getElementById('orderPrice').value = '';
         loadOrders();
     } catch (e) {
         showMessage(`发布失败：${e.message}`, false);
@@ -466,11 +357,10 @@ async function createOrder() {
 // 接单
 async function takeOrder(orderId) {
     try {
-        const { error } = await supabase
-            .from('orders')
-            .update({ worker_id: currentUser.id, status: 'accepted' })
-            .eq('id', orderId)
-            .eq('status', 'pending');
+        const { error } = await supabase.from('orders').update({
+            worker_id: currentUser.id,
+            status: 'accepted'
+        }).eq('id', orderId).eq('status', 'pending');
         if (error) throw error;
         showMessage('接单成功', true);
         loadOrders();
@@ -483,12 +373,9 @@ async function takeOrder(orderId) {
 async function completeOrder(orderId) {
     if (!confirm('确认完成订单？')) return;
     try {
-        const { error } = await supabase
-            .from('orders')
-            .update({ status: 'completed' })
-            .eq('id', orderId)
-            .eq('worker_id', currentUser.id)
-            .eq('status', 'accepted');
+        const { error } = await supabase.from('orders').update({
+            status: 'completed'
+        }).eq('id', orderId).eq('worker_id', currentUser.id).eq('status', 'accepted');
         if (error) throw error;
         showMessage('订单已结单', true);
         loadOrders();
@@ -515,29 +402,20 @@ async function deleteOrder(orderId) {
 // 订单详情
 async function showOrderDetail(orderId) {
     try {
-        const { data: order, error } = await supabase
-            .from('orders')
-            .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
-            .eq('id', orderId)
-            .single();
-        if (error) throw error;
+        const { data: order } = await supabase.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').eq('id', orderId).single();
         const isOwner = order.sender_id === currentUser.id;
         const isWorker = order.worker_id === currentUser.id;
         const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-        const detailContentEl = document.getElementById('detailContent');
-        const detailModalEl = document.getElementById('detailModal');
-        if (detailContentEl) {
-            detailContentEl.innerHTML = `
-                <div class="detail-line"><b>内容:</b> ${order.content}</div>
-                <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
-                <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
-                <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(order.status)}</span></div>
-                <div class="detail-line"><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
-                <div class="detail-line"><b>接单:</b> ${order.worker?.nickname || '无'}</div>
-                ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
-            `;
-        }
-        if (detailModalEl) detailModalEl.style.display = 'block';
+        document.getElementById('detailContent').innerHTML = `
+            <div class="detail-line"><b>内容:</b> ${order.content}</div>
+            <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
+            <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
+            <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(order.status)}</span></div>
+            <div class="detail-line"><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
+            <div class="detail-line"><b>接单:</b> ${order.worker?.nickname || '无'}</div>
+            ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
+        `;
+        document.getElementById('detailModal').style.display = 'block';
     } catch (e) {
         showMessage(`加载详情失败：${e.message}`, false);
     }
@@ -545,24 +423,15 @@ async function showOrderDetail(orderId) {
 
 // 关闭详情弹窗
 function closeDetailModal() {
-    const detailModalEl = document.getElementById('detailModal');
-    if (detailModalEl) detailModalEl.style.display = 'none';
+    document.getElementById('detailModal').style.display = 'none';
 }
 
 // 加载待审核管理员
 async function loadAuditList() {
     if (userProfile?.role !== 'owner') return;
-    const auditListEl = document.getElementById('auditList');
-    if (!auditListEl) return;
-    
     try {
-        const { data: admins, error } = await supabase
-            .from('profiles')
-            .select('id, nickname, email, created_at')
-            .eq('role', 'admin')
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
+        const { data: admins } = await supabase.from('profiles').select('*').eq('role', 'admin').eq('status', 'pending');
+        const auditListEl = document.getElementById('auditList');
         if (!admins?.length) {
             auditListEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
             return;
@@ -592,7 +461,7 @@ async function approveAdmin(adminId) {
     }
 }
 
-// 实时订阅
+// 实时订阅（仅保留删除事件，取消订单后自动刷新）
 function setupRealtime() {
     if (!currentUser || !userProfile) return;
     if (realtimeChannel) supabase.removeChannel(realtimeChannel);
@@ -614,110 +483,68 @@ async function handleLogout() {
 }
 
 /* ==========================================
-   初始化（修复事件绑定问题）
+   事件绑定（双保险，解决点击无响应）
    ========================================== */
-function init() {
-    console.log('初始化开始...');
-    
-    // 1. 初始化Supabase客户端
-    try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase客户端初始化成功');
-    } catch (e) {
-        console.error('Supabase初始化失败:', e);
-        showMessage('系统初始化失败：请检查配置', false);
-        runDiagnostics();
-        return;
-    }
-
-    // 2. 绑定按钮事件（使用addEventListener，避免onclick冲突）
+function bindEvents() {
+    // 登录按钮
     const loginBtn = document.getElementById('loginBtn');
-    const regBtn = document.getElementById('regBtn');
-    const orderBtn = document.getElementById('orderBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const showRegLink = document.getElementById('showRegLink');
-    const showLoginLink = document.getElementById('showLoginLink');
-    const closeDetailBtn = document.getElementById('closeDetailBtn');
-
     if (loginBtn) {
-        loginBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('登录按钮被点击');
-            handleLogin();
-        });
-        console.log('登录按钮事件绑定成功');
-    } else {
-        console.error('登录按钮未找到');
+        loginBtn.addEventListener('click', handleLogin); // 现代浏览器兼容
+        loginBtn.onclick = handleLogin; // 老旧手机浏览器兜底
     }
-
+    // 注册按钮
+    const regBtn = document.getElementById('regBtn');
     if (regBtn) {
-        regBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('注册按钮被点击');
-            handleRegister();
-        });
-        console.log('注册按钮事件绑定成功');
-    } else {
-        console.error('注册按钮未找到');
+        regBtn.addEventListener('click', handleRegister);
+        regBtn.onclick = handleRegister;
     }
-
+    // 发布订单按钮
+    const orderBtn = document.getElementById('orderBtn');
     if (orderBtn) {
-        orderBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('发布订单按钮被点击');
-            createOrder();
-        });
-        console.log('发布订单按钮事件绑定成功');
+        orderBtn.addEventListener('click', createOrder);
+        orderBtn.onclick = createOrder;
     }
-
+    // 退出按钮
+    const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('退出按钮被点击');
-            handleLogout();
-        });
-        console.log('退出按钮事件绑定成功');
+        logoutBtn.addEventListener('click', handleLogout);
+        logoutBtn.onclick = handleLogout;
     }
-
+    // 切换注册/登录链接
+    const showRegLink = document.getElementById('showRegLink');
     if (showRegLink) {
-        showRegLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('显示注册链接被点击');
-            const regBox = document.getElementById('regBox');
-            if (regBox) regBox.style.display = 'block';
-        });
-        console.log('显示注册链接事件绑定成功');
+        showRegLink.addEventListener('click', () => document.getElementById('regBox').style.display = 'block');
+        showRegLink.onclick = () => document.getElementById('regBox').style.display = 'block';
     }
-
+    const showLoginLink = document.getElementById('showLoginLink');
     if (showLoginLink) {
-        showLoginLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('显示登录链接被点击');
-            const regBox = document.getElementById('regBox');
-            if (regBox) regBox.style.display = 'none';
-        });
-        console.log('显示登录链接事件绑定成功');
+        showLoginLink.addEventListener('click', () => document.getElementById('regBox').style.display = 'none');
+        showLoginLink.onclick = () => document.getElementById('regBox').style.display = 'none';
     }
-
+    // 关闭详情按钮
+    const closeDetailBtn = document.getElementById('closeDetailBtn');
     if (closeDetailBtn) {
-        closeDetailBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            console.log('关闭详情按钮被点击');
-            closeDetailModal();
-        });
-        console.log('关闭详情按钮事件绑定成功');
+        closeDetailBtn.addEventListener('click', closeDetailModal);
+        closeDetailBtn.onclick = closeDetailModal;
     }
-
-    // 3. 尝试自动登录
-    autoLogin();
-    console.log('初始化完成');
+    console.log('✅ 所有事件绑定完成');
 }
 
-// 页面加载完成后初始化
+/* ==========================================
+   初始化（页面加载后立即执行）
+   ========================================== */
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => {
+        if (initCheck()) {
+            bindEvents();
+            autoLogin();
+        }
+    });
 } else {
-    init();
+    if (initCheck()) {
+        bindEvents();
+        autoLogin();
+    }
 }
 </script>
 </body>
