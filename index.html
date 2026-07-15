@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
-    <!-- 更换为国内稳定CDN，解决SDK加载失败问题 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <!-- 使用国内CDN，增加完整性校验 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <style>
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
@@ -28,9 +28,17 @@
         .detail-label { color: #00f0ff; font-weight: bold; }
         .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; display: none; justify-content: space-between; align-items: center; box-sizing: border-box; border-top: 1px solid #00f0ff; }
         .footer-bar button { width: auto; padding: 8px 15px; margin: 0; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
+        .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
 
     <!-- 登录/注册页 -->
     <div id="auth">
@@ -38,8 +46,8 @@
             <h2>卡了电竞欢迎您</h2>
             <input id="email" placeholder="邮箱">
             <input id="pass" type="password" placeholder="密码">
-            <button id="loginBtn" onclick="App.login()">登录</button>
-            <div class="link">没账号？<span onclick="App.showRegister()">点此注册</span></div>
+            <button id="loginBtn">登录</button>
+            <div class="link">没账号？<span id="showRegLink">点此注册</span></div>
         </div>
         <div class="box" id="regBox" style="display:none;">
             <h2>注册</h2>
@@ -52,8 +60,8 @@
                 <option value="admin">管理员</option>
                 <option value="owner">店长</option>
             </select>
-            <button id="regBtn" onclick="App.register()">注册</button>
-            <div class="link">有账号？<span onclick="App.showLogin()">点此登录</span></div>
+            <button id="regBtn">注册</button>
+            <div class="link">有账号？<span id="showLoginLink">点此登录</span></div>
         </div>
     </div>
 
@@ -70,7 +78,7 @@
                 <input id="orderContent" placeholder="订单内容">
                 <input id="orderGameId" placeholder="游戏ID（必填）">
                 <input id="orderPrice" type="number" placeholder="价格">
-                <button id="orderBtn" onclick="App.createOrder()">发布订单</button>
+                <button id="orderBtn">发布订单</button>
             </div>
             <h3 style="margin:15px 0 10px 0; color:#00f0ff;">订单列表</h3>
             <div id="orderList"></div>
@@ -80,7 +88,7 @@
     <!-- 底部栏 -->
     <div class="footer-bar" id="footerBar">
         <span id="footerUser"></span>
-        <button id="logoutBtn" onclick="App.logout()">退出</button>
+        <button id="logoutBtn">退出</button>
     </div>
 
     <!-- 订单详情弹窗 -->
@@ -88,7 +96,7 @@
         <div class="box">
             <h2>订单详情</h2>
             <div id="detailContent"></div>
-            <button onclick="App.closeDetail()" style="margin-top:15px;">关闭</button>
+            <button id="closeDetailBtn" style="margin-top:15px;">关闭</button>
         </div>
     </div>
 
@@ -102,525 +110,631 @@
 const SUPABASE_URL = 'https://aqotjkekuvkkbqvsxagt.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy';
 
-// 【关键修复1】检查Supabase SDK是否加载成功
-if (typeof window.supabase === 'undefined') {
-    document.addEventListener('DOMContentLoaded', () => {
-        const msgEl = document.getElementById('msg');
-        msgEl.textContent = '系统加载失败，请检查网络后刷新页面';
-        msgEl.style.display = 'block';
-        msgEl.style.background = 'rgba(255, 0, 85, 0.9)';
-    });
-    throw new Error('Supabase SDK加载失败，请检查网络');
-}
+// 全局变量
+let supabaseClient = null;
+let currentUser = null;
+let userProfile = null;
+let realtimeChannel = null;
 
-// 初始化Supabase客户端
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// 全局应用对象（所有功能封装在此，确保内联onclick可访问）
-const App = {
-    currentUser: null,
-    userProfile: null,
-    realtimeChannel: null,
-
-    // 显示提示（兜底校验，确保元素存在）
-    msg(text, isSuccess = false) {
-        const el = document.getElementById('msg');
-        if (!el) return;
-        el.textContent = text;
-        el.style.background = isSuccess ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 0, 85, 0.9)';
-        el.style.color = isSuccess ? '#000' : '#fff';
-        el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', isSuccess ? 2000 : 3000);
-    },
-
-    // 切换视图
-    setView(view) {
-        const authEl = document.getElementById('auth');
-        const appEl = document.getElementById('app');
-        const footerEl = document.getElementById('footerBar');
-        if (!authEl || !appEl || !footerEl) return;
-        authEl.style.display = view === 'auth' ? 'block' : 'none';
-        appEl.style.display = view === 'app' ? 'block' : 'none';
-        footerEl.style.display = view === 'app' ? 'flex' : 'none';
-    },
-
-    // 显示注册框
-    showRegister() {
-        const regBox = document.getElementById('regBox');
-        if (regBox) regBox.style.display = 'block';
-    },
-
-    // 显示登录框
-    showLogin() {
-        const regBox = document.getElementById('regBox');
-        if (regBox) regBox.style.display = 'none';
-    },
-
-    // 【关键修复2】自动登录（加明确提示）
-    async autoLogin() {
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                this.setView('auth');
-                return;
-            }
-
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-            if (profileError || !profile) {
-                this.msg('自动登录失败：用户资料不存在', false);
-                this.setView('auth');
-                return;
-            }
-
-            if (profile.status !== 'approved') {
-                this.msg('账号审核中，暂无法登录', false);
-                this.setView('auth');
-                return;
-            }
-
-            this.currentUser = session.user;
-            this.userProfile = profile;
-            this.updateUI(profile);
-            this.setView('app');
-            this.loadOrders();
-            this.setupRealtime();
-            this.msg(`欢迎回来，${profile.nickname}`, true);
-        } catch (e) {
-            this.msg(`自动登录失败：${e.message || '未知错误'}`, false);
-            this.setView('auth');
-        }
-    },
-
-    // 【关键修复3】登录逻辑（加按钮状态反馈+完整错误捕获）
-    async login() {
-        const emailInput = document.getElementById('email');
-        const passInput = document.getElementById('pass');
-        const loginBtn = document.getElementById('loginBtn');
-        if (!emailInput || !passInput || !loginBtn) {
-            this.msg('页面加载异常，请刷新', false);
-            return;
-        }
-
-        const email = emailInput.value.trim();
-        const password = passInput.value.trim();
-        if (!email || !password) {
-            this.msg('请输入邮箱和密码', false);
-            return;
-        }
-
-        // 按钮反馈，证明JS已执行
-        loginBtn.disabled = true;
-        loginBtn.textContent = '登录中...';
-
-        try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
-
-            if (error) {
-                this.msg(`登录失败：${error.message}`, false);
-                loginBtn.disabled = false;
-                loginBtn.textContent = '登录';
-                return;
-            }
-
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', data.user.id)
-                .single();
-
-            if (profileError || !profile) {
-                this.msg('登录失败：用户资料不存在', false);
-                await supabase.auth.signOut();
-                loginBtn.disabled = false;
-                loginBtn.textContent = '登录';
-                return;
-            }
-
-            if (profile.status !== 'approved') {
-                this.msg('账号审核中，暂无法登录', false);
-                await supabase.auth.signOut();
-                loginBtn.disabled = false;
-                loginBtn.textContent = '登录';
-                return;
-            }
-
-            this.currentUser = data.user;
-            this.userProfile = profile;
-            this.updateUI(profile);
-            this.setView('app');
-            this.loadOrders();
-            this.setupRealtime();
-            this.msg(`欢迎您，${profile.nickname}`, true);
-            passInput.value = '';
-        } catch (e) {
-            this.msg(`登录异常：${e.message || '请检查网络'}`, false);
-        } finally {
-            loginBtn.disabled = false;
-            loginBtn.textContent = '登录';
-        }
-    },
-
-    // 注册逻辑
-    async register() {
-        const emailInput = document.getElementById('regEmail');
-        const passInput = document.getElementById('regPass');
-        const nameInput = document.getElementById('regName');
-        const roleSelect = document.getElementById('regRole');
-        const regBtn = document.getElementById('regBtn');
-        if (!emailInput || !passInput || !nameInput || !roleSelect || !regBtn) {
-            this.msg('页面加载异常，请刷新', false);
-            return;
-        }
-
-        const email = emailInput.value.trim();
-        const password = passInput.value.trim();
-        const nickname = nameInput.value.trim();
-        const role = roleSelect.value;
-
-        if (!email || !password || !nickname) {
-            this.msg('请填写完整信息', false);
-            return;
-        }
-
-        regBtn.disabled = true;
-        regBtn.textContent = '注册中...';
-
-        try {
-            if (role === 'owner') {
-                const { data: owners } = await supabase
-                    .from('profiles')
-                    .select('id')
-                    .eq('role', 'owner');
-                if (owners && owners.length > 0) {
-                    this.msg('店长账号已存在', false);
-                    regBtn.disabled = false;
-                    regBtn.textContent = '注册';
-                    return;
-                }
-            }
-
-            const { data, error } = await supabase.auth.signUp({
-                email: email,
-                password: password,
-                options: { data: { nickname, role } }
-            });
-
-            if (error) {
-                this.msg(`注册失败：${error.message}`, false);
-                regBtn.disabled = false;
-                regBtn.textContent = '注册';
-                return;
-            }
-
-            await supabase.from('profiles').insert([{
-                id: data.user.id,
-                email: email,
-                nickname: nickname,
-                role: role,
-                status: role === 'admin' ? 'pending' : 'approved'
-            }]);
-
-            this.msg('注册成功！请登录', true);
-            this.showLogin();
-            emailInput.value = email;
-        } catch (e) {
-            this.msg(`注册异常：${e.message || '请检查网络'}`, false);
-        } finally {
-            regBtn.disabled = false;
-            regBtn.textContent = '注册';
-        }
-    },
-
-    // 更新UI
-    updateUI(profile) {
-        const userInfoEl = document.getElementById('userInfo');
-        const footerUserEl = document.getElementById('footerUser');
-        const orderPanelEl = document.getElementById('orderPanel');
-        const ownerPanelEl = document.getElementById('ownerPanel');
-        if (!userInfoEl || !footerUserEl || !orderPanelEl || !ownerPanelEl) return;
-
-        userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
-        footerUserEl.textContent = profile.nickname;
-        if (profile.role === 'owner' || profile.role === 'player') {
-            orderPanelEl.style.display = 'block';
-        }
-        if (profile.role === 'owner') {
-            ownerPanelEl.style.display = 'block';
-            this.loadAuditList();
-        }
-    },
-
-    // 加载订单
-    async loadOrders() {
-        if (!this.currentUser || !this.userProfile) return;
-        try {
-            let query = supabase
-                .from('orders')
-                .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
-                .order('created_at', { ascending: false });
-
-            if (this.userProfile.role !== 'owner') {
-                query = query.or(`sender_id.eq.${this.currentUser.id},worker_id.eq.${this.currentUser.id}`);
-            }
-
-            const { data: orders } = await query;
-            const listEl = document.getElementById('orderList');
-            if (!listEl) return;
-
-            if (!orders || orders.length === 0) {
-                listEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
-                return;
-            }
-
-            listEl.innerHTML = orders.map(order => {
-                const isOwner = order.sender_id === this.currentUser.id;
-                const isWorker = order.worker_id === this.currentUser.id;
-                const canTake = ['owner','admin','worker'].includes(this.userProfile.role) && 
-                               order.status === 'pending' && !order.worker_id && !isOwner;
-                const canComplete = isWorker && order.status === 'accepted';
-                const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-
-                return `
-                    <div class="order">
-                        <div><b>内容:</b> ${order.content}</div>
-                        <div><b>游戏ID:</b> ${order.game_id}</div>
-                        <div><b>状态:</b> <span style="color:#00f0ff;">${this.mapStatus(order.status)}</span></div>
-                        <div><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
-                        <div><b>接单:</b> ${order.worker?.nickname || '无'}</div>
-                        <button class="order-btn" onclick="App.showDetail('${order.id}')">详情</button>
-                        ${canTake ? `<button class="order-btn" onclick="App.takeOrder('${order.id}')">接单</button>` : ''}
-                        ${canComplete ? `<button class="order-btn btn-green" onclick="App.completeOrder('${order.id}')">结单</button>` : ''}
-                        ${canDelete ? `<button class="order-btn btn-red" onclick="App.deleteOrder('${order.id}')">取消</button>` : ''}
-                    </div>
-                `;
-            }).join('');
-        } catch (e) {
-            this.msg(`加载订单失败：${e.message}`, false);
-        }
-    },
-
-    // 发布订单
-    async createOrder() {
-        const contentInput = document.getElementById('orderContent');
-        const gameIdInput = document.getElementById('orderGameId');
-        const priceInput = document.getElementById('orderPrice');
-        if (!contentInput || !gameIdInput || !priceInput) return;
-
-        const content = contentInput.value.trim();
-        const gameId = gameIdInput.value.trim();
-        const price = priceInput.value.trim();
-        if (!content || !gameId || !price) {
-            this.msg('请填写完整订单信息', false);
-            return;
-        }
-
-        try {
-            await supabase.from('orders').insert([{
-                sender_id: this.currentUser.id,
-                content: content,
-                game_id: gameId,
-                price: parseFloat(price),
-                status: 'pending'
-            }]);
-            this.msg('订单发布成功', true);
-            contentInput.value = '';
-            gameIdInput.value = '';
-            priceInput.value = '';
-            this.loadOrders();
-        } catch (e) {
-            this.msg(`发布失败：${e.message}`, false);
-        }
-    },
-
-    // 接单
-    async takeOrder(orderId) {
-        try {
-            await supabase.from('orders')
-                .update({ worker_id: this.currentUser.id, status: 'accepted' })
-                .eq('id', orderId)
-                .eq('status', 'pending');
-            this.msg('接单成功', true);
-            this.loadOrders();
-        } catch (e) {
-            this.msg(`接单失败：${e.message}`, false);
-        }
-    },
-
-    // 结单
-    async completeOrder(orderId) {
-        if (!confirm('确认完成订单？')) return;
-        try {
-            await supabase.from('orders')
-                .update({ status: 'completed' })
-                .eq('id', orderId)
-                .eq('worker_id', this.currentUser.id)
-                .eq('status', 'accepted');
-            this.msg('订单已结单', true);
-            this.loadOrders();
-            this.closeDetail();
-        } catch (e) {
-            this.msg(`结单失败：${e.message}`, false);
-        }
-    },
-
-    // 删除订单
-    async deleteOrder(orderId) {
-        if (!confirm('确认取消订单？')) return;
-        try {
-            await supabase.from('orders').delete().eq('id', orderId);
-            this.msg('订单已取消', true);
-            this.loadOrders();
-            this.closeDetail();
-        } catch (e) {
-            this.msg(`取消失败：${e.message}`, false);
-        }
-    },
-
-    // 显示订单详情
-    async showDetail(orderId) {
-        try {
-            const { data: order } = await supabase
-                .from('orders')
-                .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
-                .eq('id', orderId)
-                .single();
-
-            const isOwner = order.sender_id === this.currentUser.id;
-            const isWorker = order.worker_id === this.currentUser.id;
-            const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-            const detailContentEl = document.getElementById('detailContent');
-            const detailModalEl = document.getElementById('detailModal');
-            if (!detailContentEl || !detailModalEl) return;
-
-            detailContentEl.innerHTML = `
-                <div class="detail-line"><b>内容:</b> ${order.content}</div>
-                <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
-                <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
-                <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${this.mapStatus(order.status)}</span></div>
-                <div class="detail-line"><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
-                <div class="detail-line"><b>接单:</b> ${order.worker?.nickname || '无'}</div>
-                ${canDelete ? `<button class="order-btn btn-red" onclick="App.deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
-            `;
-            detailModalEl.style.display = 'block';
-        } catch (e) {
-            this.msg(`加载详情失败：${e.message}`, false);
-        }
-    },
-
-    // 关闭详情
-    closeDetail() {
-        const detailModalEl = document.getElementById('detailModal');
-        if (detailModalEl) detailModalEl.style.display = 'none';
-    },
-
-    // 加载审核列表
-    async loadAuditList() {
-        if (!this.currentUser || this.userProfile.role !== 'owner') return;
-        try {
-            const { data: admins } = await supabase
-                .from('profiles')
-                .select('id, nickname, email, created_at')
-                .eq('role', 'admin')
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
-
-            const listEl = document.getElementById('auditList');
-            if (!listEl) return;
-
-            if (!admins || admins.length === 0) {
-                listEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
-                return;
-            }
-
-            listEl.innerHTML = admins.map(admin => `
-                <div class="order">
-                    <div><b>${admin.nickname}</b> (${admin.email})</div>
-                    <div style="font-size:12px; color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
-                    <button class="order-btn btn-purple" onclick="App.approveAdmin('${admin.id}')">批准</button>
-                </div>
-            `).join('');
-        } catch (e) {
-            this.msg(`加载审核列表失败：${e.message}`, false);
-        }
-    },
-
-    // 批准管理员
-    async approveAdmin(adminId) {
-        if (!confirm('确定批准该管理员？')) return;
-        try {
-            await supabase.from('profiles')
-                .update({ status: 'approved' })
-                .eq('id', adminId);
-            this.msg('批准成功', true);
-            this.loadAuditList();
-        } catch (e) {
-            this.msg(`批准失败：${e.message}`, false);
-        }
-    },
-
-    // 实时订阅
-    setupRealtime() {
-        if (!this.currentUser || !this.userProfile) return;
-        if (!['worker','admin','owner'].includes(this.userProfile.role)) return;
-        
-        if (this.realtimeChannel) supabase.removeChannel(this.realtimeChannel);
-        
-        this.realtimeChannel = supabase.channel('orders')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
-                this.loadOrders();
-            })
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => {
-                this.loadOrders();
-            })
-            .subscribe();
-    },
-
-    // 退出登录
-    async logout() {
-        await supabase.auth.signOut();
-        this.currentUser = null;
-        this.userProfile = null;
-        if (this.realtimeChannel) {
-            supabase.removeChannel(this.realtimeChannel);
-            this.realtimeChannel = null;
-        }
-        this.setView('auth');
-        this.msg('已退出登录', true);
-    },
-
-    // 状态映射
-    mapStatus(status) {
-        const map = {
-            'pending': '待接单',
-            'accepted': '已接单',
-            'processing': '正在进行中',
-            'completed': '订单已完成',
-            'cancelled': '订单已取消'
-        };
-        return map[status] || '未知状态';
-    }
+// DOM元素引用
+const elements = {
+    loginBtn: null,
+    regBtn: null,
+    orderBtn: null,
+    logoutBtn: null,
+    showRegLink: null,
+    showLoginLink: null,
+    closeDetailBtn: null,
+    loadingOverlay: null
 };
 
-// 【关键修复4】页面加载完成后执行自动登录，确保App已初始化
-window.addEventListener('DOMContentLoaded', () => {
-    // 再次校验App是否存在
-    if (typeof App === 'undefined') {
-        const msgEl = document.getElementById('msg');
-        msgEl.textContent = '系统初始化失败，请刷新页面';
-        msgEl.style.display = 'block';
-        msgEl.style.background = 'rgba(255, 0, 85, 0.9)';
+// 显示/隐藏加载遮罩
+function toggleLoading(show) {
+    if (elements.loadingOverlay) {
+        elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+    }
+}
+
+// 显示提示
+function showMessage(text, isSuccess = false) {
+    const el = document.getElementById('msg');
+    if (!el) return;
+    el.textContent = text;
+    el.style.background = isSuccess ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 0, 85, 0.9)';
+    el.style.color = isSuccess ? '#000' : '#fff';
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', isSuccess ? 2000 : 3000);
+}
+
+// 切换视图
+function setView(view) {
+    const authEl = document.getElementById('auth');
+    const appEl = document.getElementById('app');
+    const footerEl = document.getElementById('footerBar');
+    if (!authEl || !appEl || !footerEl) return;
+    authEl.style.display = view === 'auth' ? 'block' : 'none';
+    appEl.style.display = view === 'app' ? 'block' : 'none';
+    footerEl.style.display = view === 'app' ? 'flex' : 'none';
+}
+
+// 更新UI
+function updateUI(profile) {
+    const userInfoEl = document.getElementById('userInfo');
+    const footerUserEl = document.getElementById('footerUser');
+    const orderPanelEl = document.getElementById('orderPanel');
+    const ownerPanelEl = document.getElementById('ownerPanel');
+    if (!userInfoEl || !footerUserEl || !orderPanelEl || !ownerPanelEl) return;
+
+    userInfoEl.textContent = `欢迎: ${profile.nickname}（${profile.role}）`;
+    footerUserEl.textContent = profile.nickname;
+    if (profile.role === 'owner' || profile.role === 'player') {
+        orderPanelEl.style.display = 'block';
+    }
+    if (profile.role === 'owner') {
+        ownerPanelEl.style.display = 'block';
+        loadAuditList();
+    }
+}
+
+// 登录功能
+async function handleLogin() {
+    console.log('登录按钮被点击 - 开始执行');
+    
+    const emailInput = document.getElementById('email');
+    const passInput = document.getElementById('pass');
+    
+    if (!emailInput || !passInput) {
+        showMessage('页面元素加载异常', false);
         return;
     }
-    App.autoLogin();
-});
+
+    const email = emailInput.value.trim();
+    const password = passInput.value.trim();
+    
+    if (!email || !password) {
+        showMessage('请输入邮箱和密码', false);
+        return;
+    }
+
+    if (!supabaseClient) {
+        showMessage('系统未初始化，请刷新页面', false);
+        return;
+    }
+
+    toggleLoading(true);
+    
+    try {
+        console.log('正在发送登录请求...');
+        
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        console.log('登录响应:', error ? `错误: ${error.message}` : '成功');
+        
+        if (error) {
+            showMessage(`登录失败：${error.message}`, false);
+            return;
+        }
+
+        // 获取用户资料
+        const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            showMessage('登录失败：用户资料不存在', false);
+            await supabaseClient.auth.signOut();
+            return;
+        }
+
+        if (profile.status !== 'approved') {
+            showMessage('账号审核中，暂无法登录', false);
+            await supabaseClient.auth.signOut();
+            return;
+        }
+
+        currentUser = data.user;
+        userProfile = profile;
+        updateUI(profile);
+        setView('app');
+        loadOrders();
+        setupRealtime();
+        showMessage(`欢迎您，${profile.nickname}`, true);
+        passInput.value = '';
+        
+    } catch (e) {
+        console.error('登录异常:', e);
+        showMessage(`登录异常：${e.message || '网络错误'}`, false);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// 注册功能
+async function handleRegister() {
+    const emailInput = document.getElementById('regEmail');
+    const passInput = document.getElementById('regPass');
+    const nameInput = document.getElementById('regName');
+    const roleSelect = document.getElementById('regRole');
+    
+    if (!emailInput || !passInput || !nameInput || !roleSelect) {
+        showMessage('页面元素加载异常', false);
+        return;
+    }
+
+    const email = emailInput.value.trim();
+    const password = passInput.value.trim();
+    const nickname = nameInput.value.trim();
+    const role = roleSelect.value;
+
+    if (!email || !password || !nickname) {
+        showMessage('请填写完整信息', false);
+        return;
+    }
+
+    if (!supabaseClient) {
+        showMessage('系统未初始化，请刷新页面', false);
+        return;
+    }
+
+    toggleLoading(true);
+    
+    try {
+        // 检查店长唯一性
+        if (role === 'owner') {
+            const { data: owners } = await supabaseClient
+                .from('profiles')
+                .select('id')
+                .eq('role', 'owner');
+            if (owners && owners.length > 0) {
+                showMessage('店长账号已存在', false);
+                return;
+            }
+        }
+
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { nickname, role } }
+        });
+
+        if (error) {
+            showMessage(`注册失败：${error.message}`, false);
+            return;
+        }
+
+        await supabaseClient.from('profiles').insert([{
+            id: data.user.id,
+            email: email,
+            nickname: nickname,
+            role: role,
+            status: role === 'admin' ? 'pending' : 'approved'
+        }]);
+
+        showMessage('注册成功！请登录', true);
+        document.getElementById('regBox').style.display = 'none';
+        emailInput.value = email;
+    } catch (e) {
+        showMessage(`注册异常：${e.message || '网络错误'}`, false);
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+// 加载订单
+async function loadOrders() {
+    if (!currentUser || !userProfile || !supabaseClient) return;
+    
+    try {
+        let query = supabaseClient
+            .from('orders')
+            .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
+            .order('created_at', { ascending: false });
+
+        if (userProfile.role !== 'owner') {
+            query = query.or(`sender_id.eq.${currentUser.id},worker_id.eq.${currentUser.id}`);
+        }
+
+        const { data: orders } = await query;
+        const listEl = document.getElementById('orderList');
+        if (!listEl) return;
+
+        if (!orders || orders.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
+            return;
+        }
+
+        listEl.innerHTML = orders.map(order => {
+            const isOwner = order.sender_id === currentUser.id;
+            const isWorker = order.worker_id === currentUser.id;
+            const canTake = ['owner','admin','worker'].includes(userProfile.role) && 
+                           order.status === 'pending' && !order.worker_id && !isOwner;
+            const canComplete = isWorker && order.status === 'accepted';
+            const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
+
+            return `
+                <div class="order">
+                    <div><b>内容:</b> ${order.content}</div>
+                    <div><b>游戏ID:</b> ${order.game_id}</div>
+                    <div><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(order.status)}</span></div>
+                    <div><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
+                    <div><b>接单:</b> ${order.worker?.nickname || '无'}</div>
+                    <button class="order-btn" onclick="showOrderDetail('${order.id}')">详情</button>
+                    ${canTake ? `<button class="order-btn" onclick="takeOrder('${order.id}')">接单</button>` : ''}
+                    ${canComplete ? `<button class="order-btn btn-green" onclick="completeOrder('${order.id}')">结单</button>` : ''}
+                    ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')">取消</button>` : ''}
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        showMessage(`加载订单失败：${e.message}`, false);
+    }
+}
+
+// 发布订单
+async function createOrder() {
+    const contentInput = document.getElementById('orderContent');
+    const gameIdInput = document.getElementById('orderGameId');
+    const priceInput = document.getElementById('orderPrice');
+    
+    if (!contentInput || !gameIdInput || !priceInput) return;
+
+    const content = contentInput.value.trim();
+    const gameId = gameIdInput.value.trim();
+    const price = priceInput.value.trim();
+    
+    if (!content || !gameId || !price) {
+        showMessage('请填写完整订单信息', false);
+        return;
+    }
+
+    try {
+        await supabaseClient.from('orders').insert([{
+            sender_id: currentUser.id,
+            content: content,
+            game_id: gameId,
+            price: parseFloat(price),
+            status: 'pending'
+        }]);
+        showMessage('订单发布成功', true);
+        contentInput.value = '';
+        gameIdInput.value = '';
+        priceInput.value = '';
+        loadOrders();
+    } catch (e) {
+        showMessage(`发布失败：${e.message}`, false);
+    }
+}
+
+// 接单
+async function takeOrder(orderId) {
+    try {
+        await supabaseClient.from('orders')
+            .update({ worker_id: currentUser.id, status: 'accepted' })
+            .eq('id', orderId)
+            .eq('status', 'pending');
+        showMessage('接单成功', true);
+        loadOrders();
+    } catch (e) {
+        showMessage(`接单失败：${e.message}`, false);
+    }
+}
+
+// 结单
+async function completeOrder(orderId) {
+    if (!confirm('确认完成订单？')) return;
+    try {
+        await supabaseClient.from('orders')
+            .update({ status: 'completed' })
+            .eq('id', orderId)
+            .eq('worker_id', currentUser.id)
+            .eq('status', 'accepted');
+        showMessage('订单已结单', true);
+        loadOrders();
+        closeDetailModal();
+    } catch (e) {
+        showMessage(`结单失败：${e.message}`, false);
+    }
+}
+
+// 删除订单
+async function deleteOrder(orderId) {
+    if (!confirm('确认取消订单？')) return;
+    try {
+        await supabaseClient.from('orders').delete().eq('id', orderId);
+        showMessage('订单已取消', true);
+        loadOrders();
+        closeDetailModal();
+    } catch (e) {
+        showMessage(`取消失败：${e.message}`, false);
+    }
+}
+
+// 显示订单详情
+async function showOrderDetail(orderId) {
+    try {
+        const { data: order } = await supabaseClient
+            .from('orders')
+            .select('*, sender:sender_id(nickname), worker:worker_id(nickname)')
+            .eq('id', orderId)
+            .single();
+
+        const isOwner = order.sender_id === currentUser.id;
+        const isWorker = order.worker_id === currentUser.id;
+        const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
+        const detailContentEl = document.getElementById('detailContent');
+        const detailModalEl = document.getElementById('detailModal');
+        
+        if (!detailContentEl || !detailModalEl) return;
+
+        detailContentEl.innerHTML = `
+            <div class="detail-line"><b>内容:</b> ${order.content}</div>
+            <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
+            <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
+            <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(order.status)}</span></div>
+            <div class="detail-line"><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
+            <div class="detail-line"><b>接单:</b> ${order.worker?.nickname || '无'}</div>
+            ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
+        `;
+        detailModalEl.style.display = 'block';
+    } catch (e) {
+        showMessage(`加载详情失败：${e.message}`, false);
+    }
+}
+
+// 关闭详情弹窗
+function closeDetailModal() {
+    const detailModalEl = document.getElementById('detailModal');
+    if (detailModalEl) detailModalEl.style.display = 'none';
+}
+
+// 加载审核列表
+async function loadAuditList() {
+    if (!currentUser || userProfile.role !== 'owner' || !supabaseClient) return;
+    try {
+        const { data: admins } = await supabaseClient
+            .from('profiles')
+            .select('id, nickname, email, created_at')
+            .eq('role', 'admin')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        const listEl = document.getElementById('auditList');
+        if (!listEl) return;
+
+        if (!admins || admins.length === 0) {
+            listEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
+            return;
+        }
+
+        listEl.innerHTML = admins.map(admin => `
+            <div class="order">
+                <div><b>${admin.nickname}</b> (${admin.email})</div>
+                <div style="font-size:12px; color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
+                <button class="order-btn btn-purple" onclick="approveAdmin('${admin.id}')">批准</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        showMessage(`加载审核列表失败：${e.message}`, false);
+    }
+}
+
+// 批准管理员
+async function approveAdmin(adminId) {
+    if (!confirm('确定批准该管理员？')) return;
+    try {
+        await supabaseClient.from('profiles')
+            .update({ status: 'approved' })
+            .eq('id', adminId);
+        showMessage('批准成功', true);
+        loadAuditList();
+    } catch (e) {
+        showMessage(`批准失败：${e.message}`, false);
+    }
+}
+
+// 实时订阅
+function setupRealtime() {
+    if (!currentUser || !userProfile || !supabaseClient) return;
+    if (!['worker','admin','owner'].includes(userProfile.role)) return;
+    
+    if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+    
+    realtimeChannel = supabaseClient.channel('orders')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => {
+            loadOrders();
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => {
+            loadOrders();
+        })
+        .subscribe();
+}
+
+// 退出登录
+async function handleLogout() {
+    if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+    }
+    currentUser = null;
+    userProfile = null;
+    if (realtimeChannel && supabaseClient) {
+        supabaseClient.removeChannel(realtimeChannel);
+        realtimeChannel = null;
+    }
+    setView('auth');
+    showMessage('已退出登录', true);
+}
+
+// 状态映射
+function mapStatus(status) {
+    const map = {
+        'pending': '待接单',
+        'accepted': '已接单',
+        'processing': '正在进行中',
+        'completed': '订单已完成',
+        'cancelled': '订单已取消'
+    };
+    return map[status] || '未知状态';
+}
+
+// 自动登录
+async function autoLogin() {
+    console.log('尝试自动登录...');
+    
+    if (!supabaseClient) {
+        console.log('Supabase客户端未初始化');
+        return;
+    }
+    
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            console.log('无有效会话');
+            setView('auth');
+            return;
+        }
+
+        const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            console.log('获取用户资料失败');
+            setView('auth');
+            return;
+        }
+
+        if (profile.status !== 'approved') {
+            console.log('账号未审核');
+            setView('auth');
+            return;
+        }
+
+        currentUser = session.user;
+        userProfile = profile;
+        updateUI(profile);
+        setView('app');
+        loadOrders();
+        setupRealtime();
+        showMessage(`欢迎回来，${profile.nickname}`, true);
+    } catch (e) {
+        console.error('自动登录异常:', e);
+        setView('auth');
+    }
+}
+
+// 初始化函数
+function init() {
+    console.log('初始化应用...');
+    
+    // 检查Supabase SDK
+    if (typeof window.supabase === 'undefined') {
+        showMessage('系统加载失败：无法连接服务器，请检查网络后刷新', false);
+        return;
+    }
+    
+    // 初始化Supabase客户端
+    try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('Supabase客户端初始化成功');
+    } catch (e) {
+        showMessage('系统初始化失败：' + e.message, false);
+        return;
+    }
+    
+    // 获取DOM元素引用
+    elements.loginBtn = document.getElementById('loginBtn');
+    elements.regBtn = document.getElementById('regBtn');
+    elements.orderBtn = document.getElementById('orderBtn');
+    elements.logoutBtn = document.getElementById('logoutBtn');
+    elements.showRegLink = document.getElementById('showRegLink');
+    elements.showLoginLink = document.getElementById('showLoginLink');
+    elements.closeDetailBtn = document.getElementById('closeDetailBtn');
+    elements.loadingOverlay = document.getElementById('loadingOverlay');
+    
+    // 绑定事件监听器（最稳妥的方式）
+    if (elements.loginBtn) {
+        elements.loginBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('登录按钮点击事件触发');
+            handleLogin();
+        });
+        console.log('登录按钮事件绑定成功');
+    } else {
+        console.error('登录按钮未找到');
+    }
+    
+    if (elements.regBtn) {
+        elements.regBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('注册按钮点击事件触发');
+            handleRegister();
+        });
+    }
+    
+    if (elements.orderBtn) {
+        elements.orderBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('发布订单按钮点击事件触发');
+            createOrder();
+        });
+    }
+    
+    if (elements.logoutBtn) {
+        elements.logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('退出登录按钮点击事件触发');
+            handleLogout();
+        });
+    }
+    
+    if (elements.showRegLink) {
+        elements.showRegLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('显示注册链接点击事件触发');
+            document.getElementById('regBox').style.display = 'block';
+        });
+    }
+    
+    if (elements.showLoginLink) {
+        elements.showLoginLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('显示登录链接点击事件触发');
+            document.getElementById('regBox').style.display = 'none';
+        });
+    }
+    
+    if (elements.closeDetailBtn) {
+        elements.closeDetailBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('关闭详情按钮点击事件触发');
+            closeDetailModal();
+        });
+    }
+    
+    // 尝试自动登录
+    autoLogin();
+}
+
+// 页面加载完成后初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+
+// 暴露必要的函数到全局作用域（用于onclick）
+window.showOrderDetail = showOrderDetail;
+window.takeOrder = takeOrder;
+window.completeOrder = completeOrder;
+window.deleteOrder = deleteOrder;
+window.approveAdmin = approveAdmin;
 </script>
 </body>
 </html>
