@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
-    <!-- 国内手机浏览器100%能加载的CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        /* 保留你原有的所有UI样式，无改动 */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -30,26 +28,18 @@
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; }
         .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* 致命错误提示（平时隐藏，有错误才显示） */
         #fatalError { display: none; background: #ff4757; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <!-- 致命错误提示区（不用控制台也能看到问题） -->
     <div id="fatalError"></div>
+    <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
-    <!-- 加载遮罩 -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-    </div>
-
-    <!-- 登录/注册页 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
             <input id="email" placeholder="邮箱">
             <input id="pass" type="password" placeholder="密码">
-            <!-- 原生onclick，函数已挂载到window，100%能调用 -->
             <button onclick="window.handleLogin()">登录</button>
             <div class="link">没账号？<span onclick="window.showReg()">点此注册</span></div>
         </div>
@@ -69,7 +59,6 @@
         </div>
     </div>
 
-    <!-- 主应用页 -->
     <div id="app">
         <div class="box">
             <h2>派单系统</h2>
@@ -89,13 +78,11 @@
         </div>
     </div>
 
-    <!-- 底部栏 -->
     <div class="footer-bar" id="footerBar">
         <span id="footerUser"></span>
         <button onclick="window.handleLogout()">退出</button>
     </div>
 
-    <!-- 订单详情弹窗 -->
     <div id="detailModal">
         <div class="box">
             <h2>订单详情</h2>
@@ -104,38 +91,28 @@
         </div>
     </div>
 
-    <!-- 操作结果提示 -->
     <div id="msg"></div>
 
 <script>
 /* ==========================================
-   🔴 配置区（和你的SQL完全匹配）
+   🔴 配置区
    ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_uAFYVFXrOC0fPZWSvu2TFw_5HAwVxjG';
+
 /* ==========================================
-   全局变量（全部挂载到window，避免作用域问题）
+   全局变量
    ========================================== */
 window.supabaseClient = null;
 window.currentUser = null;
 window.userProfile = null;
 
 /* ==========================================
-   致命错误提示（不用控制台也能看到问题）
-   ========================================== */
-function showFatalError(msg) {
-    const el = document.getElementById('fatalError');
-    el.style.display = 'block';
-    el.textContent = '❌ 致命错误：' + msg;
-}
-
-/* ==========================================
-   初始化（先检测SDK是否加载，避免静默失败）
+   初始化
    ========================================== */
 function init() {
-    // 检测Supabase SDK是否加载成功
     if (typeof window.supabase === 'undefined') {
-        showFatalError('无法加载系统组件，请检查网络后刷新（不要用QQ/UC浏览器，用Chrome/Safari）');
+        showFatalError('无法加载系统组件，请检查网络后刷新');
         return;
     }
     try {
@@ -147,9 +124,14 @@ function init() {
 }
 
 /* ==========================================
-   工具函数（全部挂载到window，原生onclick可调用）
+   工具函数
    ========================================== */
-// 显示操作结果提示
+function showFatalError(msg) {
+    const el = document.getElementById('fatalError');
+    el.style.display = 'block';
+    el.textContent = '❌ 致命错误：' + msg;
+}
+
 window.showMessage = function(text, isSuccess = false) {
     const el = document.getElementById('msg');
     if (!el) return;
@@ -159,57 +141,48 @@ window.showMessage = function(text, isSuccess = false) {
     setTimeout(() => el.style.display = 'none', 3000);
 };
 
-// 切换加载动画
 window.toggleLoading = function(show) {
     const el = document.getElementById('loadingOverlay');
     if (el) el.style.display = show ? 'flex' : 'none';
 };
 
-// 切换视图
 window.setView = function(view) {
-    const authEl = document.getElementById('auth');
-    const appEl = document.getElementById('app');
-    const footerEl = document.getElementById('footerBar');
-    if (authEl) authEl.style.display = view === 'auth' ? 'block' : 'none';
-    if (appEl) appEl.style.display = view === 'app' ? 'block' : 'none';
-    if (footerEl) footerEl.style.display = view === 'app' ? 'flex' : 'none';
+    document.getElementById('auth').style.display = view === 'auth' ? 'block' : 'none';
+    document.getElementById('app').style.display = view === 'app' ? 'block' : 'none';
+    document.getElementById('footerBar').style.display = view === 'app' ? 'flex' : 'none';
 };
 
-// 订单状态中文映射
 window.mapStatus = function(status) {
-    const map = {
-        'pending': '待接单',
-        'accepted': '已接单',
-        'completed': '订单已完成',
-        'cancelled': '订单已取消'
-    };
+    const map = {'pending':'待接单','accepted':'已接单','completed':'订单已完成','cancelled':'订单已取消'};
     return map[status] || '未知状态';
 };
 
-// 更新UI
 window.updateUI = function() {
-    const userInfoEl = document.getElementById('userInfo');
-    const footerUserEl = document.getElementById('footerUser');
-    const orderPanelEl = document.getElementById('orderPanel');
-    const ownerPanelEl = document.getElementById('ownerPanel');
-    if (userInfoEl) userInfoEl.textContent = `欢迎: ${window.userProfile.nickname}（${window.userProfile.role}）`;
-    if (footerUserEl) footerUserEl.textContent = window.userProfile.nickname;
-    if (orderPanelEl) orderPanelEl.style.display = (window.userProfile.role === 'owner' || window.userProfile.role === 'player') ? 'block' : 'none';
-    if (ownerPanelEl) ownerPanelEl.style.display = window.userProfile.role === 'owner' ? 'block' : 'none';
+    document.getElementById('userInfo').textContent = `欢迎: ${window.userProfile.nickname}（${window.userProfile.role}）`;
+    document.getElementById('footerUser').textContent = window.userProfile.nickname;
+    document.getElementById('orderPanel').style.display = (window.userProfile.role === 'owner' || window.userProfile.role === 'player') ? 'block' : 'none';
+    document.getElementById('ownerPanel').style.display = window.userProfile.role === 'owner' ? 'block' : 'none';
     if (window.userProfile.role === 'owner') window.loadAuditList();
 };
 
 /* ==========================================
-   核心功能（全部挂载到window，原生onclick可调用）
+   核心功能（已修复登录逻辑）
    ========================================== */
-// 自动登录
+
+// 自动登录（修复：先查profile，再判断status）
 window.autoLogin = async function() {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     if (!session) {
         window.setView('auth');
         return;
     }
-    const { data: profile } = await window.supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+    // 关键修复：使用 maybeSingle 避免 RLS 拦截导致报错
+    const { data: profile } = await window.supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+    
     if (!profile || profile.status !== 'approved') {
         window.setView('auth');
         return;
@@ -221,13 +194,10 @@ window.autoLogin = async function() {
     window.loadOrders();
 };
 
-// 手动登录
+// 手动登录（修复：先查profile，再判断status）
 window.handleLogin = async function() {
-    const emailEl = document.getElementById('email');
-    const passEl = document.getElementById('pass');
-    if (!emailEl || !passEl) return;
-    const email = emailEl.value.trim();
-    const password = passEl.value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('pass').value.trim();
     if (!email || !password) {
         window.showMessage('请输入邮箱和密码', false);
         return;
@@ -239,9 +209,20 @@ window.handleLogin = async function() {
             window.showMessage(`登录失败：${error.message}`, false);
             return;
         }
-        const { data: profile } = await window.supabaseClient.from('profiles').select('*').eq('id', data.user.id).single();
+        // 关键修复：先查profile，不管status是什么
+        const { data: profile } = await window.supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .maybeSingle();
+
         if (!profile) {
             window.showMessage('用户资料不存在，请先注册', false);
+            return;
+        }
+        // 在这里判断审核状态
+        if (profile.status !== 'approved') {
+            window.showMessage('账号审核中，暂无法登录', false);
             return;
         }
         window.currentUser = data.user;
@@ -250,7 +231,7 @@ window.handleLogin = async function() {
         window.setView('app');
         window.loadOrders();
         window.showMessage(`欢迎您，${profile.nickname}`, true);
-        passEl.value = '';
+        document.getElementById('pass').value = '';
     } catch (e) {
         window.showMessage(`登录异常：${e.message}`, false);
     } finally {
@@ -258,22 +239,16 @@ window.handleLogin = async function() {
     }
 };
 
-// 注册（含店长唯一性校验）
+// 注册
 window.handleRegister = async function() {
-    const emailEl = document.getElementById('regEmail');
-    const passEl = document.getElementById('regPass');
-    const nameEl = document.getElementById('regName');
-    const roleEl = document.getElementById('regRole');
-    if (!emailEl || !passEl || !nameEl || !roleEl) return;
-    const email = emailEl.value.trim();
-    const password = passEl.value.trim();
-    const nickname = nameEl.value.trim();
-    const role = roleEl.value;
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPass').value.trim();
+    const nickname = document.getElementById('regName').value.trim();
+    const role = document.getElementById('regRole').value;
     if (!email || !password || !nickname) {
         window.showMessage('请填写完整信息', false);
         return;
     }
-    // 店长唯一性校验
     if (role === 'owner') {
         const { data: owners } = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner');
         if (owners?.length > 0) {
@@ -284,17 +259,20 @@ window.handleRegister = async function() {
     window.toggleLoading(true);
     try {
         const { error } = await window.supabaseClient.auth.signUp({
-            email,
-            password,
-            options: { data: { nickname, role } }
+            email, password, options: { data: { nickname, role } }
         });
         if (error) {
             window.showMessage(`注册失败：${error.message}`, false);
             return;
         }
-        window.showMessage('注册成功！请登录', true);
+        // 提示区分角色
+        if (role === 'admin') {
+            window.showMessage('注册成功！请等待店长审核', true);
+        } else {
+            window.showMessage('注册成功！请登录', true);
+        }
         window.showLogin();
-        emailEl.value = email;
+        document.getElementById('email').value = email;
     } catch (e) {
         window.showMessage(`注册异常：${e.message}`, false);
     } finally {
@@ -306,17 +284,11 @@ window.handleRegister = async function() {
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
     let query = window.supabaseClient.from('orders').select('*, sender:sender_id(nickname), worker:worker_id(nickname)').order('created_at', { ascending: false });
-    if (window.userProfile.role !== 'owner') {
-        query = query.or(`sender_id.eq.${window.currentUser.id},worker_id.eq.${window.currentUser.id}`);
-    }
+    if (window.userProfile.role !== 'owner') query = query.or(`sender_id.eq.${window.currentUser.id},worker_id.eq.${window.currentUser.id}`);
     const { data: orders } = await query;
-    const orderListEl = document.getElementById('orderList');
-    if (!orderListEl) return;
-    if (!orders?.length) {
-        orderListEl.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">暂无订单</div>';
-        return;
-    }
-    orderListEl.innerHTML = orders.map(order => {
+    const el = document.getElementById('orderList');
+    if (!orders?.length) { el.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">暂无订单</div>'; return; }
+    el.innerHTML = orders.map(order => {
         const isOwner = order.sender_id === window.currentUser.id;
         const isWorker = order.worker_id === window.currentUser.id;
         const canTake = ['owner','admin','worker'].includes(window.userProfile.role) && order.status === 'pending' && !order.worker_id && !isOwner;
@@ -340,65 +312,46 @@ window.loadOrders = async function() {
 
 // 发布订单
 window.createOrder = async function() {
-    const contentEl = document.getElementById('orderContent');
-    const gameIdEl = document.getElementById('orderGameId');
-    const priceEl = document.getElementById('orderPrice');
-    if (!contentEl || !gameIdEl || !priceEl) return;
-    const content = contentEl.value.trim();
-    const gameId = gameIdEl.value.trim();
-    const price = priceEl.value.trim();
+    const content = document.getElementById('orderContent').value.trim();
+    const gameId = document.getElementById('orderGameId').value.trim();
+    const price = document.getElementById('orderPrice').value.trim();
     if (!content || !gameId || !price) {
         window.showMessage('请填写完整订单信息', false);
         return;
     }
     try {
         await window.supabaseClient.from('orders').insert({
-            sender_id: window.currentUser.id,
-            content,
-            game_id: gameId,
-            price: parseFloat(price),
-            status: 'pending'
+            sender_id: window.currentUser.id, content, game_id: gameId, price: parseFloat(price), status: 'pending'
         });
         window.showMessage('订单发布成功', true);
-        contentEl.value = '';
-        gameIdEl.value = '';
-        priceEl.value = '';
+        document.getElementById('orderContent').value = '';
+        document.getElementById('orderGameId').value = '';
+        document.getElementById('orderPrice').value = '';
         window.loadOrders();
-    } catch (e) {
-        window.showMessage(`发布失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
 };
 
 // 接单
 window.takeOrder = async function(orderId) {
     try {
-        await window.supabaseClient.from('orders').update({
-            worker_id: window.currentUser.id,
-            status: 'accepted'
-        }).eq('id', orderId).eq('status', 'pending');
+        await window.supabaseClient.from('orders').update({worker_id: window.currentUser.id, status: 'accepted'}).eq('id', orderId).eq('status', 'pending');
         window.showMessage('接单成功', true);
         window.loadOrders();
-    } catch (e) {
-        window.showMessage(`接单失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`接单失败：${e.message}`, false); }
 };
 
 // 结单
 window.completeOrder = async function(orderId) {
     if (!confirm('确认完成订单？')) return;
     try {
-        await window.supabaseClient.from('orders').update({
-            status: 'completed'
-        }).eq('id', orderId).eq('worker_id', window.currentUser.id).eq('status', 'accepted');
+        await window.supabaseClient.from('orders').update({status: 'completed'}).eq('id', orderId).eq('worker_id', window.currentUser.id).eq('status', 'accepted');
         window.showMessage('订单已结单', true);
         window.loadOrders();
         window.closeDetailModal();
-    } catch (e) {
-        window.showMessage(`结单失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`结单失败：${e.message}`, false); }
 };
 
-// 取消订单（物理删除，自动刷新）
+// 取消订单
 window.deleteOrder = async function(orderId) {
     if (!confirm('确认取消订单？取消后不可恢复')) return;
     try {
@@ -406,9 +359,7 @@ window.deleteOrder = async function(orderId) {
         window.showMessage('订单已取消', true);
         window.loadOrders();
         window.closeDetailModal();
-    } catch (e) {
-        window.showMessage(`取消失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`取消失败：${e.message}`, false); }
 };
 
 // 订单详情
@@ -418,44 +369,31 @@ window.showOrderDetail = async function(orderId) {
         const isOwner = order.sender_id === window.currentUser.id;
         const isWorker = order.worker_id === window.currentUser.id;
         const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-        const detailContentEl = document.getElementById('detailContent');
-        const detailModalEl = document.getElementById('detailModal');
-        if (!detailContentEl || !detailModalEl) return;
-        detailContentEl.innerHTML = `
-            <div class="detail-line"><b>内容:</b> ${order.content}</div>
-            <div class="detail-line"><b>游戏ID:</b> ${order.game_id}</div>
-            <div class="detail-line"><b>价格:</b> ¥${order.price}</div>
-            <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${window.mapStatus(order.status)}</span></div>
-            <div class="detail-line"><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
-            <div class="detail-line"><b>接单:</b> ${order.worker?.nickname || '无'}</div>
+        document.getElementById('detailContent').innerHTML = `
+            <div><b>内容:</b> ${order.content}</div>
+            <div><b>游戏ID:</b> ${order.game_id}</div>
+            <div><b>价格:</b> ¥${order.price}</div>
+            <div><b>状态:</b> <span style="color:#00f0ff;">${window.mapStatus(order.status)}</span></div>
+            <div><b>发单:</b> ${order.sender?.nickname || '未知'}</div>
+            <div><b>接单:</b> ${order.worker?.nickname || '无'}</div>
             ${canDelete ? `<button class="order-btn btn-red" onclick="window.deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
         `;
-        detailModalEl.style.display = 'block';
-    } catch (e) {
-        window.showMessage(`加载详情失败：${e.message}`, false);
-    }
+        document.getElementById('detailModal').style.display = 'block';
+    } catch (e) { window.showMessage(`加载详情失败：${e.message}`, false); }
 };
 
-// 关闭详情弹窗
-window.closeDetailModal = function() {
-    const el = document.getElementById('detailModal');
-    if (el) el.style.display = 'none';
-};
+window.closeDetailModal = function() { document.getElementById('detailModal').style.display = 'none'; };
 
 // 加载待审核管理员
 window.loadAuditList = async function() {
     if (window.userProfile.role !== 'owner') return;
     const { data: admins } = await window.supabaseClient.from('profiles').select('*').eq('role', 'admin').eq('status', 'pending');
-    const auditListEl = document.getElementById('auditList');
-    if (!auditListEl) return;
-    if (!admins?.length) {
-        auditListEl.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>';
-        return;
-    }
-    auditListEl.innerHTML = admins.map(admin => `
+    const el = document.getElementById('auditList');
+    if (!admins?.length) { el.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>'; return; }
+    el.innerHTML = admins.map(admin => `
         <div class="order">
             <div><b>${admin.nickname}</b> (${admin.email})</div>
-            <div style="font-size:12px; color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
+            <div style="font-size:12px;color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
             <button class="order-btn btn-purple" onclick="window.approveAdmin('${admin.id}')">批准</button>
         </div>
     `).join('');
@@ -465,15 +403,13 @@ window.loadAuditList = async function() {
 window.approveAdmin = async function(adminId) {
     if (!confirm('确定批准该管理员？')) return;
     try {
-        await window.supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', adminId);
+        await window.supabaseClient.from('profiles').update({status: 'approved'}).eq('id', adminId);
         window.showMessage('批准成功', true);
         window.loadAuditList();
-    } catch (e) {
-        window.showMessage(`批准失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`批准失败：${e.message}`, false); }
 };
 
-// 退出登录
+// 退出
 window.handleLogout = async function() {
     await window.supabaseClient.auth.signOut();
     window.currentUser = null;
@@ -482,18 +418,12 @@ window.handleLogout = async function() {
     window.showMessage('已退出登录', true);
 };
 
-// 切换注册/登录页
-window.showReg = function() {
-    const el = document.getElementById('regBox');
-    if (el) el.style.display = 'block';
-};
-window.showLogin = function() {
-    const el = document.getElementById('regBox');
-    if (el) el.style.display = 'none';
-};
+// 切换注册/登录
+window.showReg = function() { document.getElementById('regBox').style.display = 'block'; };
+window.showLogin = function() { document.getElementById('regBox').style.display = 'none'; };
 
 /* ==========================================
-   页面加载后立即初始化
+   启动
    ========================================== */
 init();
 </script>
