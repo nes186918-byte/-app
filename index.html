@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>卡了电竞</title>
+    <audio id="notifySound" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-notification-951.mp3" preload="auto"></audio>
     <style>
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
@@ -26,11 +27,19 @@
         .detail-label { color: #00f0ff; font-weight: bold; }
         .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; display: none; justify-content: space-between; align-items: center; box-sizing: border-box; border-top: 1px solid #00f0ff; }
         .footer-bar button { width: auto; padding: 8px 15px; margin: 0; }
+        .notify-banner {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(90deg, #00f0ff, #ff00ff); color: #000;
+            padding: 12px 20px; border-radius: 8px; z-index: 2000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); font-weight: bold;
+            animation: slideInDown 0.5s ease-out;
+            max-width: 90%;
+        }
+        @keyframes slideInDown { from { top: -50px; opacity: 0; } to { top: 10px; opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <!-- 登录/注册页 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
@@ -55,7 +64,6 @@
         </div>
     </div>
 
-    <!-- 主应用页 -->
     <div id="app">
         <div class="box">
             <h2>派单系统</h2>
@@ -75,13 +83,11 @@
         </div>
     </div>
 
-    <!-- 底部栏 -->
     <div class="footer-bar" id="footerBar">
         <span id="footerUser"></span>
         <button id="logoutBtn">退出</button>
     </div>
 
-    <!-- 详情弹窗 -->
     <div id="detailModal">
         <div class="box">
             <h2>订单详情</h2>
@@ -90,31 +96,57 @@
         </div>
     </div>
 
-    <!-- 提示框 -->
     <div id="msg"></div>
 
 <script defer>
 const URL = "https://aqotjkekuvkkbqvsxagt.supabase.co";
 const KEY = "sb_publishable_q_Vq7lzJpHlEcgw6cZHBmg_7dHtFoqy";
 let token = "", userId = "", userRole = "";
+let supabase = null; // 声明supabase实例，用于实时订阅
+let realtimeChannel = null;
 
-// ====== 工具函数 ======
 function msg(txt, ok=false) {
     const m = document.getElementById("msg");
     m.innerText = txt; m.style.background = ok ? "#003300" : "#330000"; m.style.display = "block";
     setTimeout(()=>m.style.display="none", 3000);
 }
+
+function showNotifyBanner(text) {
+    const old = document.querySelector('.notify-banner');
+    if(old) old.remove();
+    const banner = document.createElement('div');
+    banner.className = 'notify-banner';
+    banner.innerText = text;
+    document.body.appendChild(banner);
+    document.getElementById('notifySound').play().catch(()=>{});
+    setTimeout(() => banner.remove(), 5000);
+}
+
+function mapStatus(status) {
+    const map = {
+        'pending': '待接单',
+        'accepted': '已接单',
+        'processing': '正在进行中',
+        'completed': '订单已完成',
+        'cancelled': '订单已取消'
+    };
+    return map[status] || '未知状态';
+}
+
 function setView(view) {
     document.getElementById("auth").style.display = view === 'auth' ? 'block' : 'none';
     document.getElementById("app").style.display = view === 'app' ? 'block' : 'none';
     document.getElementById("footerBar").style.display = view === 'app' ? 'flex' : 'none';
 }
 
-// ====== 自动登录 ======
 async function autoLogin() {
     const storedToken = localStorage.getItem('sb_token');
     if (!storedToken) return false;
     try {
+        // 初始化supabase客户端
+        supabase = window.supabase.createClient(URL, KEY, {
+            auth: { persistSession: false }
+        });
         const res = await fetch(URL + '/auth/v1/user', { headers: { 'Authorization': `Bearer ${storedToken}`, 'apikey': KEY } });
         const user = await res.json();
         if (!user.id) return false;
@@ -127,23 +159,49 @@ async function autoLogin() {
         document.getElementById("footerUser").innerText = profile.nickname;
         if (userRole === "owner" || userRole === "player") document.getElementById("orderPanel").style.display = "block";
         if (userRole === "owner") { document.getElementById("ownerPanel").style.display = "block"; loadAudit(); }
-        setView('app'); loadOrders();
+        setView('app');
+        loadOrders();
+        setupRealtime();
         return true;
     } catch { return false; }
 }
 
-// ====== 登录/注册 ======
+function setupRealtime() {
+    if (!supabase || !userId) return;
+    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+    // 仅打手/管理员/店长接收新订单提醒
+    if (!['worker', 'admin', 'owner'].includes(userRole)) return;
+    realtimeChannel = supabase.channel('orders-realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
+            showNotifyBanner(`🔔 新订单：${payload.new.content}`);
+            loadOrders();
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, () => {
+            loadOrders();
+        })
+        .subscribe();
+}
+
 document.getElementById("showReg").onclick = () => document.getElementById("regBox").style.display = "block";
 document.getElementById("showLogin").onclick = () => document.getElementById("regBox").style.display = "none";
 
 document.getElementById("regBtn").onclick = async () => {
     const email = regEmail.value, pass = regPass.value, name = regName.value, role = regRole.value;
     if (!email || !pass || !name) return msg("请填完信息");
-    if (role === "owner") { const r = await fetch(URL+"/rest/v1/profiles?select=id&role=eq.owner", {headers:{"apikey":KEY}}); if ((await r.json()).length > 0) return msg("店长已存在"); }
-    const res = await fetch(URL+"/auth/v1/signup", { method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY}, body: JSON.stringify({email, password:pass, data:{nickname:name, role:role}}) });
+    if (role === "owner") {
+        const r = await fetch(URL+"/rest/v1/profiles?select=id&role=eq.owner", {headers:{"apikey":KEY}});
+        if ((await r.json()).length > 0) return msg("店长已存在");
+    }
+    const res = await fetch(URL+"/auth/v1/signup", {
+        method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY},
+        body: JSON.stringify({email, password:pass, data:{nickname:name, role:role}})
+    });
     const j = await res.json();
     if (j.user) {
-        await fetch(URL+"/rest/v1/profiles", { method: "POST", headers: {"apikey":KEY, "Authorization":"Bearer "+j.session.access_token, "Content-Type":"application/json"}, body: JSON.stringify({id:j.user.id, email, nickname:name, role, status:(role==="admin"?"pending":"approved")}) });
+        await fetch(URL+"/rest/v1/profiles", {
+            method: "POST", headers: {"apikey":KEY, "Authorization":"Bearer "+j.session.access_token, "Content-Type":"application/json"},
+            body: JSON.stringify({id:j.user.id, email, nickname:name, role, status:(role==="admin"?"pending":"approved")})
+        });
         msg("注册成功", true); document.getElementById("regBox").style.display = "none";
     } else msg(j.msg || "注册失败");
 };
@@ -151,7 +209,10 @@ document.getElementById("regBtn").onclick = async () => {
 document.getElementById("loginBtn").onclick = async () => {
     const email = document.getElementById("email").value;
     const pass = document.getElementById("pass").value;
-    const res = await fetch(URL+"/auth/v1/token?grant_type=password", { method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY}, body: JSON.stringify({email, password:pass}) });
+    const res = await fetch(URL+"/auth/v1/token?grant_type=password", {
+        method: "POST", headers: {"Content-Type":"application/json", "apikey":KEY},
+        body: JSON.stringify({email, password:pass})
+    });
     const j = await res.json();
     if (j.access_token) {
         localStorage.setItem('sb_token', j.access_token);
@@ -164,14 +225,17 @@ document.getElementById("loginBtn").onclick = async () => {
         if (userRole === "owner" || userRole === "player") orderPanel.style.display = "block";
         if (userRole === "owner") { ownerPanel.style.display = "block"; loadAudit(); }
         setView('app'); loadOrders();
+        setupRealtime();
     } else msg("登录失败");
 };
 
-// ====== 订单逻辑 ======
 document.getElementById("orderBtn").onclick = async () => {
     const c = orderContent.value, g = orderGameId.value, p = orderPrice.value;
     if (!c || !g || !p) return msg("请填写完整");
-    await fetch(URL+"/rest/v1/orders", { method: "POST", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({sender_id:userId, content:c, game_id:g, price:p, status:"pending"}) });
+    await fetch(URL+"/rest/v1/orders", {
+        method: "POST", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
+        body: JSON.stringify({sender_id:userId, content:c, game_id:g, price:p, status:"pending"})
+    });
     msg("发布成功", true); orderContent.value = orderGameId.value = orderPrice.value = ""; loadOrders();
 };
 
@@ -180,69 +244,82 @@ async function loadOrders() {
     orderList.innerHTML = d.map(o => {
         const isOwner = o.sender_id === userId;
         const isWorker = o.worker_id === userId;
-        
-        // 按钮逻辑
         const canTake = ['owner','admin','worker'].includes(userRole) && o.status === 'pending' && !o.worker_id && !isOwner;
         const canComplete = isWorker && o.status === 'accepted';
-        const canCancel = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
-        
+        const canDelete = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
         return `<div class="order">
             <div><b>内容:</b> ${o.content}</div>
             <div><b>游戏ID:</b> ${o.game_id}</div>
-            <div><b>状态:</b> ${o.status}</div>
+            <div><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(o.status)}</span></div>
             <div><b>发单:</b> ${o.sender?.nickname||'未知'}</div>
             <div><b>接单:</b> ${o.worker?.nickname||'无'}</div>
             <button class="order-btn" onclick="showDetail('${o.id}')">详情</button>
             ${canTake ? `<button class="order-btn" onclick="takeOrder('${o.id}')">接单</button>` : ''}
             ${canComplete ? `<button class="order-btn btn-green" onclick="completeOrder('${o.id}')">结单</button>` : ''}
-            ${canCancel ? `<button class="order-btn btn-red" onclick="cancelOrder('${o.id}')">取消</button>` : ''}
+            ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${o.id}')">取消</button>` : ''}
         </div>`;
     }).join('') || "<div style='text-align:center; color:#888;'>暂无订单</div>";
 }
 
 window.takeOrder = async (id) => {
-    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({worker_id:userId, status:"accepted"}) });
+    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, {
+        method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
+        body: JSON.stringify({worker_id:userId, status:"accepted"})
+    });
     msg("接单成功", true); loadOrders();
 };
 
 window.completeOrder = async (id) => {
     if (!confirm("确认完成订单？")) return;
-    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({status: "completed"}) });
+    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, {
+        method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
+        body: JSON.stringify({status: "completed"})
+    });
     msg("订单已结单", true); loadOrders(); closeDetail();
 };
 
-window.cancelOrder = async (id) => {
-    if (!confirm("确认取消该订单？")) return;
-    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({status: "cancelled"}) });
+window.deleteOrder = async (id) => {
+    if (!confirm("确认取消？取消后订单将彻底删除")) return;
+    await fetch(URL+`/rest/v1/orders?id=eq.${id}`, {
+        method: "DELETE", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`}
+    });
     msg("订单已取消", true); loadOrders(); closeDetail();
 };
 
-// ====== 详情/审核/退出 ======
 window.showDetail = async (id) => {
     const o = (await (await fetch(URL+`/rest/v1/orders?id=eq.${id}&select=*,sender:sender_id(nickname),worker:worker_id(nickname)`, {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json())[0];
     const isOwner = o.sender_id === userId;
     const isWorker = o.worker_id === userId;
-    const canCancel = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
-    
+    const canDelete = (isOwner && o.status === 'pending') || (isWorker && o.status === 'accepted');
     detailContent.innerHTML = `
         <div class="detail-line"><b>内容:</b> ${o.content}</div>
         <div class="detail-line"><b>游戏ID:</b> ${o.game_id}</div>
         <div class="detail-line"><b>价格:</b> ¥${o.price}</div>
-        <div class="detail-line"><b>状态:</b> ${o.status}</div>
+        <div class="detail-line"><b>状态:</b> <span style="color:#00f0ff;">${mapStatus(o.status)}</span></div>
         <div class="detail-line"><b>发单:</b> ${o.sender?.nickname||'未知'}</div>
         <div class="detail-line"><b>接单:</b> ${o.worker?.nickname||'无'}</div>
-        ${canCancel ? `<button class="order-btn btn-red" onclick="cancelOrder('${o.id}')" style="margin-top:15px;">取消订单</button>` : ''}
+        ${canDelete ? `<button class="order-btn btn-red" onclick="deleteOrder('${o.id}')" style="margin-top:15px;">取消订单</button>` : ''}
     `;
     detailModal.style.display = "block";
 };
 window.closeDetail = () => detailModal.style.display = "none";
 
-async function loadAudit() { const d = await (await fetch(URL+"/rest/v1/profiles?role=eq.admin&status=eq.pending", {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json(); auditList.innerHTML = d.map(u => `<div class="order">${u.nickname} <button class="order-btn btn-purple" onclick="approve('${u.id}')">批准</button></div>`).join('') || "无"; }
-window.approve = async (id) => { await fetch(URL+`/rest/v1/profiles?id=eq.${id}`, { method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"}, body: JSON.stringify({status:"approved"}) }); msg("已批准", true); loadAudit(); };
+async function loadAudit() {
+    const d = await (await fetch(URL+"/rest/v1/profiles?role=eq.admin&status=eq.pending", {headers:{"apikey":KEY, "Authorization":`Bearer ${token}`}})).json();
+    auditList.innerHTML = d.map(u => `<div class="order">${u.nickname} <button class="order-btn btn-purple" onclick="approve('${u.id}')">批准</button></div>`).join('') || "无";
+}
+window.approve = async (id) => {
+    await fetch(URL+`/rest/v1/profiles?id=eq.${id}`, {
+        method: "PATCH", headers: {"apikey":KEY, "Authorization":`Bearer ${token}`, "Content-Type":"application/json"},
+        body: JSON.stringify({status:"approved"})
+    });
+    msg("已批准", true); loadAudit();
+};
 document.getElementById("logoutBtn").onclick = () => { localStorage.removeItem('sb_token'); location.reload(); };
 
-// ====== 页面加载入口 ======
 window.onload = () => { if (!autoLogin()) setView('auth'); };
 </script>
+<!-- 引入Supabase JS SDK，用于实时订阅 -->
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </body>
 </html>
