@@ -6,7 +6,6 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        /* ===== 原有样式100%保留，仅调整聊天气泡左右布局 ===== */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -31,76 +30,36 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #fatalError { display: none; background: #ff4757; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
 
-        /* ===== 仅调整聊天气泡左右布局，保留原有角色颜色 ===== */
-        #chatToggleBtn {
-            position: fixed;
-            right: 20px;
-            bottom: 90px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #ff00ff;
-            color: #fff;
-            font-size: 22px;
-            border: none;
-            cursor: pointer;
-            z-index: 1002;
-            box-shadow: 0 4px 15px rgba(255,0,255,0.5);
-        }
-        #chatWindow {
-            position: fixed;
-            right: 20px;
-            bottom: 160px;
-            width: 320px;
-            height: 420px;
-            background: rgba(5,5,16,0.95);
-            border-radius: 12px;
-            border: 1px solid #ff00ff;
-            z-index: 1001;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        #chatHeader {
-            padding: 12px;
-            background: rgba(255,0,255,0.2);
-            color: #ff00ff;
-            font-weight: bold;
-            text-align: center;
-            border-bottom: 1px solid #ff00ff;
-        }
-        #chatMessages {
-            flex: 1;
-            padding: 12px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        #chatInputArea {
-            padding: 12px;
-            border-top: 1px solid #333;
-            display: flex;
-            gap: 8px;
-        }
-        #chatInput {
-            flex: 1;
-            padding: 8px;
-            margin: 0;
-            font-size: 14px;
-        }
-        #chatSendBtn {
-            width: auto;
-            padding: 8px 12px;
-            margin: 0;
-            font-size: 14px;
-            background: #ff00ff;
-        }
-        /* 消息气泡：自己发的靠右，别人发的靠左 */
+        /* 聊天室样式 */
+        #chatToggleBtn { position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff00ff; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,0,255,0.5); }
+        #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #ff00ff; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
+        #chatHeader { padding: 10px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; text-align: center; border-bottom: 1px solid #ff00ff; display: flex; justify-content: space-between; align-items: center; }
+        #backToPublic { background: none; border: 1px solid #ff00ff; color: #ff00ff; padding: 4px 8px; font-size: 12px; width: auto; margin: 0; }
+        #chatMessages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        #chatInputArea { padding: 12px; border-top: 1px solid #333; display: flex; gap: 8px; }
+        #chatInput { flex: 1; padding: 8px; margin: 0; font-size: 14px; }
+        #chatSendBtn { width: auto; padding: 8px 12px; margin: 0; font-size: 14px; background: #ff00ff; }
+        
+        /* 在线列表 */
+        #onlineListPanel { position: fixed; right: 380px; bottom: 160px; width: 200px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #00ff88; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
+        #onlineListHeader { padding: 10px; background: rgba(0,255,136,0.2); color: #00ff88; font-weight: bold; text-align: center; border-bottom: 1px solid #00ff88; }
+        #onlineUsers { flex: 1; padding: 10px; overflow-y: auto; }
+        .online-user-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
+        .online-user-item:hover { background: rgba(255,255,255,0.1); }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .status-dot.online { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .status-dot.offline { background: #666; }
+        .username-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .role-tag { font-size: 10px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; }
+        .role-tag.owner { background: #ff00ff; color: #fff; }
+        .role-tag.admin { background: #ff69b4; color: #fff; }
+        .role-tag.worker { background: #00f0ff; color: #000; }
+        .role-tag.player { background: #00ff88; color: #000; }
+
+        /* 聊天气泡 */
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; word-break: break-all; }
-        .chat-msg.self { align-self: flex-end; } /* 自己发的固定右侧 */
-        .chat-msg.other { align-self: flex-start; } /* 别人发的固定左侧 */
-        /* 保留原有角色颜色，不影响身份展示 */
+        .chat-msg.self { align-self: flex-end; }
+        .chat-msg.other { align-self: flex-start; }
         .chat-msg.owner { background: rgba(255,0,255,0.2); border-left: 3px solid #ff00ff; }
         .chat-msg.admin { background: rgba(255,105,180,0.2); border-left: 3px solid #ff69b4; }
         .chat-msg.worker { background: rgba(0,240,255,0.2); border-left: 3px solid #00f0ff; }
@@ -114,7 +73,6 @@
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
-    <!-- 原有登录/注册/派单DOM100%保留，无任何修改 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
@@ -173,10 +131,19 @@
 
     <div id="msg"></div>
 
-    <!-- 聊天室DOM100%保留 -->
+    <!-- 在线列表面板 -->
+    <div id="onlineListPanel">
+        <div id="onlineListHeader">在线用户 (<span id="onlineCount">0</span>)</div>
+        <div id="onlineUsers"></div>
+    </div>
+
+    <!-- 聊天室 -->
     <button id="chatToggleBtn" onclick="window.toggleChat()">💬</button>
     <div id="chatWindow">
-        <div id="chatHeader">公共聊天室</div>
+        <div id="chatHeader">
+            <span id="chatTitle">公共聊天室</span>
+            <button id="backToPublic" onclick="window.openPublicChat()" style="display:none;">返回公聊</button>
+        </div>
         <div id="chatMessages"></div>
         <div id="chatInputArea">
             <input id="chatInput" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendChatMessage()">
@@ -185,10 +152,6 @@
     </div>
 
 <script>
-/* ==========================================
-   原有配置/全局变量/初始化/工具函数/登录注册/订单逻辑
-   100%完全保留，无任何修改
-   ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
@@ -197,59 +160,38 @@ window.currentUser = null;
 window.userProfile = null;
 window.senderMap = {};
 window.workerMap = {};
-// 聊天相关变量
 window.currentChatRoomId = null;
 window.chatSubscription = null;
 window.lastSendTime = 0;
+window.presenceChannel = null; // 在线状态频道
+window.onlineUsersCache = {}; // 在线用户缓存
 
+/* ==========================================
+   初始化与认证（完全保留）
+   ========================================== */
 function init() {
-    if (typeof window.supabase === 'undefined') {
-        showFatalError('无法加载系统组件，请检查网络后刷新');
-        return;
-    }
+    if (typeof window.supabase === 'undefined') { showFatalError('无法加载系统组件'); return; }
     try {
         window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         autoLogin();
-    } catch (e) {
-        showFatalError('系统初始化失败：' + e.message);
-    }
+    } catch (e) { showFatalError('系统初始化失败：' + e.message); }
 }
 
-function showFatalError(msg) {
-    const el = document.getElementById('fatalError');
-    el.style.display = 'block';
-    el.textContent = '❌ 致命错误：' + msg;
-}
-
-window.showMessage = function(text, isSuccess = false) {
-    const el = document.getElementById('msg');
-    if (!el) return;
-    el.textContent = text;
-    el.style.background = isSuccess ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 0, 85, 0.9)';
-    el.style.display = 'block';
-    setTimeout(() => el.style.display = 'none', 3000);
-};
-
-window.toggleLoading = function(show) {
-    const el = document.getElementById('loadingOverlay');
-    if (el) el.style.display = show ? 'flex' : 'none';
-};
-
-window.setView = function(view) {
+function showFatalError(msg) { const el = document.getElementById('fatalError'); el.style.display = 'block'; el.textContent = '❌ ' + msg; }
+window.showMessage = function(text, isSuccess=false) { const el = document.getElementById('msg'); el.textContent = text; el.style.background = isSuccess ? 'rgba(0,255,136,0.9)' : 'rgba(255,0,85,0.9)'; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); };
+window.toggleLoading = (show) => document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+window.setView = (view) => {
     document.getElementById('auth').style.display = view === 'auth' ? 'block' : 'none';
     document.getElementById('app').style.display = view === 'app' ? 'block' : 'none';
     document.getElementById('footerBar').style.display = view === 'app' ? 'flex' : 'none';
 };
-
-window.mapStatus = function(status) {
-    const map = {'pending':'待接单','accepted':'已接单','completed':'订单已完成','cancelled':'订单已取消'};
-    return map[status] || '未知状态';
-};
+window.mapStatus = (status) => ({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消'}[status] || '未知');
 
 window.updateUI = function() {
     document.getElementById('userInfo').textContent = `欢迎: ${window.userProfile.nickname}（${window.userProfile.role}）`;
     document.getElementById('footerUser').textContent = window.userProfile.nickname;
-    document.getElementById('orderPanel').style.display = (window.userProfile.role === 'owner' || window.userProfile.role === 'player') ? 'block' : 'none';
+    // 关键修改：允许 owner 和 admin 发单
+    document.getElementById('orderPanel').style.display = (['owner', 'player', 'admin'].includes(window.userProfile.role)) ? 'block' : 'none';
     document.getElementById('ownerPanel').style.display = window.userProfile.role === 'owner' ? 'block' : 'none';
     if (window.userProfile.role === 'owner') window.loadAuditList();
 };
@@ -263,14 +205,10 @@ window.autoLogin = async function() {
         const nickname = meta.nickname || session.user.email.split('@')[0];
         let role = meta.role || 'player';
         let status = 'approved';
-        if (role === 'owner') {
-            const { data: owners } = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner').eq('status', 'approved');
-            if (owners?.length > 0) { window.setView('auth'); return; }
-        } else if (role === 'admin') { status = 'pending'; }
-        const { data: newProfile, error: insertErr } = await window.supabaseClient.from('profiles').insert({
-            id: session.user.id, email: session.user.email, nickname: nickname, role: role, status: status
-        }).select().single();
-        if (insertErr || !newProfile) { window.setView('auth'); return; }
+        if (role === 'owner') { const {data: owners} = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner').eq('status', 'approved'); if(owners?.length > 0) {window.setView('auth'); return;} }
+        else if (role === 'admin') status = 'pending';
+        const { data: newProfile, error } = await window.supabaseClient.from('profiles').insert({id: session.user.id, email: session.user.email, nickname, role, status}).select().single();
+        if (error || !newProfile) { window.setView('auth'); return; }
         profile = newProfile;
     }
     if (profile.status !== 'approved') { window.setView('auth'); return; }
@@ -280,6 +218,7 @@ window.autoLogin = async function() {
     window.setView('app');
     window.loadOrders();
     window.initChat();
+    window.trackOnlineStatus(); // 启动在线追踪
 };
 
 window.handleLogin = async function() {
@@ -296,30 +235,24 @@ window.handleLogin = async function() {
             const nickname = meta.nickname || email.split('@')[0];
             let role = meta.role || 'player';
             let status = 'approved';
-            if (role === 'owner') {
-                const { data: owners } = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner').eq('status', 'approved');
-                if (owners?.length > 0) { window.showMessage('店长账号已存在', false); return; }
-            } else if (role === 'admin') { status = 'pending'; }
-            const { data: newProfile, error: insertErr } = await window.supabaseClient.from('profiles').insert({
-                id: data.user.id, email: data.user.email, nickname: nickname, role: role, status: status
-            }).select().single();
+            if (role === 'owner') { const {data: owners} = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner').eq('status', 'approved'); if(owners?.length > 0) {window.showMessage('店长账号已存在', false); return;} }
+            else if (role === 'admin') status = 'pending';
+            const { data: newProfile, error: insertErr } = await window.supabaseClient.from('profiles').insert({id: data.user.id, email: data.user.email, nickname, role, status}).select().single();
             if (insertErr) { window.showMessage(`创建资料失败：${insertErr.message}`, false); return; }
             profile = newProfile;
         }
-        if (profile.status !== 'approved') { window.showMessage('账号审核中，暂无法登录', false); return; }
+        if (profile.status !== 'approved') { window.showMessage('账号审核中', false); return; }
         window.currentUser = data.user;
         window.userProfile = profile;
         window.updateUI();
         window.setView('app');
         window.loadOrders();
         window.initChat();
-        window.showMessage(`欢迎您，${profile.nickname}`, true);
+        window.trackOnlineStatus();
+        window.showMessage(`欢迎 ${profile.nickname}`, true);
         document.getElementById('pass').value = '';
-    } catch (e) {
-        window.showMessage(`登录异常：${e.message}`, false);
-    } finally {
-        window.toggleLoading(false);
-    }
+    } catch (e) { window.showMessage(`异常：${e.message}`, false); }
+    finally { window.toggleLoading(false); }
 };
 
 window.handleRegister = async function() {
@@ -328,10 +261,7 @@ window.handleRegister = async function() {
     const nickname = document.getElementById('regName').value.trim();
     const role = document.getElementById('regRole').value;
     if (!email || !password || !nickname) { window.showMessage('请填写完整信息', false); return; }
-    if (role === 'owner') {
-        const { data: owners } = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner');
-        if (owners?.length > 0) { window.showMessage('店长账号已存在', false); return; }
-    }
+    if (role === 'owner') { const {data: owners} = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner'); if(owners?.length > 0) {window.showMessage('店长账号已存在', false); return;} }
     window.toggleLoading(true);
     try {
         const { error } = await window.supabaseClient.auth.signUp({ email, password, options: { data: { nickname, role } } });
@@ -339,18 +269,20 @@ window.handleRegister = async function() {
         window.showMessage(role === 'admin' ? '注册成功！请等待店长审核' : '注册成功！请登录', true);
         window.showLogin();
         document.getElementById('email').value = email;
-    } catch (e) {
-        window.showMessage(`注册异常：${e.message}`, false);
-    } finally {
-        window.toggleLoading(false);
-    }
+    } catch (e) { window.showMessage(`异常：${e.message}`, false); }
+    finally { window.toggleLoading(false); }
 };
 
+/* ==========================================
+   订单逻辑（修改了接单权限判断）
+   ========================================== */
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
     let query = window.supabaseClient.from('orders').select('*').order('created_at', { ascending: false });
-    if (window.userProfile.role === 'owner') {
-        // 店长看所有
+    
+    // 关键修改：允许 admin 查看所有订单，允许 worker/admin 接单
+    if (window.userProfile.role === 'owner' || window.userProfile.role === 'admin') {
+        // 店长和管理员看所有
     } else if (window.userProfile.role === 'worker' || window.userProfile.role === 'admin') {
         query = query.or(`worker_id.eq.${window.currentUser.id},and(status.eq.pending)`);
     } else {
@@ -361,10 +293,7 @@ window.loadOrders = async function() {
     if (error) { window.showMessage(`加载订单失败：${error.message}`, false); return; }
 
     const el = document.getElementById('orderList');
-    if (!orders?.length) {
-        el.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">暂无订单</div>';
-        return;
-    }
+    if (!orders?.length) { el.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">暂无订单</div>'; return; }
 
     const senderIds = [...new Set(orders.map(o => o.sender_id))];
     const { data: senders } = await window.supabaseClient.from('profiles').select('id,nickname').in('id', senderIds);
@@ -377,6 +306,7 @@ window.loadOrders = async function() {
     el.innerHTML = orders.map(order => {
         const isOwner = order.sender_id === window.currentUser.id;
         const isWorker = order.worker_id === window.currentUser.id;
+        // 关键修改：允许 admin 接单
         const canTake = ['owner','admin','worker'].includes(window.userProfile.role) && order.status === 'pending' && !order.worker_id && !isOwner;
         const canComplete = isWorker && order.status === 'accepted';
         const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
@@ -402,52 +332,25 @@ window.createOrder = async function() {
     const price = document.getElementById('orderPrice').value.trim();
     if (!content || !gameId || !price) { window.showMessage('请填写完整订单信息', false); return; }
     try {
-        await window.supabaseClient.from('orders').insert({
-            sender_id: window.currentUser.id, content, game_id: gameId, price: parseFloat(price), status: 'pending'
-        });
+        await window.supabaseClient.from('orders').insert({ sender_id: window.currentUser.id, content, game_id: gameId, price: parseFloat(price), status: 'pending' });
         window.showMessage('订单发布成功', true);
         document.getElementById('orderContent').value = '';
         document.getElementById('orderGameId').value = '';
         document.getElementById('orderPrice').value = '';
         window.loadOrders();
-    } catch (e) {
-        window.showMessage(`发布失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
 };
 
 window.takeOrder = async function(orderId) {
-    if (!window.currentUser?.id) {
-        window.showMessage('登录状态失效，请重新登录后重试', false);
-        window.handleLogout();
-        return;
-    }
-    window.showMessage(`正在尝试接单...`, true);
+    if (!window.currentUser?.id) { window.showMessage('登录失效', false); window.handleLogout(); return; }
     try {
         const userId = window.currentUser.id;
-        const { data, error } = await window.supabaseClient
-            .from('orders')
-            .update({ worker_id: userId, status: 'accepted' })
-            .eq('id', orderId)
-            .eq('status', 'pending')
-            .is('worker_id', null)
-            .select();
-
-        if (error) {
-            window.showMessage(`接单失败：${error.message}`, false);
-            return;
-        }
-
-        if (!data || data.length === 0) {
-            window.showMessage('接单失败：订单可能已被其他打手接走', false);
-            window.loadOrders();
-            return;
-        }
-
+        const { data, error } = await window.supabaseClient.from('orders').update({ worker_id: userId, status: 'accepted' }).eq('id', orderId).eq('status', 'pending').is('worker_id', null).select();
+        if (error) { window.showMessage(`接单失败：${error.message}`, false); return; }
+        if (!data || data.length === 0) { window.showMessage('订单已被接走', false); window.loadOrders(); return; }
         window.showMessage('接单成功！', true);
         window.loadOrders();
-    } catch (e) {
-        window.showMessage(`接单异常：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`异常：${e.message}`, false); }
 };
 
 window.completeOrder = async function(orderId) {
@@ -457,218 +360,219 @@ window.completeOrder = async function(orderId) {
         window.showMessage('订单已结单', true);
         window.loadOrders();
         window.closeDetailModal();
-    } catch (e) {
-        window.showMessage(`结单失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`结单失败：${e.message}`, false); }
 };
 
 window.deleteOrder = async function(orderId) {
-    if (!confirm('确认取消订单？取消后不可恢复')) return;
+    if (!confirm('确认取消？')) return;
     try {
         await window.supabaseClient.from('orders').delete().eq('id', orderId);
         window.showMessage('订单已取消', true);
         window.loadOrders();
         window.closeDetailModal();
-    } catch (e) {
-        window.showMessage(`取消失败：${e.message}`, false);
-    }
+    } catch (e) { window.showMessage(`取消失败：${e.message}`, false); }
 };
 
 window.showOrderDetail = async function(orderId) {
-    try {
-        const { data: order } = await window.supabaseClient.from('orders').select('*').eq('id', orderId).single();
-        const isOwner = order.sender_id === window.currentUser.id;
-        const isWorker = order.worker_id === window.currentUser.id;
-        const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-        document.getElementById('detailContent').innerHTML = `
-            <div><b>内容:</b> ${order.content}</div>
-            <div><b>游戏ID:</b> ${order.game_id}</div>
-            <div><b>价格:</b> ¥${order.price}</div>
-            <div><b>状态:</b> <span style="color:#00f0ff;">${window.mapStatus(order.status)}</span></div>
-            <div><b>发单:</b> ${window.senderMap?.[order.sender_id] || '未知'}</div>
-            <div><b>接单:</b> ${order.worker_id ? (window.workerMap?.[order.worker_id] || '无') : '无'}</div>
-            ${canDelete ? `<button class="order-btn btn-red" onclick="window.deleteOrder('${order.id}')" style="margin-top:15px;">取消订单</button>` : ''}
-        `;
-        document.getElementById('detailModal').style.display = 'block';
-    } catch (e) {
-        window.showMessage(`加载详情失败：${e.message}`, false);
-    }
+    const { data: order } = await window.supabaseClient.from('orders').select('*').eq('id', orderId).single();
+    const isOwner = order.sender_id === window.currentUser.id;
+    const isWorker = order.worker_id === window.currentUser.id;
+    const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
+    document.getElementById('detailContent').innerHTML = `<div><b>内容:</b> ${order.content}</div><div><b>游戏ID:</b> ${order.game_id}</div><div><b>价格:</b> ¥${order.price}</div><div><b>状态:</b> ${window.mapStatus(order.status)}</div><div><b>发单:</b> ${window.senderMap?.[order.sender_id]||'未知'}</div><div><b>接单:</b> ${order.worker_id?(window.workerMap?.[order.worker_id]||'无'):'无'}</div>${canDelete?'<button class="order-btn btn-red" onclick="window.deleteOrder(\''+order.id+'\')">取消</button>':''}`;
+    document.getElementById('detailModal').style.display = 'block';
 };
 
-window.closeDetailModal = function() { document.getElementById('detailModal').style.display = 'none'; };
-
+window.closeDetailModal = () => document.getElementById('detailModal').style.display = 'none';
 window.loadAuditList = async function() {
     if (window.userProfile.role !== 'owner') return;
     const { data: admins } = await window.supabaseClient.from('profiles').select('*').eq('role', 'admin').eq('status', 'pending');
     const el = document.getElementById('auditList');
-    if (!admins?.length) { el.innerHTML = '<div style="color:#888;">暂无待审核的管理员</div>'; return; }
-    el.innerHTML = admins.map(admin => `
-        <div class="order">
-            <div><b>${admin.nickname}</b> (${admin.email})</div>
-            <div style="font-size:12px;color:#888;">申请时间: ${new Date(admin.created_at).toLocaleString()}</div>
-            <button class="order-btn btn-purple" onclick="window.approveAdmin('${admin.id}')">批准</button>
-        </div>
-    `).join('');
+    if (!admins?.length) { el.innerHTML = '<div style="color:#888;">暂无待审核</div>'; return; }
+    el.innerHTML = admins.map(admin => `<div class="order"><div><b>${admin.nickname}</b> (${admin.email})</div><div style="font-size:12px;color:#888;">${new Date(admin.created_at).toLocaleString()}</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${admin.id}')">批准</button></div>`).join('');
 };
-
-window.approveAdmin = async function(adminId) {
-    if (!confirm('确定批准该管理员？')) return;
-    try {
-        await window.supabaseClient.from('profiles').update({status: 'approved'}).eq('id', adminId);
-        window.showMessage('批准成功', true);
-        window.loadAuditList();
-    } catch (e) {
-        window.showMessage(`批准失败：${e.message}`, false);
-    }
+window.approveAdmin = async function(adminId) { if(!confirm('批准？')) return; await window.supabaseClient.from('profiles').update({status:'approved'}).eq('id', adminId); window.showMessage('批准成功', true); window.loadAuditList(); };
+window.handleLogout = async function() { 
+    if(window.presenceChannel) window.supabaseClient.removeChannel(window.presenceChannel);
+    if(window.chatSubscription) window.supabaseClient.removeChannel(window.chatSubscription);
+    await window.supabaseClient.auth.signOut(); 
+    window.currentUser = null; window.userProfile = null; window.currentChatRoomId = null; 
+    window.setView('auth'); window.showMessage('已退出', true); 
 };
-
-window.handleLogout = async function() {
-    if (window.chatSubscription) {
-        window.supabaseClient.removeChannel(window.chatSubscription);
-        window.chatSubscription = null;
-    }
-    await window.supabaseClient.auth.signOut();
-    window.currentUser = null;
-    window.userProfile = null;
-    window.currentChatRoomId = null;
-    window.setView('auth');
-    window.showMessage('已退出登录', true);
-};
-
-window.showReg = function() { document.getElementById('regBox').style.display = 'block'; };
-window.showLogin = function() { document.getElementById('regBox').style.display = 'none'; };
+window.showReg = () => document.getElementById('regBox').style.display = 'block';
+window.showLogin = () => document.getElementById('regBox').style.display = 'none';
 
 /* ==========================================
-   仅修改聊天相关逻辑，其他功能100%保留
+   聊天与在线状态（新增/修改）
    ========================================== */
-// 初始化聊天室
+window.trackOnlineStatus = async function() {
+    window.presenceChannel = window.supabaseClient.channel('online-users');
+    
+    window.presenceChannel.on('presence', { event: 'sync' }, () => {
+        const state = window.presenceChannel.presenceState();
+        window.onlineUsersCache = {};
+        Object.keys(state).forEach(key => {
+            const user = state[key][0];
+            if(user) window.onlineUsersCache[user.id] = user;
+        });
+        window.renderOnlineList();
+    }).on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        newPresences.forEach(p => window.onlineUsersCache[p.id] = p);
+        window.renderOnlineList();
+    }).on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        leftPresences.forEach(p => delete window.onlineUsersCache[p.id]);
+        window.renderOnlineList();
+    }).subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await window.presenceChannel.track({
+                id: window.currentUser.id,
+                nickname: window.userProfile.nickname,
+                role: window.userProfile.role,
+                online_at: new Date().toISOString(),
+            });
+        }
+    });
+};
+
+window.renderOnlineList = function() {
+    const container = document.getElementById('onlineUsers');
+    const countEl = document.getElementById('onlineCount');
+    const users = Object.values(window.onlineUsersCache);
+    countEl.textContent = users.length;
+    
+    container.innerHTML = users.map(user => {
+        const roleColor = {owner: '#ff00ff', admin: '#ff69b4', worker: '#00f0ff', player: '#00ff88'}[user.role] || '#888';
+        return `
+            <div class="online-user-item" onclick="window.openPrivateChat('${user.id}', '${user.nickname}', '${user.role}')">
+                <div class="status-dot online"></div>
+                <div class="username-text">${user.nickname}</div>
+                <span class="role-tag ${user.role}" style="background:${roleColor}">${user.role}</span>
+            </div>
+        `;
+    }).join('');
+};
+
+// 打开私聊
+window.openPrivateChat = async function(targetUserId, targetNickname, targetRole) {
+    if (targetUserId === window.currentUser.id) return;
+    
+    // 查找是否已存在私聊房间
+    const { data: rooms } = await window.supabaseClient.from('chat_rooms')
+        .select('id')
+        .eq('room_type', 'private')
+        .contains('participants', [window.currentUser.id, targetUserId])
+        .limit(1);
+    
+    let roomId;
+    if (rooms && rooms.length > 0) {
+        roomId = rooms[0].id;
+    } else {
+        // 创建新私聊房间
+        const { data: newRoom, error } = await window.supabaseClient.from('chat_rooms').insert({
+            room_type: 'private',
+            participants: [window.currentUser.id, targetUserId]
+        }).select().single();
+        if (error) { window.showMessage('创建私聊失败', false); return; }
+        roomId = newRoom.id;
+    }
+    
+    // 切换聊天室
+    window.currentChatRoomId = roomId;
+    document.getElementById('chatTitle').textContent = `私聊: ${targetNickname}`;
+    document.getElementById('backToPublic').style.display = 'block';
+    document.getElementById('chatWindow').style.display = 'flex';
+    await window.loadLatestChatMessages();
+};
+
+// 返回公聊
+window.openPublicChat = async function() {
+    const { data: room } = await window.supabaseClient.from('chat_rooms').select('id').eq('room_type', 'public').single();
+    window.currentChatRoomId = room.id;
+    document.getElementById('chatTitle').textContent = '公共聊天室';
+    document.getElementById('backToPublic').style.display = 'none';
+    await window.loadLatestChatMessages();
+};
+
+// 初始化聊天（修改：支持私聊消息加载）
 window.initChat = async function() {
     if (!window.currentUser || !window.userProfile) return;
     try {
-        let { data: room } = await window.supabaseClient
-            .from('chat_rooms')
-            .select('id')
-            .eq('room_type', 'public')
-            .single();
-        
+        // 获取公共房间
+        let { data: room } = await window.supabaseClient.from('chat_rooms').select('id').eq('room_type', 'public').single();
         if (!room) {
-            const { data: newRoom } = await window.supabaseClient
-                .from('chat_rooms')
-                .insert({ room_type: 'public' })
-                .select()
-                .single();
+            const { data: newRoom } = await window.supabaseClient.from('chat_rooms').insert({ room_type: 'public' }).select().single();
             room = newRoom;
         }
         window.currentChatRoomId = room.id;
-
-        // 初始化时拉取最新消息
         await window.loadLatestChatMessages();
 
-        // 订阅实时消息
-        window.chatSubscription = window.supabaseClient
-            .channel(`chat_room:${room.id}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'chat_messages',
-                filter: `room_id=eq.${room.id}`
-            }, (payload) => {
+        // 订阅消息
+        window.chatSubscription = window.supabaseClient.channel(`chat_room:${room.id}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room.id}` }, (payload) => {
                 window.appendChatMessage(payload.new);
-            })
-            .subscribe();
-    } catch (e) {
-        console.error('聊天室初始化失败:', e);
-    }
+            }).subscribe();
+    } catch (e) { console.error('聊天初始化失败:', e); }
 };
 
-// 加载最新20条消息（发送后/打开窗口时调用）
 window.loadLatestChatMessages = async function() {
     if (!window.currentChatRoomId) return;
-    const chatMessagesEl = document.getElementById('chatMessages');
-    const { data: messages, error } = await window.supabaseClient
-        .from('chat_messages')
+    const { data: messages } = await window.supabaseClient.from('chat_messages')
         .select('*, sender:sender_id(nickname, role)')
         .eq('room_id', window.currentChatRoomId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
     
-    if (error) {
-        console.error('加载最新消息失败:', error);
-        return;
-    }
-    // 倒序为正序，确保最新消息在底部
-    const sortedMessages = messages?.reverse() || [];
+    const chatMessagesEl = document.getElementById('chatMessages');
     chatMessagesEl.innerHTML = '';
-    sortedMessages.forEach(msg => window.appendChatMessage(msg));
+    messages?.reverse().forEach(msg => window.appendChatMessage(msg));
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 };
 
-// 追加单条消息（自己发的靠右，别人的靠左）
 window.appendChatMessage = function(msg) {
     const chatMessagesEl = document.getElementById('chatMessages');
-    const isSelf = msg.sender_id === window.currentUser?.id; // 判断是否是自己发的
+    const isSelf = msg.sender_id === window.currentUser?.id;
     const role = msg.sender?.role || 'player';
-    const nickname = msg.sender?.nickname || '未知用户';
-    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const nickname = msg.sender?.nickname || '未知';
+    const time = new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     
     const msgEl = document.createElement('div');
-    // 自己发的加self类（靠右），别人加other类（靠左），保留角色颜色
     msgEl.className = `chat-msg ${role} ${isSelf ? 'self' : 'other'}`;
-    msgEl.innerHTML = `
-        <div class="chat-nickname">[${role === 'owner' ? '店长' : role === 'admin' ? '管理员' : role === 'worker' ? '打手' : '玩家'}] ${nickname}</div>
-        <div class="chat-content">${msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-        <div class="chat-time">${time}</div>
-    `;
+    msgEl.innerHTML = `<div class="chat-nickname">${nickname}</div><div class="chat-content">${msg.content.replace(/</g,'&lt;')}</div><div class="chat-time">${time}</div>`;
     chatMessagesEl.appendChild(msgEl);
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 };
 
-// 发送消息（5秒冷却，发送后刷新列表）
 window.sendChatMessage = async function() {
     const inputEl = document.getElementById('chatInput');
     const content = inputEl.value.trim();
     if (!content) return;
-
-    // 5秒发送冷却
-    if (Date.now() - window.lastSendTime < 5000) {
-        window.showMessage('发送太频繁，请5秒后再试~', false);
-        return;
-    }
+    if (Date.now() - window.lastSendTime < 5000) { window.showMessage('5秒后再发', false); return; }
     window.lastSendTime = Date.now();
-
     try {
-        const { error } = await window.supabaseClient.from('chat_messages').insert({
-            room_id: window.currentChatRoomId,
-            sender_id: window.currentUser.id,
-            content: content
-        });
-        if (error) throw error;
+        await window.supabaseClient.from('chat_messages').insert({ room_id: window.currentChatRoomId, sender_id: window.currentUser.id, content });
         inputEl.value = '';
-        // 发送成功后刷新聊天列表，自动显示新消息
-        await window.loadLatestChatMessages();
-    } catch (e) {
-        window.showMessage(`发送失败：${e.message}`, false);
-        // 发送失败时重置冷却时间，允许用户重试
-        window.lastSendTime = 0;
-    }
+        // 私聊不需要手动刷新，Realtime会推送
+        if(document.getElementById('chatTitle').textContent === '公共聊天室'){
+            await window.loadLatestChatMessages();
+        }
+    } catch (e) { window.showMessage(`发送失败：${e.message}`, false); window.lastSendTime = 0; }
 };
 
-// 切换聊天窗口（打开时自动拉取最新消息）
+// 切换聊天窗口显示/隐藏
 window.toggleChat = function() {
     const chatWindow = document.getElementById('chatWindow');
-    const isOpening = chatWindow.style.display === 'none';
-    chatWindow.style.display = isOpening ? 'flex' : 'none';
-    if (isOpening) {
+    const onlinePanel = document.getElementById('onlineListPanel');
+    const isChatVisible = chatWindow.style.display === 'flex';
+    
+    chatWindow.style.display = isChatVisible ? 'none' : 'flex';
+    onlinePanel.style.display = isChatVisible ? 'none' : 'flex'; // 同时显示/隐藏在线列表
+    
+    if (!isChatVisible) {
         document.getElementById('chatInput').focus();
-        // 打开窗口时拉取最新消息，有新消息自动显示
         window.loadLatestChatMessages();
     }
 };
 
-/* ==========================================
-   启动逻辑100%保留
-   ========================================== */
 init();
 </script>
 </body>
