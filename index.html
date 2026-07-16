@@ -6,6 +6,7 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
+        /* ===== 原有样式100%保留，仅新增聊天相关样式 ===== */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -29,12 +30,90 @@
         .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #fatalError { display: none; background: #ff4757; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+
+        /* ===== 新增：聊天室样式 ===== */
+        /* 悬浮聊天按钮 */
+        #chatToggleBtn {
+            position: fixed;
+            right: 20px;
+            bottom: 90px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #ff00ff;
+            color: #fff;
+            font-size: 22px;
+            border: none;
+            cursor: pointer;
+            z-index: 1002;
+            box-shadow: 0 4px 15px rgba(255,0,255,0.5);
+        }
+        /* 聊天窗口 */
+        #chatWindow {
+            position: fixed;
+            right: 20px;
+            bottom: 160px;
+            width: 320px;
+            height: 420px;
+            background: rgba(5,5,16,0.95);
+            border-radius: 12px;
+            border: 1px solid #ff00ff;
+            z-index: 1001;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #chatHeader {
+            padding: 12px;
+            background: rgba(255,0,255,0.2);
+            color: #ff00ff;
+            font-weight: bold;
+            text-align: center;
+            border-bottom: 1px solid #ff00ff;
+        }
+        #chatMessages {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #chatInputArea {
+            padding: 12px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 8px;
+        }
+        #chatInput {
+            flex: 1;
+            padding: 8px;
+            margin: 0;
+            font-size: 14px;
+        }
+        #chatSendBtn {
+            width: auto;
+            padding: 8px 12px;
+            margin: 0;
+            font-size: 14px;
+            background: #ff00ff;
+        }
+        /* 消息气泡（按身份区分颜色） */
+        .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; word-break: break-all; }
+        .chat-msg.owner { align-self: flex-start; background: rgba(255,0,255,0.2); border-left: 3px solid #ff00ff; } /* 店长：紫 */
+        .chat-msg.admin { align-self: flex-start; background: rgba(255,105,180,0.2); border-left: 3px solid #ff69b4; } /* 管理员：粉 */
+        .chat-msg.worker { align-self: flex-end; background: rgba(0,240,255,0.2); border-left: 3px solid #00f0ff; } /* 打手：青 */
+        .chat-msg.player { align-self: flex-start; background: rgba(0,255,136,0.2); border-left: 3px solid #00ff88; } /* 玩家：绿 */
+        .chat-nickname { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+        .chat-content { font-size: 14px; }
+        .chat-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }
     </style>
 </head>
 <body>
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
+    <!-- 原有登录/注册/派单DOM100%保留 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
@@ -93,24 +172,39 @@
 
     <div id="msg"></div>
 
+    <!-- ===== 新增：聊天室DOM ===== -->
+    <button id="chatToggleBtn" onclick="window.toggleChat()">💬</button>
+    <div id="chatWindow">
+        <div id="chatHeader">公共聊天室</div>
+        <div id="chatMessages"></div>
+        <div id="chatInputArea">
+            <input id="chatInput" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendChatMessage()">
+            <button id="chatSendBtn" onclick="window.sendChatMessage()">发送</button>
+        </div>
+    </div>
+
 <script>
 /* ==========================================
-   🔴 配置区
+   🔴 配置区（完全保留）
    ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
 /* ==========================================
-   全局变量
+   全局变量（新增聊天相关变量，原有变量完全保留）
    ========================================== */
 window.supabaseClient = null;
 window.currentUser = null;
 window.userProfile = null;
 window.senderMap = {};
 window.workerMap = {};
+// 新增聊天相关变量
+window.currentChatRoomId = null;
+window.chatSubscription = null;
+window.lastSendTime = 0;
 
 /* ==========================================
-   初始化
+   初始化（完全保留原有逻辑，仅新增聊天初始化调用）
    ========================================== */
 function init() {
     if (typeof window.supabase === 'undefined') {
@@ -126,7 +220,7 @@ function init() {
 }
 
 /* ==========================================
-   工具函数
+   工具函数（完全保留原有逻辑）
    ========================================== */
 function showFatalError(msg) {
     const el = document.getElementById('fatalError');
@@ -168,7 +262,7 @@ window.updateUI = function() {
 };
 
 /* ==========================================
-   登录/注册逻辑（完全保留，无改动）
+   登录/注册逻辑（完全保留，仅新增聊天初始化）
    ========================================== */
 window.autoLogin = async function() {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
@@ -195,6 +289,7 @@ window.autoLogin = async function() {
     window.updateUI();
     window.setView('app');
     window.loadOrders();
+    window.initChat(); // 新增：登录成功后初始化聊天室
 };
 
 window.handleLogin = async function() {
@@ -227,6 +322,7 @@ window.handleLogin = async function() {
         window.updateUI();
         window.setView('app');
         window.loadOrders();
+        window.initChat(); // 新增：登录成功后初始化聊天室
         window.showMessage(`欢迎您，${profile.nickname}`, true);
         document.getElementById('pass').value = '';
     } catch (e) {
@@ -261,7 +357,7 @@ window.handleRegister = async function() {
 };
 
 /* ==========================================
-   订单逻辑（仅修改一处：.eq('worker_id', null) → .is('worker_id', null)）
+   订单逻辑（完全保留原有逻辑，无任何修改）
    ========================================== */
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
@@ -332,9 +428,7 @@ window.createOrder = async function() {
     }
 };
 
-// ✅ 唯一修改：将 .eq('worker_id', null) 改为 .is('worker_id', null)
 window.takeOrder = async function(orderId) {
-    // 前置校验：确保登录状态有效，避免传入null的worker_id触发数据库约束错误
     if (!window.currentUser?.id) {
         window.showMessage('登录状态失效，请重新登录后重试', false);
         window.handleLogout();
@@ -342,16 +436,13 @@ window.takeOrder = async function(orderId) {
     }
     window.showMessage(`正在尝试接单...`, true);
     try {
-        const userId = window.currentUser.id; // 缓存用户ID，避免异步过程中状态变化
+        const userId = window.currentUser.id;
         const { data, error } = await window.supabaseClient
             .from('orders')
-            .update({ 
-                worker_id: userId, 
-                status: 'accepted' 
-            })
+            .update({ worker_id: userId, status: 'accepted' })
             .eq('id', orderId)
             .eq('status', 'pending')
-            .is('worker_id', null)  // ✅ 关键修复：用 .is(null) 代替 .eq('worker_id', null)
+            .is('worker_id', null)
             .select();
 
         if (error) {
@@ -445,9 +536,15 @@ window.approveAdmin = async function(adminId) {
 };
 
 window.handleLogout = async function() {
+    // 新增：退出时取消聊天订阅
+    if (window.chatSubscription) {
+        window.supabaseClient.removeChannel(window.chatSubscription);
+        window.chatSubscription = null;
+    }
     await window.supabaseClient.auth.signOut();
     window.currentUser = null;
     window.userProfile = null;
+    window.currentChatRoomId = null;
     window.setView('auth');
     window.showMessage('已退出登录', true);
 };
@@ -456,7 +553,121 @@ window.showReg = function() { document.getElementById('regBox').style.display = 
 window.showLogin = function() { document.getElementById('regBox').style.display = 'none'; };
 
 /* ==========================================
-   启动
+   新增：聊天室逻辑（完全独立，不干涉原有功能）
+   ========================================== */
+// 初始化聊天室（自动创建/获取公共聊天室，订阅实时消息）
+window.initChat = async function() {
+    if (!window.currentUser || !window.userProfile) return;
+    try {
+        // 1. 获取/创建公共聊天室
+        let { data: room } = await window.supabaseClient
+            .from('chat_rooms')
+            .select('id')
+            .eq('room_type', 'public')
+            .single();
+        
+        if (!room) {
+            const { data: newRoom } = await window.supabaseClient
+                .from('chat_rooms')
+                .insert({ room_type: 'public' })
+                .select()
+                .single();
+            room = newRoom;
+        }
+        window.currentChatRoomId = room.id;
+
+        // 2. 加载最近50条历史消息
+        await window.loadChatMessages();
+
+        // 3. 订阅实时消息（新消息自动推送）
+        window.chatSubscription = window.supabaseClient
+            .channel(`chat_room:${room.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'chat_messages',
+                filter: `room_id=eq.${room.id}`
+            }, (payload) => {
+                window.appendChatMessage(payload.new);
+            })
+            .subscribe();
+    } catch (e) {
+        console.error('聊天室初始化失败:', e);
+    }
+};
+
+// 加载历史消息
+window.loadChatMessages = async function() {
+    const chatMessagesEl = document.getElementById('chatMessages');
+    chatMessagesEl.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;">加载历史消息...</div>';
+    
+    const { data: messages } = await window.supabaseClient
+        .from('chat_messages')
+        .select('*, sender:sender_id(nickname, role)')
+        .eq('room_id', window.currentChatRoomId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: true })
+        .limit(50);
+    
+    chatMessagesEl.innerHTML = '';
+    messages?.forEach(msg => window.appendChatMessage(msg));
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+};
+
+// 追加单条消息到聊天框（自动展示昵称+身份）
+window.appendChatMessage = function(msg) {
+    const chatMessagesEl = document.getElementById('chatMessages');
+    const role = msg.sender?.role || 'player';
+    const nickname = msg.sender?.nickname || '未知用户';
+    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const msgEl = document.createElement('div');
+    msgEl.className = `chat-msg ${role}`;
+    msgEl.innerHTML = `
+        <div class="chat-nickname">[${role === 'owner' ? '店长' : role === 'admin' ? '管理员' : role === 'worker' ? '打手' : '玩家'}] ${nickname}</div>
+        <div class="chat-content">${msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div class="chat-time">${time}</div>
+    `;
+    chatMessagesEl.appendChild(msgEl);
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+};
+
+// 发送消息
+window.sendChatMessage = async function() {
+    const inputEl = document.getElementById('chatInput');
+    const content = inputEl.value.trim();
+    if (!content) return;
+
+    // 防刷屏：1秒只能发1条
+    if (Date.now() - window.lastSendTime < 1000) {
+        window.showMessage('发送太快啦，歇1秒再发~', false);
+        return;
+    }
+    window.lastSendTime = Date.now();
+
+    try {
+        await window.supabaseClient.from('chat_messages').insert({
+            room_id: window.currentChatRoomId,
+            sender_id: window.currentUser.id,
+            content: content
+        });
+        inputEl.value = '';
+    } catch (e) {
+        window.showMessage(`发送失败：${e.message}`, false);
+    }
+};
+
+// 切换聊天窗口显示/隐藏
+window.toggleChat = function() {
+    const chatWindow = document.getElementById('chatWindow');
+    chatWindow.style.display = chatWindow.style.display === 'none' ? 'flex' : 'none';
+    if (chatWindow.style.display === 'flex') {
+        document.getElementById('chatInput').focus();
+    }
+};
+
+/* ==========================================
+   启动（完全保留）
    ========================================== */
 init();
 </script>
