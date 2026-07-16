@@ -6,7 +6,7 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        /* ===== 原有样式100%保留，仅新增聊天相关样式 ===== */
+        /* ===== 原有样式100%保留，仅调整聊天气泡左右布局 ===== */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -31,8 +31,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #fatalError { display: none; background: #ff4757; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
 
-        /* ===== 新增：聊天室样式 ===== */
-        /* 悬浮聊天按钮 */
+        /* ===== 仅调整聊天气泡左右布局，保留原有角色颜色 ===== */
         #chatToggleBtn {
             position: fixed;
             right: 20px;
@@ -48,7 +47,6 @@
             z-index: 1002;
             box-shadow: 0 4px 15px rgba(255,0,255,0.5);
         }
-        /* 聊天窗口 */
         #chatWindow {
             position: fixed;
             right: 20px;
@@ -98,12 +96,15 @@
             font-size: 14px;
             background: #ff00ff;
         }
-        /* 消息气泡（按身份区分颜色） */
+        /* 消息气泡：自己发的靠右，别人发的靠左 */
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; word-break: break-all; }
-        .chat-msg.owner { align-self: flex-start; background: rgba(255,0,255,0.2); border-left: 3px solid #ff00ff; } /* 店长：紫 */
-        .chat-msg.admin { align-self: flex-start; background: rgba(255,105,180,0.2); border-left: 3px solid #ff69b4; } /* 管理员：粉 */
-        .chat-msg.worker { align-self: flex-end; background: rgba(0,240,255,0.2); border-left: 3px solid #00f0ff; } /* 打手：青 */
-        .chat-msg.player { align-self: flex-start; background: rgba(0,255,136,0.2); border-left: 3px solid #00ff88; } /* 玩家：绿 */
+        .chat-msg.self { align-self: flex-end; } /* 自己发的固定右侧 */
+        .chat-msg.other { align-self: flex-start; } /* 别人发的固定左侧 */
+        /* 保留原有角色颜色，不影响身份展示 */
+        .chat-msg.owner { background: rgba(255,0,255,0.2); border-left: 3px solid #ff00ff; }
+        .chat-msg.admin { background: rgba(255,105,180,0.2); border-left: 3px solid #ff69b4; }
+        .chat-msg.worker { background: rgba(0,240,255,0.2); border-left: 3px solid #00f0ff; }
+        .chat-msg.player { background: rgba(0,255,136,0.2); border-left: 3px solid #00ff88; }
         .chat-nickname { font-size: 12px; color: #aaa; margin-bottom: 4px; }
         .chat-content { font-size: 14px; }
         .chat-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }
@@ -113,7 +114,7 @@
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
-    <!-- 原有登录/注册/派单DOM100%保留 -->
+    <!-- 原有登录/注册/派单DOM100%保留，无任何修改 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
@@ -172,7 +173,7 @@
 
     <div id="msg"></div>
 
-    <!-- ===== 新增：聊天室DOM ===== -->
+    <!-- 聊天室DOM100%保留 -->
     <button id="chatToggleBtn" onclick="window.toggleChat()">💬</button>
     <div id="chatWindow">
         <div id="chatHeader">公共聊天室</div>
@@ -185,27 +186,22 @@
 
 <script>
 /* ==========================================
-   🔴 配置区（完全保留）
+   原有配置/全局变量/初始化/工具函数/登录注册/订单逻辑
+   100%完全保留，无任何修改
    ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
-/* ==========================================
-   全局变量（新增聊天相关变量，原有变量完全保留）
-   ========================================== */
 window.supabaseClient = null;
 window.currentUser = null;
 window.userProfile = null;
 window.senderMap = {};
 window.workerMap = {};
-// 新增聊天相关变量
+// 聊天相关变量
 window.currentChatRoomId = null;
 window.chatSubscription = null;
 window.lastSendTime = 0;
 
-/* ==========================================
-   初始化（完全保留原有逻辑，仅新增聊天初始化调用）
-   ========================================== */
 function init() {
     if (typeof window.supabase === 'undefined') {
         showFatalError('无法加载系统组件，请检查网络后刷新');
@@ -219,9 +215,6 @@ function init() {
     }
 }
 
-/* ==========================================
-   工具函数（完全保留原有逻辑）
-   ========================================== */
 function showFatalError(msg) {
     const el = document.getElementById('fatalError');
     el.style.display = 'block';
@@ -261,9 +254,6 @@ window.updateUI = function() {
     if (window.userProfile.role === 'owner') window.loadAuditList();
 };
 
-/* ==========================================
-   登录/注册逻辑（完全保留，仅新增聊天初始化）
-   ========================================== */
 window.autoLogin = async function() {
     const { data: { session } } = await window.supabaseClient.auth.getSession();
     if (!session) { window.setView('auth'); return; }
@@ -289,7 +279,7 @@ window.autoLogin = async function() {
     window.updateUI();
     window.setView('app');
     window.loadOrders();
-    window.initChat(); // 新增：登录成功后初始化聊天室
+    window.initChat();
 };
 
 window.handleLogin = async function() {
@@ -322,7 +312,7 @@ window.handleLogin = async function() {
         window.updateUI();
         window.setView('app');
         window.loadOrders();
-        window.initChat(); // 新增：登录成功后初始化聊天室
+        window.initChat();
         window.showMessage(`欢迎您，${profile.nickname}`, true);
         document.getElementById('pass').value = '';
     } catch (e) {
@@ -356,9 +346,6 @@ window.handleRegister = async function() {
     }
 };
 
-/* ==========================================
-   订单逻辑（完全保留原有逻辑，无任何修改）
-   ========================================== */
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
     let query = window.supabaseClient.from('orders').select('*').order('created_at', { ascending: false });
@@ -536,7 +523,6 @@ window.approveAdmin = async function(adminId) {
 };
 
 window.handleLogout = async function() {
-    // 新增：退出时取消聊天订阅
     if (window.chatSubscription) {
         window.supabaseClient.removeChannel(window.chatSubscription);
         window.chatSubscription = null;
@@ -553,13 +539,12 @@ window.showReg = function() { document.getElementById('regBox').style.display = 
 window.showLogin = function() { document.getElementById('regBox').style.display = 'none'; };
 
 /* ==========================================
-   新增：聊天室逻辑（完全独立，不干涉原有功能）
+   仅修改聊天相关逻辑，其他功能100%保留
    ========================================== */
-// 初始化聊天室（自动创建/获取公共聊天室，订阅实时消息）
+// 初始化聊天室
 window.initChat = async function() {
     if (!window.currentUser || !window.userProfile) return;
     try {
-        // 1. 获取/创建公共聊天室
         let { data: room } = await window.supabaseClient
             .from('chat_rooms')
             .select('id')
@@ -576,10 +561,10 @@ window.initChat = async function() {
         }
         window.currentChatRoomId = room.id;
 
-        // 2. 加载最近50条历史消息
-        await window.loadChatMessages();
+        // 初始化时拉取最新消息
+        await window.loadLatestChatMessages();
 
-        // 3. 订阅实时消息（新消息自动推送）
+        // 订阅实时消息
         window.chatSubscription = window.supabaseClient
             .channel(`chat_room:${room.id}`)
             .on('postgres_changes', {
@@ -596,33 +581,40 @@ window.initChat = async function() {
     }
 };
 
-// 加载历史消息
-window.loadChatMessages = async function() {
+// 加载最新20条消息（发送后/打开窗口时调用）
+window.loadLatestChatMessages = async function() {
+    if (!window.currentChatRoomId) return;
     const chatMessagesEl = document.getElementById('chatMessages');
-    chatMessagesEl.innerHTML = '<div style="text-align:center;color:#888;font-size:12px;">加载历史消息...</div>';
-    
-    const { data: messages } = await window.supabaseClient
+    const { data: messages, error } = await window.supabaseClient
         .from('chat_messages')
         .select('*, sender:sender_id(nickname, role)')
         .eq('room_id', window.currentChatRoomId)
         .eq('is_deleted', false)
-        .order('created_at', { ascending: true })
-        .limit(50);
+        .order('created_at', { ascending: false })
+        .limit(20);
     
+    if (error) {
+        console.error('加载最新消息失败:', error);
+        return;
+    }
+    // 倒序为正序，确保最新消息在底部
+    const sortedMessages = messages?.reverse() || [];
     chatMessagesEl.innerHTML = '';
-    messages?.forEach(msg => window.appendChatMessage(msg));
+    sortedMessages.forEach(msg => window.appendChatMessage(msg));
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 };
 
-// 追加单条消息到聊天框（自动展示昵称+身份）
+// 追加单条消息（自己发的靠右，别人的靠左）
 window.appendChatMessage = function(msg) {
     const chatMessagesEl = document.getElementById('chatMessages');
+    const isSelf = msg.sender_id === window.currentUser?.id; // 判断是否是自己发的
     const role = msg.sender?.role || 'player';
     const nickname = msg.sender?.nickname || '未知用户';
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     const msgEl = document.createElement('div');
-    msgEl.className = `chat-msg ${role}`;
+    // 自己发的加self类（靠右），别人加other类（靠左），保留角色颜色
+    msgEl.className = `chat-msg ${role} ${isSelf ? 'self' : 'other'}`;
     msgEl.innerHTML = `
         <div class="chat-nickname">[${role === 'owner' ? '店长' : role === 'admin' ? '管理员' : role === 'worker' ? '打手' : '玩家'}] ${nickname}</div>
         <div class="chat-content">${msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
@@ -632,42 +624,50 @@ window.appendChatMessage = function(msg) {
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
 };
 
-// 发送消息
+// 发送消息（5秒冷却，发送后刷新列表）
 window.sendChatMessage = async function() {
     const inputEl = document.getElementById('chatInput');
     const content = inputEl.value.trim();
     if (!content) return;
 
-    // 防刷屏：1秒只能发1条
-    if (Date.now() - window.lastSendTime < 1000) {
-        window.showMessage('发送太快啦，歇1秒再发~', false);
+    // 5秒发送冷却
+    if (Date.now() - window.lastSendTime < 5000) {
+        window.showMessage('发送太频繁，请5秒后再试~', false);
         return;
     }
     window.lastSendTime = Date.now();
 
     try {
-        await window.supabaseClient.from('chat_messages').insert({
+        const { error } = await window.supabaseClient.from('chat_messages').insert({
             room_id: window.currentChatRoomId,
             sender_id: window.currentUser.id,
             content: content
         });
+        if (error) throw error;
         inputEl.value = '';
+        // 发送成功后刷新聊天列表，自动显示新消息
+        await window.loadLatestChatMessages();
     } catch (e) {
         window.showMessage(`发送失败：${e.message}`, false);
+        // 发送失败时重置冷却时间，允许用户重试
+        window.lastSendTime = 0;
     }
 };
 
-// 切换聊天窗口显示/隐藏
+// 切换聊天窗口（打开时自动拉取最新消息）
 window.toggleChat = function() {
     const chatWindow = document.getElementById('chatWindow');
-    chatWindow.style.display = chatWindow.style.display === 'none' ? 'flex' : 'none';
-    if (chatWindow.style.display === 'flex') {
+    const isOpening = chatWindow.style.display === 'none';
+    chatWindow.style.display = isOpening ? 'flex' : 'none';
+    if (isOpening) {
         document.getElementById('chatInput').focus();
+        // 打开窗口时拉取最新消息，有新消息自动显示
+        window.loadLatestChatMessages();
     }
 };
 
 /* ==========================================
-   启动（完全保留）
+   启动逻辑100%保留
    ========================================== */
 init();
 </script>
