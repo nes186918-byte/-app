@@ -6,7 +6,7 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        /* ===== 原有样式100%保留，无任何修改 ===== */
+        /* ===== 原有样式100%保留，仅调整私聊相关尺寸 ===== */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -43,8 +43,8 @@
         /* ===== 左侧私聊按钮 ===== */
         #privateChatToggleBtn { position: fixed; left: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #00ff88; color: #000; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(0,255,136,0.5); }
 
-        /* ===== 左侧私聊面板 ===== */
-        #privatePanel { position: fixed; left: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #00ff88; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
+        /* ===== 左侧私聊面板（放大尺寸，和在线列表视觉匹配） ===== */
+        #privatePanel { position: fixed; left: 20px; bottom: 160px; width: 400px; height: 520px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #00ff88; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #privatePanelHeader { padding: 10px; background: rgba(0,255,136,0.2); color: #00ff88; font-weight: bold; text-align: center; border-bottom: 1px solid #00ff88; flex-shrink: 0; }
         #onlineListHeader { padding: 8px; background: rgba(0,255,136,0.1); color: #00ff88; font-size: 14px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
         #onlineUsers { flex: 0 0 180px; padding: 10px; overflow-y: auto; border-bottom: 1px solid #333; }
@@ -74,9 +74,11 @@
         .chat-content { font-size: 14px; }
         .chat-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }
 
-        /* 私聊窗口样式 */
+        /* ===== 私聊窗口样式（新增返回按钮样式） ===== */
         .private-chat-window { width: 100%; height: 100%; background: transparent; border-radius: 8px; border: 1px solid #ff00ff; display: flex; flex-direction: column; overflow: hidden; }
         .private-chat-header { padding: 8px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ff00ff; flex-shrink: 0; font-size: 14px; }
+        /* 新增：私聊返回按钮 */
+        .private-chat-back { background: none; border: none; color: #ff00ff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
         .private-chat-close { background: none; border: none; color: #ff00ff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
         .private-chat-messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         .private-chat-input-area { padding: 8px; border-top: 1px solid #333; display: flex; gap: 6px; flex-shrink: 0; }
@@ -411,9 +413,8 @@ window.showReg = () => document.getElementById('regBox').style.display = 'block'
 window.showLogin = () => document.getElementById('regBox').style.display = 'none';
 
 /* ==========================================
-   仅修复语法错误，其他聊天功能100%保留
+   在线状态追踪（原有逻辑100%保留）
    ========================================== */
-// 在线状态追踪
 window.trackOnlineStatus = async function() {
     window.presenceChannel = window.supabaseClient.channel('online-users');
     window.presenceChannel.on('presence', { event: 'sync' }, () => {
@@ -449,7 +450,6 @@ window.renderOnlineList = function() {
     countEl.textContent = users.length;
     container.innerHTML = users.map(user => {
         const roleColor = {owner: '#ff00ff', admin: '#ff69b4', worker: '#00f0ff', player: '#00ff88'}[user.role] || '#888';
-        // 修复点：移除了多余的 '>'
         return `
             <div class="online-user-item" onclick="window.openPrivateChat('${user.id}', '${user.nickname}', '${user.role}')">
                 <div class="status-dot online"></div>
@@ -460,11 +460,12 @@ window.renderOnlineList = function() {
     }).join('');
 };
 
-// 公聊逻辑：修复重复订阅问题
+/* ==========================================
+   公聊逻辑（原有逻辑100%保留，确保实时更新）
+   ========================================== */
 window.initChat = async function() {
     if (!window.currentUser || !window.userProfile) return;
     try {
-        // 先移除已有公聊订阅，避免重复绑定
         if (window.chatSubscription) {
             window.supabaseClient.removeChannel(window.chatSubscription);
             window.chatSubscription = null;
@@ -477,7 +478,6 @@ window.initChat = async function() {
         window.currentChatRoomId = room.id;
         await window.loadPublicMessages();
 
-        // 将UUID中的连字符替换为下划线，避免Supabase Realtime订阅报错
         const safeRoomId = room.id.replace(/-/g, '_');
         window.chatSubscription = window.supabaseClient.channel(`public_chat_${safeRoomId}`)
             .on('postgres_changes', { 
@@ -543,14 +543,23 @@ window.toggleChat = function() {
     }
 };
 
-// 左侧私聊面板切换
+/* ==========================================
+   私聊面板切换（新增：关闭时恢复在线列表显示）
+   ========================================== */
 window.togglePrivatePanel = function() {
     const privatePanel = document.getElementById('privatePanel');
-    privatePanel.style.display = privatePanel.style.display === 'flex' ? 'none' : 'flex';
+    if (privatePanel.style.display === 'flex') {
+        // 关闭面板时恢复在线列表显示
+        document.getElementById('onlineListHeader').style.display = 'block';
+        document.getElementById('onlineUsers').style.display = 'block';
+        privatePanel.style.display = 'none';
+    } else {
+        privatePanel.style.display = 'flex';
+    }
 };
 
 /* ==========================================
-   修复核心：解决"cannot add postgres_changes callbacks after subscribe()"报错
+   私聊核心逻辑（新增返回按钮、放大界面、确保实时更新）
    ========================================== */
 window.openPrivateChat = async function(targetUserId, targetNickname, targetRole) {
     if (targetUserId === window.currentUser.id) return;
@@ -616,9 +625,11 @@ window.openPrivateChat = async function(targetUserId, targetNickname, targetRole
         chatWindow.className = 'private-chat-window';
         chatWindow.dataset.chatKey = chatKey;
         chatWindow.dataset.roomId = roomId;
+        // 新增返回按钮，调整标题布局
         chatWindow.innerHTML = `
             <div class="private-chat-header">
-                <span>私聊: ${targetNickname}</span>
+                <button class="private-chat-back" onclick="window.backToOnlineList('${chatKey}')">←</button>
+                <span style="flex:1; text-align:center;">私聊: ${targetNickname}</span>
                 <button class="private-chat-close" onclick="window.closePrivateChat('${chatKey}')">×</button>
             </div>
             <div class="private-chat-messages"></div>
@@ -629,6 +640,10 @@ window.openPrivateChat = async function(targetUserId, targetNickname, targetRole
         `;
         chatContainer.appendChild(chatWindow);
         
+        // 隐藏在线用户列表，放大私聊界面（释放180px高度给聊天区域）
+        document.getElementById('onlineListHeader').style.display = 'none';
+        document.getElementById('onlineUsers').style.display = 'none';
+        
         window.loadPrivateMessages(chatKey, roomId);
         window.subscribePrivateChat(chatKey, roomId);
         chatWindow.querySelector('.private-chat-input').focus();
@@ -637,6 +652,15 @@ window.openPrivateChat = async function(targetUserId, targetNickname, targetRole
         console.error('私聊创建失败:', error);
         window.showMessage(`私聊创建失败: ${error.message}`, false);
     }
+};
+
+// 新增：返回在线用户列表
+window.backToOnlineList = function(chatKey) {
+    // 显示在线用户列表
+    document.getElementById('onlineListHeader').style.display = 'block';
+    document.getElementById('onlineUsers').style.display = 'block';
+    // 关闭当前私聊窗口
+    window.closePrivateChat(chatKey);
 };
 
 window.loadPrivateMessages = async function(chatKey, roomId) {
@@ -667,14 +691,13 @@ window.appendPrivateMessage = function(container, msg) {
     container.scrollTop = container.scrollHeight;
 };
 
-// 核心修复：先移除旧订阅，再创建新订阅，严格遵循.on()在前.subscribe()在后的顺序
+// 核心：严格遵循.on()在前.subscribe()在后，确保实时更新
 window.subscribePrivateChat = function(chatKey, roomId) {
-    // 先移除已有的同key订阅，避免重复绑定导致报错
+    // 先移除旧订阅，避免重复绑定
     if (window.privateChatSubscriptions[chatKey]) {
         window.supabaseClient.removeChannel(window.privateChatSubscriptions[chatKey]);
         delete window.privateChatSubscriptions[chatKey];
     }
-    // 将UUID中的连字符替换为下划线，避免频道名非法
     const safeRoomId = roomId.replace(/-/g, '_');
     const channel = window.supabaseClient.channel(`private_chat_${safeRoomId}`)
         .on('postgres_changes', { 
@@ -683,6 +706,7 @@ window.subscribePrivateChat = function(chatKey, roomId) {
             table: 'chat_messages', 
             filter: `room_id=eq.${roomId}` 
         }, (payload) => {
+            // 实时接收新消息，立即渲染
             const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
             if (chatWindow) {
                 const messagesContainer = chatWindow.querySelector('.private-chat-messages');
@@ -690,7 +714,7 @@ window.subscribePrivateChat = function(chatKey, roomId) {
             }
         })
         .subscribe((status) => {
-            if (status === 'SUBSCRIBED') console.log(`私聊频道 ${chatKey} 订阅成功`);
+            if (status === 'SUBSCRIBED') console.log(`私聊频道 ${chatKey} 订阅成功，实时更新已开启`);
             if (status === 'CHANNEL_ERROR') console.error(`私聊频道 ${chatKey} 订阅失败`);
         });
     window.privateChatSubscriptions[chatKey] = channel;
