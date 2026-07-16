@@ -459,7 +459,7 @@ window.renderOnlineList = function() {
     }).join('');
 };
 
-// 公聊逻辑100%保留
+// 公聊逻辑100%保留（修复频道名称中的连字符问题）
 window.initChat = async function() {
     if (!window.currentUser || !window.userProfile) return;
     try {
@@ -471,7 +471,9 @@ window.initChat = async function() {
         window.currentChatRoomId = room.id;
         await window.loadPublicMessages();
 
-        window.chatSubscription = window.supabaseClient.channel(`public_chat_${room.id}`)
+        // 修复：将UUID中的连字符替换为下划线，避免Supabase Realtime订阅报错
+        const safeRoomId = room.id.replace(/-/g, '_');
+        window.chatSubscription = window.supabaseClient.channel(`public_chat_${safeRoomId}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room.id}` }, (payload) => {
                 window.appendPublicMessage(payload.new);
             }).subscribe();
@@ -533,7 +535,7 @@ window.togglePrivatePanel = function() {
 };
 
 /* ==========================================
-   修复后的私聊逻辑（核心修改点）
+   修复后的私聊逻辑（核心修改点：修复频道名称中的连字符问题）
    ========================================== */
 window.openPrivateChat = async function(targetUserId, targetNickname, targetRole) {
     if (targetUserId === window.currentUser.id) return;
@@ -658,8 +660,11 @@ window.appendPrivateMessage = function(container, msg) {
     container.scrollTop = container.scrollHeight;
 };
 
+// 修复：将UUID中的连字符替换为下划线，避免Supabase Realtime订阅报错
 window.subscribePrivateChat = function(chatKey, roomId) {
-    const channel = window.supabaseClient.channel(`private_chat_${roomId}`)
+    // 关键修复：将UUID中的连字符替换为下划线
+    const safeRoomId = roomId.replace(/-/g, '_');
+    const channel = window.supabaseClient.channel(`private_chat_${safeRoomId}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${roomId}` }, (payload) => {
             const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
             if (chatWindow) {
