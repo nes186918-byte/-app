@@ -6,7 +6,7 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        /* ===== 原有样式100%保留，仅调整聊天相关布局 ===== */
+        /* ===== 原有样式100%保留，无任何修改 ===== */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -31,7 +31,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #fatalError { display: none; background: #ff4757; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
 
-        /* ===== 公聊窗口（恢复原尺寸，移除内部在线列表，100%保留原有逻辑） ===== */
+        /* ===== 公聊窗口（原有样式100%保留） ===== */
         #chatToggleBtn { position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff00ff; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,0,255,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #ff00ff; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; text-align: center; border-bottom: 1px solid #ff00ff; flex-shrink: 0; }
@@ -40,17 +40,17 @@
         #chatInput { flex: 1; padding: 8px; margin: 0; font-size: 14px; }
         #chatSendBtn { width: auto; padding: 8px 12px; margin: 0; font-size: 14px; background: #ff00ff; }
 
-        /* ===== 新增：左侧私聊按钮（和公聊按钮左右对称） ===== */
+        /* ===== 左侧私聊按钮 ===== */
         #privateChatToggleBtn { position: fixed; left: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #00ff88; color: #000; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(0,255,136,0.5); }
 
-        /* ===== 新增：左侧私聊面板（包含在线列表+私聊窗口） ===== */
+        /* ===== 左侧私聊面板 ===== */
         #privatePanel { position: fixed; left: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #00ff88; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #privatePanelHeader { padding: 10px; background: rgba(0,255,136,0.2); color: #00ff88; font-weight: bold; text-align: center; border-bottom: 1px solid #00ff88; flex-shrink: 0; }
         #onlineListHeader { padding: 8px; background: rgba(0,255,136,0.1); color: #00ff88; font-size: 14px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
         #onlineUsers { flex: 0 0 180px; padding: 10px; overflow-y: auto; border-bottom: 1px solid #333; }
         #privateChatContainer { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
 
-        /* 在线用户样式（完全保留原有逻辑） */
+        /* 在线用户样式 */
         .online-user-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
         .online-user-item:hover { background: rgba(255,255,255,0.1); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
@@ -62,7 +62,7 @@
         .role-tag.worker { background: #00f0ff; color: #000; }
         .role-tag.player { background: #00ff88; color: #000; }
 
-        /* 原有聊天气泡样式100%保留 */
+        /* 聊天气泡样式 */
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; word-break: break-all; }
         .chat-msg.self { align-self: flex-end; }
         .chat-msg.other { align-self: flex-start; }
@@ -74,7 +74,7 @@
         .chat-content { font-size: 14px; }
         .chat-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }
 
-        /* 私聊窗口样式（完全保留原有逻辑，仅位置调整到左侧面板） */
+        /* 私聊窗口样式 */
         .private-chat-window { width: 100%; height: 100%; background: transparent; border-radius: 8px; border: 1px solid #ff00ff; display: flex; flex-direction: column; overflow: hidden; }
         .private-chat-header { padding: 8px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ff00ff; flex-shrink: 0; font-size: 14px; }
         .private-chat-close { background: none; border: none; color: #ff00ff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
@@ -88,7 +88,7 @@
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
-    <!-- 原有登录/注册/派单DOM100%保留，无任何修改 -->
+    <!-- 原有登录/注册/派单DOM100%保留 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
@@ -147,7 +147,7 @@
 
     <div id="msg"></div>
 
-    <!-- 原有公聊窗口（100%保留原有逻辑，仅移除内部在线列表） -->
+    <!-- 公聊窗口 -->
     <button id="chatToggleBtn" onclick="window.toggleChat()">💬</button>
     <div id="chatWindow">
         <div id="chatHeader">公共聊天室</div>
@@ -158,7 +158,7 @@
         </div>
     </div>
 
-    <!-- 新增：左侧私聊按钮+私聊面板 -->
+    <!-- 左侧私聊面板 -->
     <button id="privateChatToggleBtn" onclick="window.togglePrivatePanel()">👥</button>
     <div id="privatePanel">
         <div id="privatePanelHeader">私聊/在线用户</div>
@@ -187,7 +187,6 @@ window.presenceChannel = null;
 window.onlineUsersCache = {};
 window.privateChatSubscriptions = {};
 
-/* 原有初始化/工具函数/登录注册/订单逻辑完全保留，此处省略重复代码，仅展示修改的聊天相关逻辑 */
 function init() {
     if (typeof window.supabase === 'undefined') { showFatalError('无法加载系统组件'); return; }
     try {
@@ -412,9 +411,9 @@ window.showReg = () => document.getElementById('regBox').style.display = 'block'
 window.showLogin = () => document.getElementById('regBox').style.display = 'none';
 
 /* ==========================================
-   仅修改聊天相关布局逻辑，其他功能100%保留
+   仅修改私聊创建逻辑，其他聊天功能100%保留
    ========================================== */
-// 在线状态追踪（完全保留原有逻辑，仅渲染到左侧面板）
+// 在线状态追踪
 window.trackOnlineStatus = async function() {
     window.presenceChannel = window.supabaseClient.channel('online-users');
     window.presenceChannel.on('presence', { event: 'sync' }, () => {
@@ -460,7 +459,7 @@ window.renderOnlineList = function() {
     }).join('');
 };
 
-// 公聊逻辑100%保留（仅移除在线列表相关代码）
+// 公聊逻辑100%保留
 window.initChat = async function() {
     if (!window.currentUser || !window.userProfile) return;
     try {
@@ -527,18 +526,23 @@ window.toggleChat = function() {
     }
 };
 
-// 新增：左侧私聊面板切换
+// 左侧私聊面板切换
 window.togglePrivatePanel = function() {
     const privatePanel = document.getElementById('privatePanel');
     privatePanel.style.display = privatePanel.style.display === 'flex' ? 'none' : 'flex';
 };
 
 /* ==========================================
-   私聊逻辑（完全保留原有逻辑，仅位置调整到左侧面板）
+   修复后的私聊逻辑（核心修改点）
    ========================================== */
 window.openPrivateChat = async function(targetUserId, targetNickname, targetRole) {
     if (targetUserId === window.currentUser.id) return;
-    const chatKey = [window.currentUser.id, targetUserId].sort().join('_');
+    
+    // 1. 排序用户ID，确保查询顺序无关
+    const sortedIds = [window.currentUser.id, targetUserId].sort();
+    const chatKey = sortedIds.join('_');
+    
+    // 2. 检查是否已打开私聊窗口
     const existingChat = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
     if (existingChat) {
         existingChat.style.borderColor = '#ff00ff';
@@ -547,49 +551,91 @@ window.openPrivateChat = async function(targetUserId, targetNickname, targetRole
     }
 
     let roomId;
-    const { data: rooms } = await window.supabaseClient.from('chat_rooms')
-        .select('id')
-        .eq('room_type', 'private')
-        .contains('participants', [window.currentUser.id, targetUserId])
-        .limit(1);
-    if (rooms && rooms.length > 0) {
-        roomId = rooms[0].id;
-    } else {
-        const { data: newRoom, error } = await window.supabaseClient.from('chat_rooms').insert({
-            room_type: 'private',
-            participants: [window.currentUser.id, targetUserId]
-        }).select().single();
-        if (error) { window.showMessage('创建私聊失败', false); return; }
-        roomId = newRoom.id;
+    
+    try {
+        // 3. 查询私聊房间（兼容两种顺序：[A,B]和[B,A]）
+        const { data: rooms, error: queryError } = await window.supabaseClient
+            .from('chat_rooms')
+            .select('id, participants')
+            .eq('room_type', 'private')
+            .or(`and(participants.cs.{${sortedIds[0]}},participants.cs.{${sortedIds[1]}})`);
+        
+        if (queryError) throw queryError;
+        
+        // 过滤出正好包含两个目标用户的房间
+        const validRooms = rooms?.filter(room => 
+            room.participants?.length === 2 &&
+            room.participants.includes(sortedIds[0]) &&
+            room.participants.includes(sortedIds[1])
+        );
+        
+        if (validRooms?.length > 0) {
+            roomId = validRooms[0].id;
+        } else {
+            // 4. 创建新私聊房间（participants已排序，符合唯一约束）
+            const { data: newRoom, error: insertError } = await window.supabaseClient
+                .from('chat_rooms')
+                .insert({
+                    room_type: 'private',
+                    participants: sortedIds
+                })
+                .select()
+                .single();
+            
+            if (insertError) {
+                // 5. 处理唯一约束冲突（极端情况：两人同时创建私聊）
+                if (insertError.code === '23505') {
+                    const { data: existingRoom } = await window.supabaseClient
+                        .from('chat_rooms')
+                        .select('id')
+                        .eq('room_type', 'private')
+                        .contains('participants', sortedIds)
+                        .single();
+                    roomId = existingRoom.id;
+                } else {
+                    throw insertError;
+                }
+            } else {
+                roomId = newRoom.id;
+            }
+        }
+        
+        // 6. 创建私聊窗口
+        const chatContainer = document.getElementById('privateChatContainer');
+        const chatWindow = document.createElement('div');
+        chatWindow.className = 'private-chat-window';
+        chatWindow.dataset.chatKey = chatKey;
+        chatWindow.dataset.roomId = roomId;
+        chatWindow.innerHTML = `
+            <div class="private-chat-header">
+                <span>私聊: ${targetNickname}</span>
+                <button class="private-chat-close" onclick="window.closePrivateChat('${chatKey}')">×</button>
+            </div>
+            <div class="private-chat-messages"></div>
+            <div class="private-chat-input-area">
+                <input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${chatKey}')">
+                <button class="private-chat-send" onclick="window.sendPrivateMessage('${chatKey}')">发送</button>
+            </div>
+        `;
+        chatContainer.appendChild(chatWindow);
+        
+        // 7. 加载历史消息并订阅新消息
+        window.loadPrivateMessages(chatKey, roomId);
+        window.subscribePrivateChat(chatKey, roomId);
+        chatWindow.querySelector('.private-chat-input').focus();
+        
+    } catch (error) {
+        console.error('私聊创建失败:', error);
+        window.showMessage(`私聊创建失败: ${error.message}`, false);
     }
-
-    const chatContainer = document.getElementById('privateChatContainer');
-    const chatWindow = document.createElement('div');
-    chatWindow.className = 'private-chat-window';
-    chatWindow.dataset.chatKey = chatKey;
-    chatWindow.dataset.roomId = roomId;
-    chatWindow.innerHTML = `
-        <div class="private-chat-header">
-            <span>私聊: ${targetNickname}</span>
-            <button class="private-chat-close" onclick="window.closePrivateChat('${chatKey}')">×</button>
-        </div>
-        <div class="private-chat-messages"></div>
-        <div class="private-chat-input-area">
-            <input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${chatKey}')">
-            <button class="private-chat-send" onclick="window.sendPrivateMessage('${chatKey}')">发送</button>
-        </div>
-    `;
-    chatContainer.appendChild(chatWindow);
-    window.loadPrivateMessages(chatKey, roomId);
-    window.subscribePrivateChat(chatKey, roomId);
-    chatWindow.querySelector('.private-chat-input').focus();
 };
 
 window.loadPrivateMessages = async function(chatKey, roomId) {
     const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
     if (!chatWindow) return;
     const messagesContainer = chatWindow.querySelector('.private-chat-messages');
-    const { data: messages } = await window.supabaseClient.from('chat_messages')
+    const { data: messages } = await window.supabaseClient
+        .from('chat_messages')
         .select('*, sender:sender_id(nickname, role)')
         .eq('room_id', roomId)
         .eq('is_deleted', false)
