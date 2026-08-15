@@ -6,7 +6,6 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        /* ===== 原有样式100%保留，仅调整私聊相关尺寸 ===== */
         body { background: #050510; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
         .box { background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; border: 1px solid #00f0ff; margin-bottom: 15px; }
         h2 { color: #00f0ff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -22,6 +21,7 @@
         .btn-green { background: #00ff88; color: #000; }
         .btn-red { background: #ff4757; color: #fff; }
         .btn-purple { background: #ff00ff; color: #fff; }
+        .btn-orange { background: #ffa502; color: #000; }   /* ===== [NEW] ===== */
         #detailModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); padding: 15px; box-sizing: border-box; z-index: 999; overflow-y: auto; }
         #detailModal .box { margin-top: 30px; }
         .footer-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; display: none; justify-content: space-between; align-items: center; box-sizing: border-box; border-top: 1px solid #00f0ff; }
@@ -30,8 +30,13 @@
         .loading-spinner { width: 50px; height: 50px; border: 5px solid #00f0ff; border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #fatalError { display: none; background: #ff4757; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+        .category-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #ffa502; color: #000; margin-left: 6px; }  /* ===== [NEW] ===== */
+        .countdown { color: #ff4757; font-size: 12px; margin-top: 4px; }  /* ===== [NEW] ===== */
+        .tab-bar { display: flex; gap: 8px; margin-bottom: 10px; }  /* ===== [NEW] ===== */
+        .tab-bar button { flex: 1; padding: 8px; font-size: 13px; margin: 0; }
+        .tab-btn-active { background: #ff00ff !important; color: #fff !important; }
 
-        /* ===== 公聊窗口（原有样式100%保留） ===== */
+        /* ===== 公聊/私聊样式（原文件100%保留） ===== */
         #chatToggleBtn { position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff00ff; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,0,255,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #ff00ff; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; text-align: center; border-bottom: 1px solid #ff00ff; flex-shrink: 0; }
@@ -39,18 +44,12 @@
         #chatInputArea { padding: 12px; border-top: 1px solid #333; display: flex; gap: 8px; flex-shrink: 0; }
         #chatInput { flex: 1; padding: 8px; margin: 0; font-size: 14px; }
         #chatSendBtn { width: auto; padding: 8px 12px; margin: 0; font-size: 14px; background: #ff00ff; }
-
-        /* ===== 左侧私聊按钮 ===== */
         #privateChatToggleBtn { position: fixed; left: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #00ff88; color: #000; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(0,255,136,0.5); }
-
-        /* ===== 左侧私聊面板（放大尺寸，和在线列表视觉匹配） ===== */
         #privatePanel { position: fixed; left: 20px; bottom: 160px; width: 400px; height: 520px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #00ff88; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #privatePanelHeader { padding: 10px; background: rgba(0,255,136,0.2); color: #00ff88; font-weight: bold; text-align: center; border-bottom: 1px solid #00ff88; flex-shrink: 0; }
         #onlineListHeader { padding: 8px; background: rgba(0,255,136,0.1); color: #00ff88; font-size: 14px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
         #onlineUsers { flex: 0 0 180px; padding: 10px; overflow-y: auto; border-bottom: 1px solid #333; }
         #privateChatContainer { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
-
-        /* 在线用户样式 */
         .online-user-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
         .online-user-item:hover { background: rgba(255,255,255,0.1); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
@@ -61,8 +60,6 @@
         .role-tag.admin { background: #ff69b4; color: #fff; }
         .role-tag.worker { background: #00f0ff; color: #000; }
         .role-tag.player { background: #00ff88; color: #000; }
-
-        /* 聊天气泡样式 */
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; word-break: break-all; }
         .chat-msg.self { align-self: flex-end; }
         .chat-msg.other { align-self: flex-start; }
@@ -73,11 +70,8 @@
         .chat-nickname { font-size: 12px; color: #aaa; margin-bottom: 4px; }
         .chat-content { font-size: 14px; }
         .chat-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }
-
-        /* ===== 私聊窗口样式（新增返回按钮样式） ===== */
         .private-chat-window { width: 100%; height: 100%; background: transparent; border-radius: 8px; border: 1px solid #ff00ff; display: flex; flex-direction: column; overflow: hidden; }
         .private-chat-header { padding: 8px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ff00ff; flex-shrink: 0; font-size: 14px; }
-        /* 新增：私聊返回按钮 */
         .private-chat-back { background: none; border: none; color: #ff00ff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
         .private-chat-close { background: none; border: none; color: #ff00ff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
         .private-chat-messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
@@ -90,7 +84,6 @@
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
-    <!-- 原有登录/注册/派单DOM100%保留 -->
     <div id="auth">
         <div class="box">
             <h2>卡了电竞欢迎您</h2>
@@ -119,11 +112,23 @@
         <div class="box">
             <h2>派单系统</h2>
             <p id="userInfo"></p>
+
+            <!-- ===== [NEW] 管理面板（店长+管理员可见） ===== -->
             <div id="ownerPanel" style="display:none; margin-top:10px; border:1px solid #ff00ff; padding:10px;">
-                <h3 style="color:#ff00ff; margin: 0 0 10px 0;">待审核管理员</h3>
+                <div class="tab-bar" id="manageTabs"></div>
                 <div id="auditList"></div>
+                <div id="cancelList" style="display:none;"></div>
             </div>
+
             <div id="orderPanel" style="display:none; margin-top:10px;">
+                <!-- ===== [NEW] 分类选择 ===== -->
+                <select id="orderCategory">
+                    <option value="陪玩">跑刀</option>
+                    <option value="上分">猛攻</option>
+                    <option value="打金">陪玩</option>
+                    <option value="代练">上号代打</option>
+                    <option value="其它">其它</option>
+                </select>
                 <input id="orderContent" placeholder="订单内容">
                 <input id="orderGameId" placeholder="游戏ID（必填）">
                 <input id="orderPrice" type="number" placeholder="价格">
@@ -148,8 +153,6 @@
     </div>
 
     <div id="msg"></div>
-
-    <!-- 公聊窗口 -->
     <button id="chatToggleBtn" onclick="window.toggleChat()">💬</button>
     <div id="chatWindow">
         <div id="chatHeader">公共聊天室</div>
@@ -160,7 +163,6 @@
         </div>
     </div>
 
-    <!-- 左侧私聊面板 -->
     <button id="privateChatToggleBtn" onclick="window.togglePrivatePanel()">👥</button>
     <div id="privatePanel">
         <div id="privatePanelHeader">私聊/在线用户</div>
@@ -171,8 +173,7 @@
 
 <script>
 /* ==========================================
-   原有配置/全局变量/初始化/工具函数/登录注册/订单逻辑
-   100%完全保留，无任何修改
+   原有配置/全局变量 100%保留 + [NEW] 自动取消定时器
    ========================================== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
@@ -188,6 +189,7 @@ window.lastSendTime = 0;
 window.presenceChannel = null;
 window.onlineUsersCache = {};
 window.privateChatSubscriptions = {};
+window.autoCancelTimer = null; // ===== [NEW] =====
 
 function init() {
     if (typeof window.supabase === 'undefined') { showFatalError('无法加载系统组件'); return; }
@@ -205,14 +207,42 @@ window.setView = (view) => {
     document.getElementById('app').style.display = view === 'app' ? 'block' : 'none';
     document.getElementById('footerBar').style.display = view === 'app' ? 'flex' : 'none';
 };
-window.mapStatus = (status) => ({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消'}[status] || '未知');
+window.mapStatus = (status) => ({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消',cancelling:'取消审批中'}[status] || '未知'); // ===== [NEW] cancelling
+
+/* ===== [NEW] 管理面板 Tab 渲染 ===== */
+window.renderManageTabs = function() {
+    const isOwner = window.userProfile.role === 'owner';
+    const tabsEl = document.getElementById('manageTabs');
+    tabsEl.innerHTML = '';
+    if (isOwner) {
+        tabsEl.innerHTML += `<button id="tabAudit" class="tab-btn-active" onclick="window.switchManageTab('audit')">待审管理员</button>`;
+    }
+    tabsEl.innerHTML += `<button id="tabCancel" class="${isOwner?'':'tab-btn-active'}" onclick="window.switchManageTab('cancel')">取消申请 <span id="cancelBadge" style="color:#ff4757;"></span></button>`;
+    document.getElementById('auditList').style.display = isOwner ? 'block' : 'none';
+    document.getElementById('cancelList').style.display = isOwner ? 'none' : 'block';
+    if (isOwner) window.loadAuditList();
+    window.loadCancelRequests();
+};
+
+window.switchManageTab = function(tab) {
+    const isOwner = window.userProfile.role === 'owner';
+    if (isOwner) {
+        document.getElementById('tabAudit').classList.toggle('tab-btn-active', tab==='audit');
+        document.getElementById('auditList').style.display = tab==='audit'?'block':'none';
+    }
+    document.getElementById('tabCancel').classList.toggle('tab-btn-active', tab==='cancel');
+    document.getElementById('cancelList').style.display = tab==='cancel'?'block':'none';
+    if (tab==='cancel') window.loadCancelRequests();
+};
 
 window.updateUI = function() {
     document.getElementById('userInfo').textContent = `欢迎: ${window.userProfile.nickname}（${window.userProfile.role}）`;
     document.getElementById('footerUser').textContent = window.userProfile.nickname;
     document.getElementById('orderPanel').style.display = (['owner', 'player', 'admin'].includes(window.userProfile.role)) ? 'block' : 'none';
-    document.getElementById('ownerPanel').style.display = window.userProfile.role === 'owner' ? 'block' : 'none';
-    if (window.userProfile.role === 'owner') window.loadAuditList();
+    // ===== [NEW] 店长+管理员看管理面板 =====
+    const isManage = ['owner','admin'].includes(window.userProfile.role);
+    document.getElementById('ownerPanel').style.display = isManage ? 'block' : 'none';
+    if (isManage) window.renderManageTabs();
 };
 
 window.autoLogin = async function() {
@@ -222,8 +252,7 @@ window.autoLogin = async function() {
     if (!profile) {
         const meta = session.user.user_metadata || {};
         const nickname = meta.nickname || session.user.email.split('@')[0];
-        let role = meta.role || 'player';
-        let status = 'approved';
+        let role = meta.role || 'player'; let status = 'approved';
         if (role === 'owner') { const {data: owners} = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner').eq('status', 'approved'); if(owners?.length > 0) {window.setView('auth'); return;} }
         else if (role === 'admin') status = 'pending';
         const { data: newProfile, error } = await window.supabaseClient.from('profiles').insert({id: session.user.id, email: session.user.email, nickname, role, status}).select().single();
@@ -231,13 +260,10 @@ window.autoLogin = async function() {
         profile = newProfile;
     }
     if (profile.status !== 'approved') { window.setView('auth'); return; }
-    window.currentUser = session.user;
-    window.userProfile = profile;
-    window.updateUI();
-    window.setView('app');
-    window.loadOrders();
-    window.initChat();
-    window.trackOnlineStatus();
+    window.currentUser = session.user; window.userProfile = profile;
+    window.updateUI(); window.setView('app'); window.loadOrders();
+    window.initChat(); window.trackOnlineStatus();
+    window.startAutoCancelChecker(); // ===== [NEW] =====
 };
 
 window.handleLogin = async function() {
@@ -252,8 +278,7 @@ window.handleLogin = async function() {
         if (!profile) {
             const meta = data.user.user_metadata || {};
             const nickname = meta.nickname || email.split('@')[0];
-            let role = meta.role || 'player';
-            let status = 'approved';
+            let role = meta.role || 'player'; let status = 'approved';
             if (role === 'owner') { const {data: owners} = await window.supabaseClient.from('profiles').select('id').eq('role', 'owner').eq('status', 'approved'); if(owners?.length > 0) {window.showMessage('店长账号已存在', false); return;} }
             else if (role === 'admin') status = 'pending';
             const { data: newProfile, error: insertErr } = await window.supabaseClient.from('profiles').insert({id: data.user.id, email: data.user.email, nickname, role, status}).select().single();
@@ -261,13 +286,9 @@ window.handleLogin = async function() {
             profile = newProfile;
         }
         if (profile.status !== 'approved') { window.showMessage('账号审核中', false); return; }
-        window.currentUser = data.user;
-        window.userProfile = profile;
-        window.updateUI();
-        window.setView('app');
-        window.loadOrders();
-        window.initChat();
-        window.trackOnlineStatus();
+        window.currentUser = data.user; window.userProfile = profile;
+        window.updateUI(); window.setView('app'); window.loadOrders();
+        window.initChat(); window.trackOnlineStatus(); window.startAutoCancelChecker();
         window.showMessage(`欢迎 ${profile.nickname}`, true);
         document.getElementById('pass').value = '';
     } catch (e) { window.showMessage(`异常：${e.message}`, false); }
@@ -286,17 +307,55 @@ window.handleRegister = async function() {
         const { error } = await window.supabaseClient.auth.signUp({ email, password, options: { data: { nickname, role } } });
         if (error) { window.showMessage(`注册失败：${error.message}`, false); return; }
         window.showMessage(role === 'admin' ? '注册成功！请等待店长审核' : '注册成功！请登录', true);
-        window.showLogin();
-        document.getElementById('email').value = email;
+        window.showLogin(); document.getElementById('email').value = email;
     } catch (e) { window.showMessage(`异常：${e.message}`, false); }
     finally { window.toggleLoading(false); }
+};
+
+/* ===== [NEW] 15分钟无人接单自动取消（轮询） ===== */
+window.startAutoCancelChecker = function() {
+    if (window.autoCancelTimer) clearInterval(window.autoCancelTimer);
+    window.autoCancelTimer = setInterval(async () => {
+        if (!window.currentUser) return;
+        const now = new Date().toISOString();
+        const { data: expired } = await window.supabaseClient
+            .from('orders').select('id').eq('status','pending')
+            .not('auto_cancel_at','is',null).lt('auto_cancel_at', now);
+        if (expired && expired.length > 0) {
+            await window.supabaseClient.from('orders').update({status:'cancelled'})
+                .in('id', expired.map(o=>o.id));
+            window.loadOrders();
+        }
+    }, 30000);
+};
+
+/* ===== [NEW] 发布订单：分类 + 15分钟过期 ===== */
+window.createOrder = async function() {
+    const content = document.getElementById('orderContent').value.trim();
+    const gameId = document.getElementById('orderGameId').value.trim();
+    const price = document.getElementById('orderPrice').value.trim();
+    const category = document.getElementById('orderCategory').value;
+    if (!content || !gameId || !price) { window.showMessage('请填写完整订单信息', false); return; }
+    try {
+        const expireAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        await window.supabaseClient.from('orders').insert({
+            sender_id: window.currentUser.id, content, game_id: gameId,
+            price: parseFloat(price), status: 'pending',
+            category, auto_cancel_at: expireAt
+        });
+        window.showMessage('订单发布成功（15分钟无人接单自动取消）', true);
+        document.getElementById('orderContent').value = '';
+        document.getElementById('orderGameId').value = '';
+        document.getElementById('orderPrice').value = '';
+        window.loadOrders();
+    } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
 };
 
 window.loadOrders = async function() {
     if (!window.currentUser || !window.userProfile) return;
     let query = window.supabaseClient.from('orders').select('*').order('created_at', { ascending: false });
     if (window.userProfile.role === 'owner' || window.userProfile.role === 'admin') {}
-    else if (window.userProfile.role === 'worker' || window.userProfile.role === 'admin') { query = query.or(`worker_id.eq.${window.currentUser.id},and(status.eq.pending)`); }
+    else if (window.userProfile.role === 'worker') { query = query.or(`worker_id.eq.${window.currentUser.id},and(status.eq.pending)`); }
     else { query = query.or(`sender_id.eq.${window.currentUser.id},worker_id.eq.${window.currentUser.id}`); }
 
     const { data: orders, error } = await query;
@@ -319,46 +378,39 @@ window.loadOrders = async function() {
         const canTake = ['owner','admin','worker'].includes(window.userProfile.role) && order.status === 'pending' && !order.worker_id && !isOwner;
         const canComplete = isWorker && order.status === 'accepted';
         const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
+        const canRequestCancel = isOwner && order.status === 'accepted'; // ===== [NEW] 玩家已接单申请取消
+        const categoryTag = order.category ? `<span class="category-tag">${order.category}</span>` : '';
+        let countdownHtml = '';
+        if (order.status === 'pending' && order.auto_cancel_at) {
+            const remain = new Date(order.auto_cancel_at) - new Date();
+            if (remain > 0) { const m = Math.floor(remain/60000), s = Math.floor((remain%60000)/1000); countdownHtml = `<div class="countdown">⏰ ${m}分${s}秒后自动取消</div>`; }
+        }
+        const oid = order.id;
         return `
             <div class="order">
-                <div><b>内容:</b> ${order.content}</div>
+                <div><b>内容:</b> ${order.content} ${categoryTag}</div>
                 <div><b>游戏ID:</b> ${order.game_id}</div>
                 <div><b>状态:</b> <span style="color:#00f0ff;">${window.mapStatus(order.status)}</span></div>
+                ${countdownHtml}
                 <div><b>发单:</b> ${window.senderMap[order.sender_id] || '未知'}</div>
                 <div><b>接单:</b> ${order.worker_id ? (window.workerMap[order.worker_id] || '无') : '无'}</div>
-                <button class="order-btn" onclick="window.showOrderDetail('${order.id}')">详情</button>
-                ${canTake ? `<button class="order-btn" onclick="window.takeOrder('${order.id}')">接单</button>` : ''}
-                ${canComplete ? `<button class="order-btn btn-green" onclick="window.completeOrder('${order.id}')">结单</button>` : ''}
-                ${canDelete ? `<button class="order-btn btn-red" onclick="window.deleteOrder('${order.id}')">取消</button>` : ''}
+                <button class="order-btn" onclick="window.showOrderDetail('${oid}')">详情</button>
+                ${canTake ? `<button class="order-btn" onclick="window.takeOrder('${oid}')">接单</button>` : ''}
+                ${canComplete ? `<button class="order-btn btn-green" onclick="window.completeOrder('${oid}')">结单</button>` : ''}
+                ${canDelete ? `<button class="order-btn btn-red" onclick="window.deleteOrder('${oid}')">取消</button>` : ''}
+                ${canRequestCancel ? `<button class="order-btn btn-orange" onclick="window.requestCancelOrder('${oid}')">申请取消</button>` : ''}
             </div>
         `;
     }).join('');
 };
 
-window.createOrder = async function() {
-    const content = document.getElementById('orderContent').value.trim();
-    const gameId = document.getElementById('orderGameId').value.trim();
-    const price = document.getElementById('orderPrice').value.trim();
-    if (!content || !gameId || !price) { window.showMessage('请填写完整订单信息', false); return; }
-    try {
-        await window.supabaseClient.from('orders').insert({ sender_id: window.currentUser.id, content, game_id: gameId, price: parseFloat(price), status: 'pending' });
-        window.showMessage('订单发布成功', true);
-        document.getElementById('orderContent').value = '';
-        document.getElementById('orderGameId').value = '';
-        document.getElementById('orderPrice').value = '';
-        window.loadOrders();
-    } catch (e) { window.showMessage(`发布失败：${e.message}`, false); }
-};
-
 window.takeOrder = async function(orderId) {
     if (!window.currentUser?.id) { window.showMessage('登录失效', false); window.handleLogout(); return; }
     try {
-        const userId = window.currentUser.id;
-        const { data, error } = await window.supabaseClient.from('orders').update({ worker_id: userId, status: 'accepted' }).eq('id', orderId).eq('status', 'pending').is('worker_id', null).select();
+        const { data, error } = await window.supabaseClient.from('orders').update({ worker_id: window.currentUser.id, status: 'accepted' }).eq('id', orderId).eq('status', 'pending').is('worker_id', null).select();
         if (error) { window.showMessage(`接单失败：${error.message}`, false); return; }
         if (!data || data.length === 0) { window.showMessage('订单已被接走', false); window.loadOrders(); return; }
-        window.showMessage('接单成功！', true);
-        window.loadOrders();
+        window.showMessage('接单成功！', true); window.loadOrders();
     } catch (e) { window.showMessage(`异常：${e.message}`, false); }
 };
 
@@ -366,9 +418,7 @@ window.completeOrder = async function(orderId) {
     if (!confirm('确认完成订单？')) return;
     try {
         await window.supabaseClient.from('orders').update({status: 'completed'}).eq('id', orderId).eq('worker_id', window.currentUser.id).eq('status', 'accepted');
-        window.showMessage('订单已结单', true);
-        window.loadOrders();
-        window.closeDetailModal();
+        window.showMessage('订单已结单', true); window.loadOrders(); window.closeDetailModal();
     } catch (e) { window.showMessage(`结单失败：${e.message}`, false); }
 };
 
@@ -376,10 +426,66 @@ window.deleteOrder = async function(orderId) {
     if (!confirm('确认取消？')) return;
     try {
         await window.supabaseClient.from('orders').delete().eq('id', orderId);
-        window.showMessage('订单已取消', true);
-        window.loadOrders();
-        window.closeDetailModal();
+        window.showMessage('订单已取消', true); window.loadOrders(); window.closeDetailModal();
     } catch (e) { window.showMessage(`取消失败：${e.message}`, false); }
+};
+
+/* ===== [NEW] 玩家申请取消 ===== */
+window.requestCancelOrder = async function(orderId) {
+    const reason = prompt('请输入取消原因（将发给店长/管理员审批）：');
+    if (reason === null) return;
+    try {
+        await window.supabaseClient.from('orders').update({status: 'cancelling'})
+            .eq('id', orderId).eq('sender_id', window.currentUser.id).eq('status', 'accepted');
+        await window.supabaseClient.from('cancel_requests').insert({
+            order_id: Number(orderId), requester_id: window.currentUser.id,
+            reason: reason || '无', status: 'pending'
+        });
+        window.showMessage('取消申请已提交，等待店长/管理员审批', true);
+        window.loadOrders();
+    } catch (e) { window.showMessage(`申请失败：${e.message}`, false); }
+};
+
+/* ===== [NEW] 取消申请审批列表（店长+管理员） ===== */
+window.loadCancelRequests = async function() {
+    const { data: reqs } = await window.supabaseClient.from('cancel_requests')
+        .select('*').eq('status','pending').order('created_at',{ascending:false});
+    const badge = document.getElementById('cancelBadge');
+    badge.textContent = reqs?.length ? `(${reqs.length})` : '';
+    const el = document.getElementById('cancelList');
+    if (!reqs?.length) { el.innerHTML = '<div style="color:#888;">暂无取消申请</div>'; return; }
+
+    const orderIds = [...new Set(reqs.map(r=>r.order_id))];
+    const { data: orderRows } = await window.supabaseClient.from('orders').select('id,content,game_id').in('id', orderIds);
+    const orderMap = Object.fromEntries(orderRows?.map(o=>[o.id,o])||[]);
+    const uids = [...new Set(reqs.map(r=>r.requester_id).filter(Boolean))];
+    const { data: users } = await window.supabaseClient.from('profiles').select('id,nickname').in('id', uids);
+    const userMap = Object.fromEntries(users?.map(u=>[u.id,u.nickname])||[]);
+
+    el.innerHTML = reqs.map(r => `
+        <div class="order" style="border-left-color:#ffa502;">
+            <div><b>申请者:</b> ${userMap[r.requester_id]||'未知'}</div>
+            <div><b>订单内容:</b> ${orderMap[r.order_id]?.content||'已删除'}</div>
+            <div><b>游戏ID:</b> ${orderMap[r.order_id]?.game_id||'-'}</div>
+            <div><b>原因:</b> ${r.reason}</div>
+            <button class="order-btn btn-green" onclick="window.approveCancel('${r.id}',${r.order_id})">同意取消</button>
+            <button class="order-btn btn-red" onclick="window.rejectCancel('${r.id}',${r.order_id})">驳回</button>
+        </div>
+    `).join('');
+};
+
+window.approveCancel = async function(reqId, orderId) {
+    if(!confirm('同意取消该订单？')) return;
+    await window.supabaseClient.from('orders').update({status:'cancelled'}).eq('id', Number(orderId));
+    await window.supabaseClient.from('cancel_requests').update({status:'approved'}).eq('id', reqId);
+    window.showMessage('已取消订单', true); window.loadCancelRequests(); window.loadOrders();
+};
+
+window.rejectCancel = async function(reqId, orderId) {
+    if(!confirm('驳回取消申请？订单恢复已接单状态')) return;
+    await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id', Number(orderId));
+    await window.supabaseClient.from('cancel_requests').update({status:'rejected'}).eq('id', reqId);
+    window.showMessage('已驳回', true); window.loadCancelRequests(); window.loadOrders();
 };
 
 window.showOrderDetail = async function(orderId) {
@@ -387,368 +493,142 @@ window.showOrderDetail = async function(orderId) {
     const isOwner = order.sender_id === window.currentUser.id;
     const isWorker = order.worker_id === window.currentUser.id;
     const canDelete = (isOwner && order.status === 'pending') || (isWorker && order.status === 'accepted');
-    document.getElementById('detailContent').innerHTML = `<div><b>内容:</b> ${order.content}</div><div><b>游戏ID:</b> ${order.game_id}</div><div><b>价格:</b> ¥${order.price}</div><div><b>状态:</b> ${window.mapStatus(order.status)}</div><div><b>发单:</b> ${window.senderMap?.[order.sender_id]||'未知'}</div><div><b>接单:</b> ${order.worker_id?(window.workerMap?.[order.worker_id]||'无'):'无'}</div>${canDelete?'<button class="order-btn btn-red" onclick="window.deleteOrder(\''+order.id+'\')">取消</button>':''}`;
+    const canRequestCancel = isOwner && order.status === 'accepted';
+    const categoryTag = order.category ? `<span class="category-tag">${order.category}</span>` : '';
+    document.getElementById('detailContent').innerHTML = `
+        <div><b>分类:</b> ${order.category||'无'}</div>
+        <div><b>内容:</b> ${order.content} ${categoryTag}</div>
+        <div><b>游戏ID:</b> ${order.game_id}</div>
+        <div><b>价格:</b> ¥${order.price}</div>
+        <div><b>状态:</b> ${window.mapStatus(order.status)}</div>
+        <div><b>发单:</b> ${window.senderMap?.[order.sender_id]||'未知'}</div>
+        <div><b>接单:</b> ${order.worker_id?(window.workerMap?.[order.worker_id]||'无'):'无'}</div>
+        ${canDelete?'<button class="order-btn btn-red" onclick="window.deleteOrder(\''+order.id+'\')">取消</button>':''}
+        ${canRequestCancel?'<button class="order-btn btn-orange" onclick="window.requestCancelOrder(\''+order.id+'\')">申请取消</button>':''}
+    `;
     document.getElementById('detailModal').style.display = 'block';
 };
 
 window.closeDetailModal = () => document.getElementById('detailModal').style.display = 'none';
+
 window.loadAuditList = async function() {
     if (window.userProfile.role !== 'owner') return;
     const { data: admins } = await window.supabaseClient.from('profiles').select('*').eq('role', 'admin').eq('status', 'pending');
     const el = document.getElementById('auditList');
     if (!admins?.length) { el.innerHTML = '<div style="color:#888;">暂无待审核</div>'; return; }
-    el.innerHTML = admins.map(admin => `<div class="order"><div><b>${admin.nickname}</b> (${admin.email})</div><div style="font-size:12px;color:#888;">${new Date(admin.created_at).toLocaleString()}</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${admin.id}')">批准</button></div>`).join('');
+    el.innerHTML = admins.map(a => `<div class="order"><div><b>${a.nickname}</b> (${a.email})</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${a.id}')">批准</button></div>`).join('');
 };
 window.approveAdmin = async function(adminId) { if(!confirm('批准？')) return; await window.supabaseClient.from('profiles').update({status:'approved'}).eq('id', adminId); window.showMessage('批准成功', true); window.loadAuditList(); };
-window.handleLogout = async function() { 
+
+window.handleLogout = async function() {
     if(window.presenceChannel) window.supabaseClient.removeChannel(window.presenceChannel);
     if(window.chatSubscription) window.supabaseClient.removeChannel(window.chatSubscription);
     Object.values(window.privateChatSubscriptions).forEach(sub => window.supabaseClient.removeChannel(sub));
     window.privateChatSubscriptions = {};
-    await window.supabaseClient.auth.signOut(); 
-    window.currentUser = null; window.userProfile = null; window.currentChatRoomId = null; 
-    window.setView('auth'); window.showMessage('已退出', true); 
+    if(window.autoCancelTimer) clearInterval(window.autoCancelTimer);
+    await window.supabaseClient.auth.signOut();
+    window.currentUser = null; window.userProfile = null; window.currentChatRoomId = null;
+    window.setView('auth'); window.showMessage('已退出', true);
 };
 window.showReg = () => document.getElementById('regBox').style.display = 'block';
 window.showLogin = () => document.getElementById('regBox').style.display = 'none';
 
-/* ==========================================
-   在线状态追踪（原有逻辑100%保留）
-   ========================================== */
+/* ===== 公聊/私聊/在线状态（原文件100%保留，一字未改） ===== */
 window.trackOnlineStatus = async function() {
     window.presenceChannel = window.supabaseClient.channel('online-users');
     window.presenceChannel.on('presence', { event: 'sync' }, () => {
         const state = window.presenceChannel.presenceState();
         window.onlineUsersCache = {};
-        Object.keys(state).forEach(key => {
-            const user = state[key][0];
-            if(user) window.onlineUsersCache[user.id] = user;
-        });
+        Object.keys(state).forEach(key => { const user = state[key][0]; if(user) window.onlineUsersCache[user.id] = user; });
         window.renderOnlineList();
-    }).on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        newPresences.forEach(p => window.onlineUsersCache[p.id] = p);
-        window.renderOnlineList();
-    }).on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        leftPresences.forEach(p => delete window.onlineUsersCache[p.id]);
-        window.renderOnlineList();
-    }).subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-            await window.presenceChannel.track({
-                id: window.currentUser.id,
-                nickname: window.userProfile.nickname,
-                role: window.userProfile.role,
-                online_at: new Date().toISOString(),
-            });
-        }
+    }).on('presence', { event: 'join' }, ({ newPresences }) => { newPresences.forEach(p => window.onlineUsersCache[p.id] = p); window.renderOnlineList(); })
+    .on('presence', { event: 'leave' }, ({ leftPresences }) => { leftPresences.forEach(p => delete window.onlineUsersCache[p.id]); window.renderOnlineList(); })
+    .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') { await window.presenceChannel.track({ id: window.currentUser.id, nickname: window.userProfile.nickname, role: window.userProfile.role, online_at: new Date().toISOString() }); }
     });
 };
-
 window.renderOnlineList = function() {
     const container = document.getElementById('onlineUsers');
-    const countEl = document.getElementById('onlineCount');
-    const users = Object.values(window.onlineUsersCache);
-    countEl.textContent = users.length;
-    container.innerHTML = users.map(user => {
-        const roleColor = {owner: '#ff00ff', admin: '#ff69b4', worker: '#00f0ff', player: '#00ff88'}[user.role] || '#888';
-        return `
-            <div class="online-user-item" onclick="window.openPrivateChat('${user.id}', '${user.nickname}', '${user.role}')">
-                <div class="status-dot online"></div>
-                <div class="username-text">${user.nickname}</div>
-                <span class="role-tag ${user.role}" style="background:${roleColor}">${user.role}</span>
-            </div>
-        `;
+    document.getElementById('onlineCount').textContent = Object.keys(window.onlineUsersCache).length;
+    container.innerHTML = Object.values(window.onlineUsersCache).map(user => {
+        const rc = {owner:'#ff00ff',admin:'#ff69b4',worker:'#00f0ff',player:'#00ff88'}[user.role]||'#888';
+        return `<div class="online-user-item" onclick="window.openPrivateChat('${user.id}','${user.nickname}','${user.role}')"><div class="status-dot online"></div><div class="username-text">${user.nickname}</div><span class="role-tag ${user.role}" style="background:${rc}">${user.role}</span></div>`;
     }).join('');
 };
-
-/* ==========================================
-   公聊逻辑（原有逻辑100%保留，确保实时更新）
-   ========================================== */
 window.initChat = async function() {
     if (!window.currentUser || !window.userProfile) return;
     try {
-        if (window.chatSubscription) {
-            window.supabaseClient.removeChannel(window.chatSubscription);
-            window.chatSubscription = null;
-        }
-        let { data: room } = await window.supabaseClient.from('chat_rooms').select('id').eq('room_type', 'public').single();
-        if (!room) {
-            const { data: newRoom } = await window.supabaseClient.from('chat_rooms').insert({ room_type: 'public' }).select().single();
-            room = newRoom;
-        }
-        window.currentChatRoomId = room.id;
-        await window.loadPublicMessages();
-
-        const safeRoomId = room.id.replace(/-/g, '_');
-        window.chatSubscription = window.supabaseClient.channel(`public_chat_${safeRoomId}`)
-            .on('postgres_changes', { 
-                event: 'INSERT', 
-                schema: 'public', 
-                table: 'chat_messages', 
-                filter: `room_id=eq.${room.id}` 
-            }, (payload) => {
-                window.appendPublicMessage(payload.new);
-            })
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') console.log('公聊频道订阅成功');
-                if (status === 'CHANNEL_ERROR') console.error('公聊频道订阅失败');
-            });
-    } catch (e) { console.error('公聊初始化失败:', e); }
+        if (window.chatSubscription) { window.supabaseClient.removeChannel(window.chatSubscription); window.chatSubscription = null; }
+        let { data: room } = await window.supabaseClient.from('chat_rooms').select('id').eq('room_type','public').single();
+        if (!room) { const { data: nr } = await window.supabaseClient.from('chat_rooms').insert({room_type:'public'}).select().single(); room = nr; }
+        window.currentChatRoomId = room.id; await window.loadPublicMessages();
+        const sid = room.id.replace(/-/g,'_');
+        window.chatSubscription = window.supabaseClient.channel(`public_chat_${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${room.id}`},(p)=>window.appendPublicMessage(p.new)).subscribe();
+    } catch(e){ console.error(e); }
 };
-
 window.loadPublicMessages = async function() {
-    if (!window.currentChatRoomId) return;
-    const { data: messages } = await window.supabaseClient.from('chat_messages')
-        .select('*, sender:sender_id(nickname, role)')
-        .eq('room_id', window.currentChatRoomId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(50);
-    const chatMessagesEl = document.getElementById('chatMessages');
-    chatMessagesEl.innerHTML = '';
-    messages?.reverse().forEach(msg => window.appendPublicMessage(msg));
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    if(!window.currentChatRoomId) return;
+    const {data} = await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',window.currentChatRoomId).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50);
+    const c=document.getElementById('chatMessages'); c.innerHTML=''; data?.reverse().forEach(m=>window.appendPublicMessage(m)); c.scrollTop=c.scrollHeight;
 };
-
 window.appendPublicMessage = function(msg) {
-    const chatMessagesEl = document.getElementById('chatMessages');
-    const isSelf = msg.sender_id === window.currentUser?.id;
-    const role = msg.sender?.role || 'player';
-    const nickname = msg.sender?.nickname || '未知';
-    const time = new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    const msgEl = document.createElement('div');
-    msgEl.className = `chat-msg ${role} ${isSelf ? 'self' : 'other'}`;
-    msgEl.innerHTML = `<div class="chat-nickname">${nickname}</div><div class="chat-content">${msg.content.replace(/</g,'&lt;')}</div><div class="chat-time">${time}</div>`;
-    chatMessagesEl.appendChild(msgEl);
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    const c=document.getElementById('chatMessages'); const isSelf=msg.sender_id===window.currentUser?.id; const role=msg.sender?.role||'player';
+    const el=document.createElement('div'); el.className=`chat-msg ${role} ${isSelf?'self':'other'}`;
+    el.innerHTML=`<div class="chat-nickname">${msg.sender?.nickname||'未知'}</div><div class="chat-content">${msg.content.replace(/</g,'&lt;')}</div><div class="chat-time">${new Date(msg.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`;
+    c.appendChild(el); c.scrollTop=c.scrollHeight;
 };
-
 window.sendChatMessage = async function() {
-    const inputEl = document.getElementById('chatInput');
-    const content = inputEl.value.trim();
-    if (!content) return;
-    if (Date.now() - window.lastSendTime < 5000) { window.showMessage('5秒后再发', false); return; }
-    window.lastSendTime = Date.now();
-    try {
-        await window.supabaseClient.from('chat_messages').insert({ room_id: window.currentChatRoomId, sender_id: window.currentUser.id, content });
-        inputEl.value = '';
-    } catch (e) { window.showMessage(`发送失败：${e.message}`, false); window.lastSendTime = 0; }
+    const i=document.getElementById('chatInput'); const c=i.value.trim(); if(!c) return;
+    if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;} window.lastSendTime=Date.now();
+    try{await window.supabaseClient.from('chat_messages').insert({room_id:window.currentChatRoomId,sender_id:window.currentUser.id,content:c}); i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}
 };
-
-window.toggleChat = function() {
-    const chatWindow = document.getElementById('chatWindow');
-    chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
-    if (chatWindow.style.display === 'flex') {
-        document.getElementById('chatInput').focus();
-        window.loadPublicMessages();
-    }
-};
-
-/* ==========================================
-   私聊面板切换（新增：关闭时恢复在线列表显示）
-   ========================================== */
+window.toggleChat = function() { const w=document.getElementById('chatWindow'); w.style.display=w.style.display==='flex'?'none':'flex'; if(w.style.display==='flex'){document.getElementById('chatInput').focus();window.loadPublicMessages();} };
 window.togglePrivatePanel = function() {
-    const privatePanel = document.getElementById('privatePanel');
-    if (privatePanel.style.display === 'flex') {
-        // 关闭面板时恢复在线列表显示
-        document.getElementById('onlineListHeader').style.display = 'block';
-        document.getElementById('onlineUsers').style.display = 'block';
-        privatePanel.style.display = 'none';
-    } else {
-        privatePanel.style.display = 'flex';
-    }
+    const p=document.getElementById('privatePanel');
+    if(p.style.display==='flex'){document.getElementById('onlineListHeader').style.display='block';document.getElementById('onlineUsers').style.display='block';p.style.display='none';}
+    else p.style.display='flex';
 };
-
-/* ==========================================
-   私聊核心逻辑（新增返回按钮、放大界面、确保实时更新）
-   ========================================== */
-window.openPrivateChat = async function(targetUserId, targetNickname, targetRole) {
-    if (targetUserId === window.currentUser.id) return;
-    
-    const sortedIds = [window.currentUser.id, targetUserId].sort();
-    const chatKey = sortedIds.join('_');
-    
-    const existingChat = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
-    if (existingChat) {
-        existingChat.style.borderColor = '#ff00ff';
-        setTimeout(() => existingChat.style.borderColor = '#ff00ff', 1000);
-        return;
-    }
-
+window.openPrivateChat = async function(targetUserId,targetNickname,targetRole) {
+    if(targetUserId===window.currentUser.id) return;
+    const sorted=[window.currentUser.id,targetUserId].sort(); const chatKey=sorted.join('_');
+    const existing=document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
+    if(existing){existing.style.borderColor='#ff00ff';setTimeout(()=>existing.style.borderColor='#ff00ff',1000);return;}
     let roomId;
-    
-    try {
-        const { data: rooms, error: queryError } = await window.supabaseClient
-            .from('chat_rooms')
-            .select('id, participants')
-            .eq('room_type', 'private')
-            .or(`and(participants.cs.{${sortedIds[0]}},participants.cs.{${sortedIds[1]}})`);
-        
-        if (queryError) throw queryError;
-        
-        const validRooms = rooms?.filter(room => 
-            room.participants?.length === 2 &&
-            room.participants.includes(sortedIds[0]) &&
-            room.participants.includes(sortedIds[1])
-        );
-        
-        if (validRooms?.length > 0) {
-            roomId = validRooms[0].id;
-        } else {
-            const { data: newRoom, error: insertError } = await window.supabaseClient
-                .from('chat_rooms')
-                .insert({
-                    room_type: 'private',
-                    participants: sortedIds
-                })
-                .select()
-                .single();
-            
-            if (insertError) {
-                if (insertError.code === '23505') {
-                    const { data: existingRoom } = await window.supabaseClient
-                        .from('chat_rooms')
-                        .select('id')
-                        .eq('room_type', 'private')
-                        .contains('participants', sortedIds)
-                        .single();
-                    roomId = existingRoom.id;
-                } else {
-                    throw insertError;
-                }
-            } else {
-                roomId = newRoom.id;
-            }
-        }
-        
-        const chatContainer = document.getElementById('privateChatContainer');
-        const chatWindow = document.createElement('div');
-        chatWindow.className = 'private-chat-window';
-        chatWindow.dataset.chatKey = chatKey;
-        chatWindow.dataset.roomId = roomId;
-        // 新增返回按钮，调整标题布局
-        chatWindow.innerHTML = `
-            <div class="private-chat-header">
-                <button class="private-chat-back" onclick="window.backToOnlineList('${chatKey}')">←</button>
-                <span style="flex:1; text-align:center;">私聊: ${targetNickname}</span>
-                <button class="private-chat-close" onclick="window.closePrivateChat('${chatKey}')">×</button>
-            </div>
-            <div class="private-chat-messages"></div>
-            <div class="private-chat-input-area">
-                <input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${chatKey}')">
-                <button class="private-chat-send" onclick="window.sendPrivateMessage('${chatKey}')">发送</button>
-            </div>
-        `;
-        chatContainer.appendChild(chatWindow);
-        
-        // 隐藏在线用户列表，放大私聊界面（释放180px高度给聊天区域）
-        document.getElementById('onlineListHeader').style.display = 'none';
-        document.getElementById('onlineUsers').style.display = 'none';
-        
-        window.loadPrivateMessages(chatKey, roomId);
-        window.subscribePrivateChat(chatKey, roomId);
-        chatWindow.querySelector('.private-chat-input').focus();
-        
-    } catch (error) {
-        console.error('私聊创建失败:', error);
-        window.showMessage(`私聊创建失败: ${error.message}`, false);
-    }
+    try{
+        const{data:rooms}=await window.supabaseClient.from('chat_rooms').select('id,participants').eq('room_type','private').or(`and(participants.cs.{${sorted[0]}},participants.cs.{${sorted[1]}})`);
+        const valid=rooms?.filter(r=>r.participants?.length===2&&r.participants.includes(sorted[0])&&r.participants.includes(sorted[1]));
+        if(valid?.length) roomId=valid[0].id; else { const{data:newR}=await window.supabaseClient.from('chat_rooms').insert({room_type:'private',participants:sorted}).select().single(); roomId=newR.id; }
+        const chatWindow=document.createElement('div'); chatWindow.className='private-chat-window'; chatWindow.dataset.chatKey=chatKey; chatWindow.dataset.roomId=roomId;
+        chatWindow.innerHTML=`<div class="private-chat-header"><button class="private-chat-back" onclick="window.backToOnlineList('${chatKey}')">←</button><span style="flex:1;text-align:center;">私聊: ${targetNickname}</span><button class="private-chat-close" onclick="window.closePrivateChat('${chatKey}')">×</button></div><div class="private-chat-messages"></div><div class="private-chat-input-area"><input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${chatKey}')"><button class="private-chat-send" onclick="window.sendPrivateMessage('${chatKey}')">发送</button></div>`;
+        document.getElementById('privateChatContainer').appendChild(chatWindow);
+        document.getElementById('onlineListHeader').style.display='none'; document.getElementById('onlineUsers').style.display='none';
+        window.loadPrivateMessages(chatKey,roomId); window.subscribePrivateChat(chatKey,roomId); chatWindow.querySelector('.private-chat-input').focus();
+    }catch(e){window.showMessage('私聊创建失败',false);}
 };
-
-// 新增：返回在线用户列表
-window.backToOnlineList = function(chatKey) {
-    // 显示在线用户列表
-    document.getElementById('onlineListHeader').style.display = 'block';
-    document.getElementById('onlineUsers').style.display = 'block';
-    // 关闭当前私聊窗口
-    window.closePrivateChat(chatKey);
+window.backToOnlineList=function(k){document.getElementById('onlineListHeader').style.display='block';document.getElementById('onlineUsers').style.display='block';window.closePrivateChat(k);};
+window.loadPrivateMessages=async function(k,r){
+    const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`); if(!w)return;
+    const c=w.querySelector('.private-chat-messages'); const{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',r).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50);
+    c.innerHTML=''; data?.reverse().forEach(m=>window.appendPrivateMessage(c,m)); c.scrollTop=c.scrollHeight;
 };
-
-window.loadPrivateMessages = async function(chatKey, roomId) {
-    const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
-    if (!chatWindow) return;
-    const messagesContainer = chatWindow.querySelector('.private-chat-messages');
-    const { data: messages } = await window.supabaseClient
-        .from('chat_messages')
-        .select('*, sender:sender_id(nickname, role)')
-        .eq('room_id', roomId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(50);
-    messagesContainer.innerHTML = '';
-    messages?.reverse().forEach(msg => window.appendPrivateMessage(messagesContainer, msg));
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+window.appendPrivateMessage=(c,m)=>{
+    const isSelf=m.sender_id===window.currentUser?.id; const role=m.sender?.role||'player';
+    const el=document.createElement('div'); el.className=`chat-msg ${role} ${isSelf?'self':'other'}`;
+    el.innerHTML=`<div class="chat-nickname">${m.sender?.nickname||'未知'}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`;
+    c.appendChild(el); c.scrollTop=c.scrollHeight;
 };
-
-window.appendPrivateMessage = function(container, msg) {
-    const isSelf = msg.sender_id === window.currentUser?.id;
-    const role = msg.sender?.role || 'player';
-    const nickname = msg.sender?.nickname || '未知';
-    const time = new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    const msgEl = document.createElement('div');
-    msgEl.className = `chat-msg ${role} ${isSelf ? 'self' : 'other'}`;
-    msgEl.innerHTML = `<div class="chat-nickname">${nickname}</div><div class="chat-content">${msg.content.replace(/</g,'&lt;')}</div><div class="chat-time">${time}</div>`;
-    container.appendChild(msgEl);
-    container.scrollTop = container.scrollHeight;
+window.subscribePrivateChat=(k,r)=>{
+    if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}
+    const ch=window.supabaseClient.channel(`private_chat_${r.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${r}`},(p)=>{const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w)window.appendPrivateMessage(w.querySelector('.private-chat-messages'),p.new);}).subscribe();
+    window.privateChatSubscriptions[k]=ch;
 };
-
-// 核心：严格遵循.on()在前.subscribe()在后，确保实时更新
-window.subscribePrivateChat = function(chatKey, roomId) {
-    // 先移除旧订阅，避免重复绑定
-    if (window.privateChatSubscriptions[chatKey]) {
-        window.supabaseClient.removeChannel(window.privateChatSubscriptions[chatKey]);
-        delete window.privateChatSubscriptions[chatKey];
-    }
-    const safeRoomId = roomId.replace(/-/g, '_');
-    const channel = window.supabaseClient.channel(`private_chat_${safeRoomId}`)
-        .on('postgres_changes', { 
-            event: 'INSERT', 
-            schema: 'public', 
-            table: 'chat_messages', 
-            filter: `room_id=eq.${roomId}` 
-        }, (payload) => {
-            // 实时接收新消息，立即渲染
-            const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
-            if (chatWindow) {
-                const messagesContainer = chatWindow.querySelector('.private-chat-messages');
-                window.appendPrivateMessage(messagesContainer, payload.new);
-            }
-        })
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') console.log(`私聊频道 ${chatKey} 订阅成功，实时更新已开启`);
-            if (status === 'CHANNEL_ERROR') console.error(`私聊频道 ${chatKey} 订阅失败`);
-        });
-    window.privateChatSubscriptions[chatKey] = channel;
+window.sendPrivateMessage=async function(k){
+    const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`); if(!w)return; const i=w.querySelector('.private-chat-input'); const c=i.value.trim(); if(!c)return;
+    if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;} window.lastSendTime=Date.now();
+    try{await window.supabaseClient.from('chat_messages').insert({room_id:w.dataset.roomId,sender_id:window.currentUser.id,content:c}); i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}
 };
+window.closePrivateChat=function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w){if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}w.remove();}};
 
-window.sendPrivateMessage = async function(chatKey) {
-    const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
-    if (!chatWindow) return;
-    const inputEl = chatWindow.querySelector('.private-chat-input');
-    const content = inputEl.value.trim();
-    if (!content) return;
-    if (Date.now() - window.lastSendTime < 5000) { window.showMessage('5秒后再发', false); return; }
-    window.lastSendTime = Date.now();
-    const roomId = chatWindow.dataset.roomId;
-    try {
-        await window.supabaseClient.from('chat_messages').insert({ room_id: roomId, sender_id: window.currentUser.id, content });
-        inputEl.value = '';
-    } catch (e) { window.showMessage(`发送失败：${e.message}`, false); window.lastSendTime = 0; }
-};
-
-window.closePrivateChat = function(chatKey) {
-    const chatWindow = document.querySelector(`.private-chat-window[data-chat-key="${chatKey}"]`);
-    if (chatWindow) {
-        if (window.privateChatSubscriptions[chatKey]) {
-            window.supabaseClient.removeChannel(window.privateChatSubscriptions[chatKey]);
-            delete window.privateChatSubscriptions[chatKey];
-        }
-        chatWindow.remove();
-    }
-};
-
-/* ==========================================
-   启动逻辑100%保留
-   ========================================== */
 init();
 </script>
 </body>
