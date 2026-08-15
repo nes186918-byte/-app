@@ -35,7 +35,7 @@
         .tab-bar { display: flex; gap: 8px; margin-bottom: 10px; }
         .tab-bar button { flex: 1; padding: 8px; font-size: 13px; margin: 0; }
         .tab-btn-active { background: #ff00ff !important; color: #fff !important; }
-        #chatToggleBtn { position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff00ff; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,0,255,0.5); }
+        #chatToggleBtn { position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff00ff; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,0,0,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(5,5,16,0.95); border-radius: 12px; border: 1px solid #ff00ff; z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,0,255,0.2); color: #ff00ff; font-weight: bold; text-align: center; border-bottom: 1px solid #ff00ff; flex-shrink: 0; }
         #chatMessages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -178,7 +178,7 @@ window.presenceChannel = null;
 window.onlineUsersCache = {};
 window.privateChatSubscriptions = {};
 window.autoCancelTimer = null;
-window.cancelPollingTimer = null; // ===== [FIX] 取消申请轮询 =====
+window.cancelPollingTimer = null;
 
 function init() {
     if (typeof window.supabase === 'undefined') { showFatalError('无法加载系统组件'); return; }
@@ -197,7 +197,6 @@ window.setView = (view) => {
 };
 window.mapStatus = (status) => ({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消',cancelling:'取消审批中'}[status] || '未知');
 
-/* ===== [FIX] 管理面板 Tab ===== */
 window.renderManageTabs = function() {
     const isOwner = window.userProfile.role === 'owner';
     const tabsEl = document.getElementById('manageTabs');
@@ -226,7 +225,7 @@ window.updateUI = function() {
     document.getElementById('orderPanel').style.display = (['owner', 'player', 'admin'].includes(window.userProfile.role)) ? 'block' : 'none';
     const isManage = ['owner','admin'].includes(window.userProfile.role);
     document.getElementById('ownerPanel').style.display = isManage ? 'block' : 'none';
-    if (isManage) { window.renderManageTabs(); window.startCancelPolling(); } // ===== [FIX] 启动轮询 =====
+    if (isManage) { window.renderManageTabs(); window.startCancelPolling(); }
 };
 
 window.autoLogin = async function() {
@@ -287,7 +286,6 @@ window.handleRegister = async function() {
     finally { window.toggleLoading(false); }
 };
 
-/* ===== 15分钟自动取消 ===== */
 window.startAutoCancelChecker = function() {
     if (window.autoCancelTimer) clearInterval(window.autoCancelTimer);
     window.autoCancelTimer = setInterval(async () => {
@@ -298,12 +296,11 @@ window.startAutoCancelChecker = function() {
     }, 30000);
 };
 
-/* ===== [FIX] 取消申请轮询（admin/owner 每8秒刷新） ===== */
 window.startCancelPolling = function() {
     if (window.cancelPollingTimer) clearInterval(window.cancelPollingTimer);
     window.cancelPollingTimer = setInterval(() => {
         if (!window.currentUser || !['owner','admin'].includes(window.userProfile?.role)) return;
-        window.loadCancelRequests(true); // silent 模式只更新 badge+列表内容
+        window.loadCancelRequests(true);
     }, 8000);
 };
 
@@ -381,27 +378,49 @@ window.deleteOrder = async function(orderId) {
     window.showMessage('订单已取消', true); window.loadOrders(); window.closeDetailModal();
 };
 
-/* ===== [FIX] 申请取消：先改订单状态再插申请 ===== */
+/* ===== 只改了这里：先查后改 + 回滚 + 真实报错 ===== */
 window.requestCancelOrder = async function(orderId) {
     const reason = prompt('请输入取消原因（将发给店长/管理员审批）：');
     if (reason === null) return;
     try {
-        const { data: ord, error: e1 } = await window.supabaseClient.from('orders').update({status:'cancelling'}).eq('id', orderId).eq('sender_id', window.currentUser.id).eq('status','accepted').select();
-        if (e1 || !ord?.length) { window.showMessage('订单状态异常或不是已接单', false); return; }
-        const realOrderId = typeof orderId === 'string' ? (isNaN(orderId)? orderId : Number(orderId)) : orderId;
-        await window.supabaseClient.from('cancel_requests').insert({ order_id: realOrderId, requester_id: window.currentUser.id, reason: reason||'无', status:'pending' });
-        window.showMessage('取消申请已提交，店长/管理员将实时收到', true); window.loadOrders();
-    } catch (e) { window.showMessage(`申请失败：${e.message}`, false); }
+        // 1. 先查当前订单真实状态
+        const { data: cur, error: qErr } = await window.supabaseClient
+            .from('orders').select('id,status,sender_id').eq('id', orderId).maybeSingle();
+        if (qErr) { window.showMessage('查询失败：' + qErr.message, false); return; }
+        if (!cur) { window.showMessage('订单不存在', false); return; }
+        if (cur.sender_id !== window.currentUser.id) { window.showMessage('只能取消自己的订单', false); return; }
+        if (cur.status !== 'accepted') { window.showMessage('当前订单状态为「' + window.mapStatus(cur.status) + '」，无法申请取消', false); return; }
+
+        // 2. 只按 id + sender_id 更新（不依赖 status 过滤，避免 RLS/类型 0行误判）
+        const { data: upd, error: uErr } = await window.supabaseClient
+            .from('orders').update({ status: 'cancelling' })
+            .eq('id', orderId).eq('sender_id', window.currentUser.id)
+            .select('id').maybeSingle();
+        if (uErr) { window.showMessage('状态更新失败：' + uErr.message, false); return; }
+        if (!upd) { window.showMessage('无权限修改订单状态（请确认RLS已关闭），请刷新重试', false); return; }
+
+        // 3. 插入取消申请（bigint 适配）
+        const realOrderId = (typeof orderId === 'string' && !isNaN(orderId)) ? Number(orderId) : orderId;
+        const { error: iErr } = await window.supabaseClient.from('cancel_requests').insert({
+            order_id: realOrderId, requester_id: window.currentUser.id, reason: reason || '无', status: 'pending'
+        });
+        if (iErr) {
+            // 回滚订单状态
+            await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id', orderId);
+            window.showMessage('申请记录提交失败：' + iErr.message, false); return;
+        }
+        window.showMessage('取消申请已提交，店长/管理员将实时收到', true);
+        window.loadOrders();
+    } catch (e) { window.showMessage('申请失败：' + e.message, false); }
 };
 
-/* ===== [FIX] 审批列表：silent=true 时只刷 badge+可见列表，不打断滚动 ===== */
 window.loadCancelRequests = async function(silent=false) {
     if (!['owner','admin'].includes(window.userProfile?.role)) return;
     const { data: reqs } = await window.supabaseClient.from('cancel_requests').select('*').eq('status','pending').order('created_at',{ascending:false});
     const badge = document.getElementById('cancelBadge');
     if (badge) badge.textContent = reqs?.length ? `(${reqs.length})` : '';
     const el = document.getElementById('cancelList');
-    if (!el || (silent && el.style.display === 'none')) return; // 不在取消tab不重写内容
+    if (!el || (silent && el.style.display === 'none')) return;
     if (!reqs?.length) { el.innerHTML = '<div style="color:#888;">暂无取消申请</div>'; return; }
     const orderIds = [...new Set(reqs.map(r=>r.order_id))];
     const { data: orderRows } = await window.supabaseClient.from('orders').select('id,content,game_id').in('id', orderIds);
@@ -430,7 +449,6 @@ window.rejectCancel = async function(reqId, orderId) {
     await window.supabaseClient.from('cancel_requests').update({status:'rejected'}).eq('id', reqId);
     window.showMessage('已驳回', true); window.loadCancelRequests(); window.loadOrders();
 };
-// 别名兼容按钮
 window.reject = window.rejectCancel;
 
 window.showOrderDetail = async function(orderId) {
@@ -466,7 +484,7 @@ window.handleLogout = async function() {
     Object.values(window.privateChatSubscriptions).forEach(sub => window.supabaseClient.removeChannel(sub));
     window.privateChatSubscriptions = {};
     if(window.autoCancelTimer) clearInterval(window.autoCancelTimer);
-    if(window.cancelPollingTimer) clearInterval(window.cancelPollingTimer); // ===== [FIX] =====
+    if(window.cancelPollingTimer) clearInterval(window.cancelPollingTimer);
     await window.supabaseClient.auth.signOut();
     window.currentUser = null; window.userProfile = null; window.currentChatRoomId = null;
     window.setView('auth'); window.showMessage('已退出', true);
@@ -474,7 +492,6 @@ window.handleLogout = async function() {
 window.showReg = () => document.getElementById('regBox').style.display = 'block';
 window.showLogin = () => document.getElementById('regBox').style.display = 'none';
 
-/* ===== 公聊/私聊/在线（原文件100%保留） ===== */
 window.trackOnlineStatus = async function() {
     window.presenceChannel = window.supabaseClient.channel('online-users');
     window.presenceChannel.on('presence', { event: 'sync' }, () => { const state = window.presenceChannel.presenceState(); window.onlineUsersCache = {}; Object.keys(state).forEach(k => { const u = state[k][0]; if(u) window.onlineUsersCache[u.id]=u; }); window.renderOnlineList(); })
