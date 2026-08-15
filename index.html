@@ -6,9 +6,9 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        html { background: #050510; }
+        html { background: #050b1e; }
         body { background: transparent; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
-        #sakura { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        #snow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
 
         .box { background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.65); margin-bottom: 15px; position: relative; z-index: 1; }
         h2 { color: #ffffff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -83,7 +83,7 @@
     </style>
 </head>
 <body>
-    <canvas id="sakura"></canvas>
+    <canvas id="snow"></canvas>
 
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
@@ -169,64 +169,114 @@
     </div>
 
 <script>
-/* ===== 樱花动画 120逻辑帧/秒 + 真实时间步长（高刷屏真120fps） ===== */
-(function sakuraBg(){
-    const canvas = document.getElementById('sakura');
+/* ===== 蓝色雪夜 · 六角雪花 120逻辑帧/秒 ===== */
+(function snowNightBg(){
+    const canvas = document.getElementById('snow');
     const ctx = canvas.getContext('2d');
-    let petals = [];
-    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    let bgGradient = null;
+    let flakes = [];
+
+    function resize(){
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        // 深蓝夜空渐变
+        bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        bgGradient.addColorStop(0, '#0a0e27');
+        bgGradient.addColorStop(0.5, '#0d1535');
+        bgGradient.addColorStop(1, '#050b1e');
+    }
     window.addEventListener('resize', resize); resize();
 
     const TARGET_STEP = 1000 / 120; // 120ups
 
-    class Petal {
+    // 预构建六角雪花 Path2D（单位半径=1），绘制时 scale 到实际大小
+    function buildSnowPath(){
+        const p = new Path2D();
+        const R = 1;
+        for(let i=0; i<6; i++){
+            const a = (Math.PI / 3) * i;
+            const cos = Math.cos(a), sin = Math.sin(a);
+            // 主轴
+            p.moveTo(0, 0); p.lineTo(cos * R, sin * R);
+            // 末端V形分叉
+            const tipX = cos * R, tipY = sin * R;
+            const forkLen = R * 0.35;
+            const forkAngle1 = a + 0.7, forkAngle2 = a - 0.7;
+            p.moveTo(tipX, tipY);
+            p.lineTo(tipX + Math.cos(forkAngle1)*forkLen, tipY + Math.sin(forkAngle1)*forkLen);
+            p.moveTo(tipX, tipY);
+            p.lineTo(tipX + Math.cos(forkAngle2)*forkLen, tipY + Math.sin(forkAngle2)*forkLen);
+            // 中段小分叉
+            const midX = cos * R * 0.55, midY = sin * R * 0.55;
+            const mAngle1 = a + 0.9, mAngle2 = a - 0.9;
+            p.moveTo(midX, midY);
+            p.lineTo(midX + Math.cos(mAngle1)*R*0.25, midY + Math.sin(mAngle1)*R*0.25);
+            p.moveTo(midX, midY);
+            p.lineTo(midX + Math.cos(mAngle2)*R*0.25, midY + Math.sin(mAngle2)*R*0.25);
+        }
+        return p;
+    }
+    const SNOW_PATH = buildSnowPath();
+
+    class Snowflake {
         constructor(){ this.reset(true); }
         reset(init){
             this.x = Math.random() * canvas.width;
-            this.y = init ? Math.random() * canvas.height : -30;
-            this.size = Math.random() * 12 + 10;
-            this.baseSpeedY = Math.random() * 0.8 + 0.5;  // px/120帧基准
-            this.baseSpeedX = (Math.random() - 0.5) * 0.4;
+            this.y = init ? Math.random() * canvas.height : -20;
+            this.size = Math.random() * 2.8 + 2.2;       // 实际像素半径 2.2~5
+            this.baseSpeedY = Math.random() * 0.35 + 0.18; // 雪夜慢飘
+            this.baseSpeedX = (Math.random() - 0.5) * 0.08;
+            this.alpha = Math.random() * 0.45 + 0.35;
             this.angle = Math.random() * Math.PI * 2;
-            this.spin = (Math.random() - 0.5) * 0.03;
-            this.swing = Math.random() * 0.015 + 0.01;
+            this.spin = (Math.random() - 0.5) * 0.015;
+            this.swing = Math.random() * 0.005 + 0.003;
             this.phase = Math.random() * Math.PI * 2;
+            this.wind = Math.random() * 0.18 + 0.04;
         }
         update(dtScale){
-            // dtScale = 实际时间/标准16.6ms，120fps时约0.5，60fps时约1
             this.y += this.baseSpeedY * dtScale;
-            this.x += (Math.sin(this.y * this.swing + this.phase) * 0.6 + this.baseSpeedX) * dtScale;
+            this.x += (Math.sin(this.y * this.swing + this.phase) * this.wind + this.baseSpeedX) * dtScale;
             this.angle += this.spin * dtScale;
-            if(this.y > canvas.height + 40 || this.x < -40 || this.x > canvas.width + 40){
-                this.reset(false); this.y = -30; this.x = Math.random() * canvas.width;
+            if(this.y > canvas.height + 25 || this.x < -30 || this.x > canvas.width + 30){
+                this.reset(false);
+                this.y = -20;
+                this.x = Math.random() * canvas.width;
             }
         }
         draw(){
-            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
-            ctx.font = this.size + 'px serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('🌸', 0, 0);
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+            ctx.scale(this.size, this.size);
+            ctx.globalAlpha = this.alpha;
+            ctx.strokeStyle = 'rgba(190,215,255,1)';
+            ctx.lineWidth = 0.35;
+            ctx.lineCap = 'round';
+            ctx.stroke(SNOW_PATH);
             ctx.restore();
         }
     }
-    for(let i=0;i<55;i++) petals.push(new Petal());
+    for(let i=0;i<200;i++) flakes.push(new Snowflake());
 
     let lastTime = performance.now();
     let accumulator = 0;
 
     function loop(now){
         let frameTime = now - lastTime;
-        if(frameTime > 250) frameTime = 250; // 切后台防暴走
+        if(frameTime > 250) frameTime = 250;
         lastTime = now;
         accumulator += frameTime;
 
         while(accumulator >= TARGET_STEP){
-            const dtScale = TARGET_STEP / 16.6667; // 以60fps为基准1.0
-            petals.forEach(p => p.update(dtScale));
+            const dtScale = TARGET_STEP / 16.6667;
+            flakes.forEach(f => f.update(dtScale));
             accumulator -= TARGET_STEP;
         }
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        petals.forEach(p => p.draw());
+        // 深蓝夜空底
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 远层微光（很淡的雾感）
+        flakes.forEach(f => f.draw());
         requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
@@ -320,16 +370,16 @@ window.deleteOrder = async function(id){ if(!confirm('确认取消？'))return; 
 window.requestCancelOrder = async function(id){ const r=prompt('取消原因（发给店长/管理员）：'); if(r===null)return; try{ const{data:c}=await window.supabaseClient.from('orders').select('id,status,sender_id').eq('id',id).maybeSingle(); if(!c){window.showMessage('订单不存在',false);return;} if(c.sender_id!==window.currentUser.id){window.showMessage('只能取消自己的订单',false);return;} if(c.status!=='accepted'){window.showMessage('当前状态为'+window.mapStatus(c.status),false);return;} const{u}=await window.supabaseClient.from('orders').update({status:'cancelling'}).eq('id',id).eq('sender_id',window.currentUser.id).select('id').maybeSingle(); if(!u){window.showMessage('修改失败，请确认RLS已关闭',false);return;} const oid=typeof id==='string'&&!isNaN(id)?Number(id):id; const ie=await window.supabaseClient.from('cancel_requests').insert({order_id:oid,requester_id:window.currentUser.id,reason:r||'无',status:'pending'}); if(ie.error){await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id',id);window.showMessage(ie.error.message,false);return;} window.showMessage('申请已提交，管理员将实时收到',true); window.loadOrders(); }catch(e){window.showMessage(e.message,false);} };
 window.loadCancelRequests = async function(silent=false){ if(!['owner','admin'].includes(window.userProfile?.role))return; const{data:reqs}=await window.supabaseClient.from('cancel_requests').select('*').eq('status','pending').order('created_at',{ascending:false}); const bd=document.getElementById('cancelBadge'); if(bd) bd.textContent=reqs?.length?`(${reqs.length})`:''; const el=document.getElementById('cancelList'); if(!el||(silent&&el.style.display==='none'))return; if(!reqs?.length){el.innerHTML='<div style="color:#aaa;">暂无取消申请</div>';return;} const oids=[...new Set(reqs.map(r=>r.order_id))],{data:ors}=await window.supabaseClient.from('orders').select('id,content,game_id').in('id',oids); const om=Object.fromEntries(ors?.map(o=>[o.id,o])||[]); const uids=[...new Set(reqs.map(r=>r.requester_id).filter(Boolean))],{data:us}=await window.supabaseClient.from('profiles').select('id,nickname').in('id',uids); const um=Object.fromEntries(us?.map(u=>[u.id,u.nickname])||[]); el.innerHTML=reqs.map(r=>`<div class="order" style="border-left-color:#ffa502;"><div><b>申请者:</b> ${um[r.requester_id]||'未知'}</div><div><b>内容:</b> ${om[r.order_id]?.content||'<span style="color:#888;">订单已删除</span>'}</div><div><b>游戏ID:</b> ${om[r.order_id]?.game_id||'-'}</div><div><b>原因:</b> ${r.reason}</div><button class="order-btn btn-green" onclick="window.approveCancel('${r.id}',${r.order_id})">同意取消</button><button class="order-btn btn-red" onclick="window.reject('${r.id}',${r.order_id})">驳回</button></div>`).join(''); };
 window.approveCancel = async function(rid,oid){ if(!confirm('同意取消？订单将彻底删除。'))return; await window.supabaseClient.from('orders').delete().eq('id',Number(oid)); await window.supabaseClient.from('cancel_requests').update({status:'approved'}).eq('id',rid); window.showMessage('已取消并移除',true); window.loadCancelRequests(); window.loadOrders(); };
-window.rejectCancel = async function(rid,oid){ if(!confirm('驳回？订单恢复已接单'))return; await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id',Number(oid)); await window.supabaseClient.from('cancel_requests').update({status:'rejected'}).eq('id',rid); window.showMessage('已驳回',true); window.loadCancelRequests(); window.loadOrders(); }; window.reject=window.rejectCancel;
+window.rejectCancel = async function(rid,oid){ if(!confirm('驳回？订单恢复已接单'))return; await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id',Number(oid)); await window.supabaseClient.from('cancel_requests').update({status:'rejected'}).eq('id',rid); window.showMessage('已驳回',true); window.loadCancelRequests(); if(window.loadOrders)window.loadOrders(); }; window.reject=window.rejectCancel;
 window.showOrderDetail = async function(id){ const{data:o}=await window.supabaseClient.from('orders').select('*').eq('id',id).single(); const io=o.sender_id===window.currentUser.id,iw=o.worker_id===window.currentUser.id, cd=(io&&o.status==='pending')||(iw&&o.status==='accepted'), crq=io&&o.status==='accepted', ctg=o.category?`<span class="category-tag">${o.category}</span>`:''; document.getElementById('detailContent').innerHTML=`<div><b>分类:</b> ${o.category||'无'}</div><div><b>内容:</b> ${o.content} ${ctg}</div><div><b>游戏ID:</b> ${o.game_id}</div><div><b>价格:</b> ¥${o.price}</div><div><b>状态:</b> ${window.mapStatus(o.status)}</div><div><b>发单:</b> ${window.senderMap?.[o.sender_id]||'未知'}</div><div><b>接单:</b> ${o.worker_id?(window.workerMap?.[o.worker_id]||'无'):'无'}</div>${cd?'<button class="order-btn btn-red" onclick="window.deleteOrder(\''+o.id+'\')">取消</button>':''}${crq?'<button class="order-btn btn-orange" onclick="window.requestCancelOrder(\''+o.id+'\')">申请取消</button>':''}`; document.getElementById('detailModal').style.display='block'; };
 window.closeDetailModal=()=>document.getElementById('detailModal').style.display='none';
-window.loadAuditList = async function(){ if(window.userProfile.role!=='owner')return; const{data:a}=await window.supabaseClient.from('profiles').select('*').eq('role','admin').eq('status','pending'); const el=document.getElementById('auditList'); if(!a?.length){el.innerHTML='<div style="color:#aaa;">暂无待审核</div>';return;} el.innerHTML=a.map(x=>`<div class="order"><div><b>${x.nickname}</b>(${x.email})</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${x.id}')">批准</button></div>`).join(''); };
+window.loadAuditList = async function(){ if(window.userProfile.role!=='owner')return; const{data:a}=await window.supabaseClient.from('profiles').select('*').eq('role','admin').eq('status','pending').order('created_at',{ascending:false}); const el=document.getElementById('auditList'); if(!a?.length){el.innerHTML='<div style="color:#aaa;">暂无待审核</div>';return;} el.innerHTML=a.map(x=>`<div class="order"><div><b>${x.nickname}</b>(${x.email})</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${x.id}')">批准</button></div>`).join(''); };
 window.approveAdmin = async function(id){ if(!confirm('批准？'))return; await window.supabaseClient.from('profiles').update({status:'approved'}).eq('id',id); window.showMessage('批准成功',true); window.loadAuditList(); };
 window.handleLogout = async function(){ if(window.presenceChannel) window.supabaseClient.removeChannel(window.presenceChannel); if(window.chatSubscription) window.supabaseClient.removeChannel(window.chatSubscription); Object.values(window.privateChatSubscriptions).forEach(s=>window.supabaseClient.removeChannel(s)); window.privateChatSubscriptions={}; if(window.autoCancelTimer)clearInterval(window.autoCancelTimer); if(window.cancelPollingTimer)clearInterval(window.cancelPollingTimer); await window.supabaseClient.auth.signOut(); window.currentUser=null; window.userProfile=null; window.setView('auth'); window.showMessage('已退出',true); };
 window.showReg=()=>document.getElementById('regBox').style.display='block'; window.showLogin=()=>document.getElementById('regBox').style.display='none';
 
 window.trackOnlineStatus = async function(){ window.presenceChannel=window.supabaseClient.channel('online-users'); window.presenceChannel.on('presence',{event:'sync'},()=>{const s=window.presenceChannel.presenceState(); window.onlineUsersCache={}; Object.keys(s).forEach(k=>{const u=s[k][0]; if(u) window.onlineUsersCache[u.id]=u;}); window.renderOnlineList(); }).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>window.onlineUsersCache[p.id]=p);window.renderOnlineList();}).on('presence',{event:'leave'},({left})=>{left.forEach(p=>delete window.onlineUsersCache[p.id]);window.renderOnlineList();}).subscribe(async(s)=>{if(s==='SUBSCRIBED')await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,online_at:new Date().toISOString()});}); };
-window.renderOnlineList=function(){ const c=document.getElementById('onlineUsers'); document.getElementById('onlineCount').textContent=Object.keys(window.onlineUsersCache).length; c.innerHTML=Object.values(window.onlineUsersCache).map(u=>{const rc={owner:'#ff00ff',admin:'#ff69b4',worker:'#00f0ff',player:'#00ff88'}[u.role]||'#888'; return `<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${rc}">${u.role}</span></div>`; }).join(''); };
+window.renderOnlineList=function(){ const c=document.getElementById('onlineUsers'); const el=document.getElementById('onlineCount'); if(el) el.textContent=Object.keys(window.onlineUsersCache).length; c.innerHTML=Object.values(window.onlineUsersCache).map(u=>{const rc={owner:'#ff00ff',admin:'#ff69b4',worker:'#00f0ff',player:'#00ff88'}[u.role]||'#888'; return `<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${rc}">${u.role}</span></div>`; }).join(''); };
 window.initChat = async function(){ if(!window.currentUser)return; try{ if(window.chatSubscription){window.supabaseClient.removeChannel(window.chatSubscription);window.chatSubscription=null;} let{data:rm}=await window.supabaseClient.from('chat_rooms').select('id').eq('room_type','public').single(); if(!rm){const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'public'}).select().single();rm=nr;} window.currentChatRoomId=rm.id; await window.loadPublicMessages(); const sid=rm.id.replace(/-/g,'_'); window.chatSubscription=window.supabaseClient.channel(`public_chat_${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${rm.id}`},p=>window.appendPublicMessage(p.new)).subscribe(); }catch(e){console.error(e);} };
 window.loadPublicMessages=async function(){if(!window.currentChatRoomId)return; const{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',window.currentChatRoomId).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50); const c=document.getElementById('chatMessages'); c.innerHTML=''; data?.reverse().forEach(m=>window.appendPublicMessage(m)); c.scrollTop=c.scrollHeight; };
 window.appendPublicMessage=function(m){ const c=document.getElementById('chatMessages'),is=m.sender_id===window.currentUser?.id,role=m.sender?.role||'player',el=document.createElement('div'); el.className=`chat-msg ${role} ${is?'self':'other'}`; el.innerHTML=`<div class="chat-nickname">${m.sender?.nickname||'未知'}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>`; c.appendChild(el); c.scrollTop=c.scrollHeight; };
