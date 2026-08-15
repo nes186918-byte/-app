@@ -217,7 +217,7 @@ window.renderManageTabs = function() {
     if (isOwner) {
         tabsEl.innerHTML += `<button id="tabAudit" class="tab-btn-active" onclick="window.switchManageTab('audit')">待审管理员</button>`;
     }
-    tabsEl.innerHTML += `<button id="tabCancel" class="${isOwner?'':'tab-btn-active'}" onclick="window.switchManageTab('cancel')">取消申请 <span id="cancelBadge" style="color:#ff4757;"></span></button>`;
+    tabsEl.innerHTML += `<button id="tabCancel" class="${isOwner?'':'tab-btn-active'}" onclick="window.switchManageTab('cancel')">订单取消申请 <span id="cancelBadge" style="color:#ff4757;"></span></button>`;
     document.getElementById('auditList').style.display = isOwner ? 'block' : 'none';
     document.getElementById('cancelList').style.display = isOwner ? 'none' : 'block';
     if (isOwner) window.loadAuditList();
