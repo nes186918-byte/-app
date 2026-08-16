@@ -40,7 +40,7 @@
         .tab-bar button { flex: 1; padding: 8px; font-size: 13px; margin: 0; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
         .tab-btn-active { background: #fff !important; color: #000 !important; }
 
-        /* 默认隐藏，登录后JS控制显示 */
+        /* 默认隐藏 登录后显示聊天窗口 */
         #chatToggleBtn { display: none; position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff69b4; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,105,180,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(15,10,20,0.95); border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
@@ -169,7 +169,7 @@
     </div>
 
 <script>
-/* ===== 蓝色雪夜 · 六角雪花 120逻辑帧/秒（全屏不透明底，独立渲染） ===== */
+/*渲染雪花帧逻辑函数*/
 (function snowNightBg(){
     const canvas = document.getElementById('snow');
     const ctx = canvas.getContext('2d');
@@ -250,7 +250,7 @@
     requestAnimationFrame(loop);
 })();
 
-/* ========== 核心业务（仅改了 setView 控制按钮） ========== */
+/* ========== 核心业务 ========== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
@@ -269,7 +269,7 @@ function showFatalError(msg) { document.getElementById('fatalError').style.displ
 window.showMessage = function(t,s){ const el=document.getElementById('msg'); el.textContent=t; el.style.background=s?'rgba(0,255,136,0.9)':'rgba(255,0,85,0.9)'; el.style.display='block'; setTimeout(()=>el.style.display='none',3000); };
 window.toggleLoading = s => document.getElementById('loadingOverlay').style.display = s?'flex':'none';
 
-/* ===== 视图切换：雪花canvas全程不动，只管页面和按钮 ===== */
+/* ===== 视图切换：雪花 ===== */
 window.setView = v => {
     document.getElementById('auth').style.display = v==='auth' ? 'block' : 'none';
     document.getElementById('app').style.display = v==='app' ? 'block' : 'none';
