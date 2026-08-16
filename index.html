@@ -40,7 +40,6 @@
         .tab-bar button { flex: 1; padding: 8px; font-size: 13px; margin: 0; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
         .tab-btn-active { background: #fff !important; color: #000 !important; }
 
-        /* 默认隐藏 登录后显示聊天窗口 */
         #chatToggleBtn { display: none; position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff69b4; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,105,180,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(15,10,20,0.95); border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
@@ -51,19 +50,22 @@
         #privateChatToggleBtn { display: none; position: fixed; left: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #00ff88; color: #000; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(0,255,136,0.5); }
         #privatePanel { position: fixed; left: 20px; bottom: 160px; width: 400px; height: 520px; background: rgba(15,10,20,0.95); border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #privatePanelHeader { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
-        #onlineListHeader { padding: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 14px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
-        #onlineUsers { flex: 0 0 180px; padding: 10px; overflow-y: auto; border-bottom: 1px solid #333; }
-        #privateChatContainer { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+        #userListHeader { padding: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 13px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
+        #userList { flex: 1; padding: 10px; overflow-y: auto; }
+        #privateChatContainer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,10,20,0.98); display: none; flex-direction: column; z-index: 5; }
         .online-user-item { display: flex; align-items: center; padding: 8px; cursor: pointer; border-radius: 5px; margin-bottom: 5px; }
         .online-user-item:hover { background: rgba(255,255,255,0.1); }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
         .status-dot.online { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .status-dot.offline { background: #555; }
         .username-text { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; }
-        .role-tag { font-size: 10px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; }
+        .role-tag { font-size: 10px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; flex-shrink: 0; }
         .role-tag.owner { background: #ff00ff; color: #fff; }
         .role-tag.admin { background: #ff69b4; color: #fff; }
         .role-tag.worker { background: #00f0ff; color: #000; }
         .role-tag.player { background: #00ff88; color: #000; }
+        .unread-badge { background: #ff4757; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: auto; flex-shrink: 0; }
+        .user-section-label { font-size: 11px; color: #888; padding: 6px 4px 2px; }
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; word-break: break-all; }
         .chat-msg.self { align-self: flex-end; }
         .chat-msg.other { align-self: flex-start; }
@@ -74,10 +76,10 @@
         .chat-nickname { font-size: 12px; color: #aaa; margin-bottom: 4px; }
         .chat-content { font-size: 14px; color: #fff; }
         .chat-time { font-size: 11px; color: #666; text-align: right; margin-top: 4px; }
-        .private-chat-window { width: 100%; height: 100%; background: transparent; border-radius: 8px; border: 1px solid rgba(255,255,255,0.4); display: flex; flex-direction: column; overflow: hidden; }
-        .private-chat-header { padding: 8px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; font-size: 14px; }
-        .private-chat-back { background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
-        .private-chat-close { background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
+        .private-chat-window { width: 100%; height: 100%; background: transparent; border-radius: 0; border: none; display: flex; flex-direction: column; overflow: hidden; }
+        .private-chat-header { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; font-size: 14px; }
+        .private-chat-back { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
+        .private-chat-close { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; width: auto; margin: 0; padding: 0 6px; }
         .private-chat-messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         .private-chat-input-area { padding: 8px; border-top: 1px solid #333; display: flex; gap: 6px; flex-shrink: 0; }
         .private-chat-input { flex: 1; padding: 6px; margin: 0; font-size: 13px; border-radius: 5px; border: 1px solid #333; background: #111; color: #fff; }
@@ -162,9 +164,9 @@
     </div>
     <button id="privateChatToggleBtn" onclick="window.togglePrivatePanel()">👥</button>
     <div id="privatePanel">
-        <div id="privatePanelHeader">私聊/在线用户</div>
-        <div id="onlineListHeader">在线用户 (<span id="onlineCount">0</span>)</div>
-        <div id="onlineUsers"></div>
+        <div id="privatePanelHeader">私聊</div>
+        <div id="userListHeader">全部用户</div>
+        <div id="userList"></div>
         <div id="privateChatContainer"></div>
     </div>
 
@@ -251,7 +253,6 @@
 })();
 
 /* ========== 核心业务 ========== */
-// 北京时间 HH:mm（纯字符串正则提取 Supabase UTC 小时 +8，无视手机时区/Date 解析差异）
 function bjTime(isoStr) {
     if (!isoStr) return '';
     var m = isoStr.match(/[T\s](\d{2}):(\d{2}):\d{2}/);
@@ -270,6 +271,12 @@ window.chatSubscription = null; window.lastSendTime = 0; window.presenceChannel 
 window.onlineUsersCache = {}; window.privateChatSubscriptions = {};
 window.autoCancelTimer = null; window.cancelPollingTimer = null;
 
+/* 私聊新增全局 */
+window.allProfilesCache = [];     // 全量approved用户
+window.myPrivateRooms = [];      // 我参与的私聊room [{id,participants}]
+window.unreadMap = {};           // { peerId: count } 内存红点
+window.globalPrivateSubscriptions = {}; // roomId -> channel
+
 function init() {
     if (typeof window.supabase === 'undefined') { showFatalError('无法加载系统组件'); return; }
     try { window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); autoLogin(); }
@@ -279,7 +286,6 @@ function showFatalError(msg) { document.getElementById('fatalError').style.displ
 window.showMessage = function(t,s){ const el=document.getElementById('msg'); el.textContent=t; el.style.background=s?'rgba(0,255,136,0.9)':'rgba(255,0,85,0.9)'; el.style.display='block'; setTimeout(()=>el.style.display='none',3000); };
 window.toggleLoading = s => document.getElementById('loadingOverlay').style.display = s?'flex':'none';
 
-/* ===== 视图切换：雪花 ===== */
 window.setView = v => {
     document.getElementById('auth').style.display = v==='auth' ? 'block' : 'none';
     document.getElementById('app').style.display = v==='app' ? 'block' : 'none';
@@ -321,7 +327,7 @@ window.autoLogin = async function() {
     let { data:p } = await window.supabaseClient.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
     if(!p){ const m=session.user.user_metadata||{}; let role=m.role||'player',st='approved'; if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.setView('auth');return;}} else if(role==='admin') st='pending'; const{data:np}=await window.supabaseClient.from('profiles').insert({id:session.user.id,email:session.user.email,nickname:m.nickname||session.user.email.split('@')[0],role,status:st}).select().single(); if(!np){window.setView('auth');return;} p=np; }
     if(p.status!=='approved'){ window.setView('auth'); return; }
-    window.currentUser=session.user; window.userProfile=p; window.updateUI(); window.setView('app'); window.loadOrders(); window.initChat(); window.trackOnlineStatus(); window.startAutoCancelChecker(); window.showMessage(`欢迎 ${p.nickname}`,true);
+    window.currentUser=session.user; window.userProfile=p; window.updateUI(); window.setView('app'); window.loadOrders(); window.initChat(); window.trackOnlineStatus(); window.loadAllProfiles(); window.startAutoCancelChecker(); window.showMessage(`欢迎 ${p.nickname}`,true);
 };
 window.handleLogin = async function() {
     const e=document.getElementById('email').value.trim(), pw=document.getElementById('pass').value.trim();
@@ -330,7 +336,7 @@ window.handleLogin = async function() {
     try{ const{data,error}=await window.supabaseClient.auth.signInWithPassword({email:e,password:pw}); if(error){window.showMessage(error.message,false);return;}
         let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',data.user.id).maybeSingle();
         if(!p){const m=data.user.user_metadata||{};let role=m.role||'player',st='approved'; if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.showMessage('店长账号已存在',false);return;}}else if(role==='admin')st='pending'; const{data:np}=await window.supabaseClient.from('profiles').insert({id:data.user.id,email:data.user.email,nickname:m.nickname||e.split('@')[0],role,status:st}).select().single(); if(!np){window.showMessage('创建资料失败',false);return;} p=np; }
-        if(p.status!=='approved'){window.showMessage('账号审核中',false);return;} window.currentUser=data.user; window.userProfile=p; window.updateUI(); window.setView('app'); window.loadOrders(); window.initChat(); window.trackOnlineStatus(); window.startAutoCancelChecker(); window.showMessage(`欢迎 ${p.nickname}`,true); document.getElementById('pass').value='';
+        if(p.status!=='approved'){window.showMessage('账号审核中',false);return;} window.currentUser=data.user; window.userProfile=p; window.updateUI(); window.setView('app'); window.loadOrders(); window.initChat(); window.trackOnlineStatus(); window.loadAllProfiles(); window.startAutoCancelChecker(); window.showMessage(`欢迎 ${p.nickname}`,true); document.getElementById('pass').value='';
     }catch(e){window.showMessage(e.message,false);}finally{window.toggleLoading(false);}
 };
 window.handleRegister = async function() {
@@ -363,24 +369,180 @@ window.showOrderDetail = async function(id){ const{data:o}=await window.supabase
 window.closeDetailModal=()=>document.getElementById('detailModal').style.display='none';
 window.loadAuditList = async function(){ if(window.userProfile.role!=='owner')return; const{data:a}=await window.supabaseClient.from('profiles').select('*').eq('role','admin').eq('status','pending').order('created_at',{ascending:false}); const el=document.getElementById('auditList'); if(!a?.length){el.innerHTML='<div style="color:#aaa;">暂无待审核</div>';return;} el.innerHTML=a.map(x=>`<div class="order"><div><b>${x.nickname}</b>(${x.email})</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${x.id}')">批准</button></div>`).join(''); };
 window.approveAdmin = async function(id){ if(!confirm('批准？'))return; await window.supabaseClient.from('profiles').update({status:'approved'}).eq('id',id); window.showMessage('批准成功',true); window.loadAuditList(); };
-window.handleLogout = async function(){ if(window.presenceChannel) window.supabaseClient.removeChannel(window.presenceChannel); if(window.chatSubscription) window.supabaseClient.removeChannel(window.chatSubscription); Object.values(window.privateChatSubscriptions).forEach(s=>window.supabaseClient.removeChannel(s)); window.privateChatSubscriptions={}; if(window.autoCancelTimer)clearInterval(window.autoCancelTimer); if(window.cancelPollingTimer)clearInterval(window.cancelPollingTimer); await window.supabaseClient.auth.signOut(); window.currentUser=null; window.userProfile=null; window.setView('auth'); window.showMessage('已退出',true); };
+window.handleLogout = async function(){ if(window.presenceChannel) window.supabaseClient.removeChannel(window.presenceChannel); if(window.chatSubscription) window.supabaseClient.removeChannel(window.chatSubscription); Object.values(window.globalPrivateSubscriptions).forEach(s=>window.supabaseClient.removeChannel(s)); Object.values(window.privateChatSubscriptions).forEach(s=>window.supabaseClient.removeChannel(s)); window.globalPrivateSubscriptions={}; window.privateChatSubscriptions={}; if(window.autoCancelTimer)clearInterval(window.autoCancelTimer); if(window.cancelPollingTimer)clearInterval(window.cancelPollingTimer); await window.supabaseClient.auth.signOut(); window.currentUser=null; window.userProfile=null; window.setView('auth'); window.showMessage('已退出',true); };
 window.showReg=()=>document.getElementById('regBox').style.display='block'; window.showLogin=()=>document.getElementById('regBox').style.display='none';
 
-window.trackOnlineStatus = async function(){ window.presenceChannel=window.supabaseClient.channel('online-users'); window.presenceChannel.on('presence',{event:'sync'},()=>{const s=window.presenceChannel.presenceState(); window.onlineUsersCache={}; Object.keys(s).forEach(k=>{const u=s[k][0]; if(u) window.onlineUsersCache[u.id]=u;}); window.renderOnlineList(); }).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>window.onlineUsersCache[p.id]=p);window.renderOnlineList();}).on('presence',{event:'leave'},({left})=>{left.forEach(p=>delete window.onlineUsersCache[p.id]);window.renderOnlineList();}).subscribe(async(s)=>{if(s==='SUBSCRIBED')await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,online_at:new Date().toISOString()});}); };
-window.renderOnlineList=function(){ const c=document.getElementById('onlineUsers'); const el=document.getElementById('onlineCount'); if(el) el.textContent=Object.keys(window.onlineUsersCache).length; c.innerHTML=Object.values(window.onlineUsersCache).map(u=>{const rc={owner:'#ff00ff',admin:'#ff69b4',worker:'#00f0ff',player:'#00ff88'}[u.role]||'#888'; return `<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${rc}">${u.role}</span></div>`; }).join(''); };
+/* ========== 在线状态（presence） ========== */
+window.trackOnlineStatus = async function(){ window.presenceChannel=window.supabaseClient.channel('online-users'); window.presenceChannel.on('presence',{event:'sync'},()=>{const s=window.presenceChannel.presenceState(); window.onlineUsersCache={}; Object.keys(s).forEach(k=>{const u=s[k][0]; if(u) window.onlineUsersCache[u.id]=u;}); window.renderUserList(); }).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>window.onlineUsersCache[p.id]=p);window.renderUserList();}).on('presence',{event:'leave'},({left})=>{left.forEach(p=>delete window.onlineUsersCache[p.id]);window.renderUserList();}).subscribe(async(s)=>{if(s==='SUBSCRIBED')await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,online_at:new Date().toISOString()});}); };
+
+/* ========== 全量用户列表 ========== */
+window.loadAllProfiles = async function(){
+    const{data}=await window.supabaseClient.from('profiles').select('id,nickname,role').eq('status','approved').neq('id',window.currentUser.id);
+    window.allProfilesCache=data||[];
+    window.renderUserList();
+    window.loadMyPrivateRoomsAndUnread();
+};
+window.renderUserList = function(){
+    const c=document.getElementById('userList');
+    const meId=window.currentUser.id;
+    const onlineIds=new Set(Object.keys(window.onlineUsersCache));
+    const online=[], offline=[];
+    window.allProfilesCache.forEach(u=>{
+        if(u.id===meId) return;
+        if(onlineIds.has(u.id)) online.push(u); else offline.push(u);
+    });
+    const total=online.length+offline.length;
+    document.getElementById('userListHeader').textContent=`全部用户 (在线${online.length}/${total})`;
+    const roleColor={owner:'#ff00ff',admin:'#ff69b4',worker:'#00f0ff',player:'#00ff88'};
+    let html='';
+    if(online.length){ html+='<div class="user-section-label">🟢 在线</div>'; online.forEach(u=>{ const unread=window.unreadMap[u.id]||0; html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColor[u.role]||'#888'}">${u.role}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`; }); }
+    if(offline.length){ html+='<div class="user-section-label">⚪ 离线</div>'; offline.forEach(u=>{ const unread=window.unreadMap[u.id]||0; html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColor[u.role]||'#888'}">${u.role}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`; }); }
+    c.innerHTML=html;
+};
+
+/* ========== 未读红点（localStorage，不建表） ========== */
+function pvReadKey(roomId){ return 'pv_read_'+roomId; }
+function pvUnreadKey(peerId){ return 'pv_unread_'+peerId; }
+window.getPeerIdFromRoom=(room)=>{
+    if(!room.participants) return null;
+    return room.participants.find(id=>id!==window.currentUser.id);
+};
+window.loadMyPrivateRoomsAndUnread = async function(){
+    const me=window.currentUser.id;
+    const{data:rooms}=await window.supabaseClient.from('chat_rooms').select('id,participants').eq('room_type','private').contains('participants',[me]);
+    window.myPrivateRooms=rooms||[];
+    // 计算未读
+    window.unreadMap={};
+    for(const room of window.myPrivateRooms){
+        const readTs=localStorage.getItem(pvReadKey(room.id))||'1970-01-01';
+        const{data:msgs}=await window.supabaseClient.from('chat_messages').select('sender_id,created_at').eq('room_id',room.id).neq('sender_id',me).gt('created_at',readTs).limit(1);
+        if(msgs?.length){
+            const peer=window.getPeerIdFromRoom(room);
+            if(peer) window.unreadMap[peer]=(window.unreadMap[peer]||0)+1;
+        }
+    }
+    window.renderUserList();
+    window.subscribeAllMyPrivateRooms();
+};
+window.subscribeAllMyPrivateRooms=function(){
+    const me=window.currentUser.id;
+    window.myPrivateRooms.forEach(room=>{
+        if(window.globalPrivateSubscriptions[room.id]) return;
+        const ch=window.supabaseClient.channel(`global_pm_${room.id.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${room.id}`},p=>{
+            const msg=p.new;
+            if(msg.sender_id===me) return;
+            const peer=window.getPeerIdFromRoom(room);
+            if(!peer) return;
+            // 如果当前正在打开这个peer的聊天窗口，不算未读
+            const container=document.getElementById('privateChatContainer');
+            const activeWin=container.querySelector('.private-chat-window');
+            if(activeWin){
+                const activeRoom=activeWin.dataset.roomId;
+                if(activeRoom===room.id) return;
+            }
+            window.unreadMap[peer]=(window.unreadMap[peer]||0)+1;
+            window.renderUserList();
+        }).subscribe();
+        window.globalPrivateSubscriptions[room.id]=ch;
+    });
+};
+window.clearUnreadForPeer=function(peerId,roomId){
+    window.unreadMap[peerId]=0;
+    localStorage.setItem(pvReadKey(roomId), new Date().toISOString());
+    window.renderUserList();
+};
+
+/* ========== 私聊（离线可建、可发） ========== */
+window.togglePrivatePanel=function(){
+    const p=document.getElementById('privatePanel');
+    if(p.style.display==='flex'){
+        p.style.display='none';
+        document.getElementById('privateChatContainer').style.display='none';
+        document.getElementById('userListHeader').style.display='block';
+        document.getElementById('userList').style.display='block';
+    }else{
+        p.style.display='flex';
+        document.getElementById('privateChatContainer').style.display='none';
+        document.getElementById('userListHeader').style.display='block';
+        document.getElementById('userList').style.display='block';
+        window.renderUserList();
+    }
+};
+window.openPrivateChat=async function(tid,tn,tr){
+    if(tid===window.currentUser.id) return;
+    const sk=[window.currentUser.id,tid].sort(), ck=sk.join('_');
+    const container=document.getElementById('privateChatContainer');
+    // 隐藏列表
+    document.getElementById('userListHeader').style.display='none';
+    document.getElementById('userList').style.display='none';
+    container.style.display='flex';
+    // 如果已有窗口直接切
+    const ex=container.querySelector(`.private-chat-window[data-chat-key="${ck}"]`);
+    if(ex){ ex.style.display='flex'; container.querySelectorAll('.private-chat-window').forEach(w=>{if(w!==ex)w.style.display='none';}); return; }
+    // 隐藏其他
+    container.querySelectorAll('.private-chat-window').forEach(w=>w.style.display='none');
+    // 查/建room
+    let rid=null;
+    const v=window.myPrivateRooms.filter(r=>r.participants?.length===2&&r.participants.includes(sk[0])&&r.participants.includes(sk[1]));
+    if(v.length){ rid=v[0].id; } else {
+        try{ const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'private',participants:sk}).select().single(); rid=nr.id; window.myPrivateRooms.push({id:rid,participants:sk}); }catch(e){ window.showMessage('私聊创建失败',false); return; }
+    }
+    const w=document.createElement('div');
+    w.className='private-chat-window'; w.style.display='flex';
+    w.dataset.chatKey=ck; w.dataset.roomId=rid; w.dataset.peerId=tid;
+    w.innerHTML=`<div class="private-chat-header"><button class="private-chat-back" onclick="window.backToUserList()">←</button><span style="flex:1;text-align:center;">${tn} ${tr==='online'?'🟢':''}</span><button class="private-chat-close" onclick="window.closePrivateChat('${ck}')">×</button></div><div class="private-chat-messages"></div><div class="private-chat-input-area"><input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${ck}')"><button class="private-chat-send" onclick="window.sendPrivateMessage('${ck}')">发送</button></div>`;
+    container.appendChild(w);
+    // 清未读
+    window.clearUnreadForPeer(tid, rid);
+    window.loadPrivateMessages(ck,rid);
+    window.subscribePrivateChat(ck,rid);
+    w.querySelector('.private-chat-input').focus();
+};
+window.backToUserList=function(){
+    document.getElementById('privateChatContainer').style.display='none';
+    document.getElementById('privateChatContainer').innerHTML='';
+    document.getElementById('userListHeader').style.display='block';
+    document.getElementById('userList').style.display='block';
+};
+window.loadPrivateMessages=async function(k,r){
+    const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`); if(!w) return;
+    const c=w.querySelector('.private-chat-messages');
+    const{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',r).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50);
+    c.innerHTML=''; data?.reverse().forEach(m=>window.appendPrivateMessage(c,m));
+    c.scrollTop=c.scrollHeight;
+};
+window.appendPrivateMessage=(c,m)=>{
+    const is=m.sender_id===window.currentUser?.id, role=m.sender?.role||'player', el=document.createElement('div');
+    el.className=`chat-msg ${role} ${is?'self':'other'}`;
+    el.innerHTML=`<div class="chat-nickname">${m.sender?.nickname||'未知'}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${bjTime(m.created_at)}</div>`;
+    c.appendChild(el); c.scrollTop=c.scrollHeight;
+};
+window.subscribePrivateChat=(k,r)=>{
+    if(window.privateChatSubscriptions[r]) return;
+    const ch=window.supabaseClient.channel(`pm_open_${r.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${r}`},p=>{
+        const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);
+        if(w) window.appendPrivateMessage(w.querySelector('.private-chat-messages'),p.new);
+    }).subscribe();
+    window.privateChatSubscriptions[r]=ch;
+};
+window.sendPrivateMessage=async function(k){
+    const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`); if(!w) return;
+    const i=w.querySelector('.private-chat-input'), t=i.value.trim(); if(!t) return;
+    if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;} window.lastSendTime=Date.now();
+    try{ await window.supabaseClient.from('chat_messages').insert({room_id:w.dataset.roomId,sender_id:window.currentUser.id,content:t}); i.value=''; }catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}
+};
+window.closePrivateChat=function(k){
+    const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`); if(w) w.remove();
+    const container=document.getElementById('privateChatContainer');
+    if(!container.querySelector('.private-chat-window')) window.backToUserList();
+};
+
+/* ========== 公聊（原样） ========== */
 window.initChat = async function(){ if(!window.currentUser)return; try{ if(window.chatSubscription){window.supabaseClient.removeChannel(window.chatSubscription);window.chatSubscription=null;} let{data:rm}=await window.supabaseClient.from('chat_rooms').select('id').eq('room_type','public').single(); if(!rm){const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'public'}).select().single();rm=nr;} window.currentChatRoomId=rm.id; await window.loadPublicMessages(); const sid=rm.id.replace(/-/g,'_'); window.chatSubscription=window.supabaseClient.channel(`public_chat_${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${rm.id}`},p=>window.appendPublicMessage(p.new)).subscribe(); }catch(e){console.error(e);} };
 window.loadPublicMessages=async function(){if(!window.currentChatRoomId)return; const{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',window.currentChatRoomId).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50); const c=document.getElementById('chatMessages'); c.innerHTML=''; data?.reverse().forEach(m=>window.appendPublicMessage(m)); c.scrollTop=c.scrollHeight; };
 window.appendPublicMessage=function(m){ const c=document.getElementById('chatMessages'),is=m.sender_id===window.currentUser?.id,role=m.sender?.role||'player',el=document.createElement('div'); el.className=`chat-msg ${role} ${is?'self':'other'}`; el.innerHTML=`<div class="chat-nickname">${m.sender?.nickname||'未知'}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${bjTime(m.created_at)}</div>`; c.appendChild(el); c.scrollTop=c.scrollHeight; };
 window.sendChatMessage=async function(){ const i=document.getElementById('chatInput'),t=i.value.trim(); if(!t)return; if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;} window.lastSendTime=Date.now(); try{await window.supabaseClient.from('chat_messages').insert({room_id:window.currentChatRoomId,sender_id:window.currentUser.id,content:t}); i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;} };
 window.toggleChat=function(){ const w=document.getElementById('chatWindow'); w.style.display=w.style.display==='flex'?'none':'flex'; if(w.style.display==='flex'){document.getElementById('chatInput').focus();window.loadPublicMessages();} };
-window.togglePrivatePanel=function(){ const p=document.getElementById('privatePanel'); if(p.style.display==='flex'){document.getElementById('onlineListHeader').style.display='block';document.getElementById('onlineUsers').style.display='block';p.style.display='none';}else p.style.display='flex'; };
-window.openPrivateChat=async function(tid,tn,tr){ if(tid===window.currentUser.id)return; const sk=[window.currentUser.id,tid].sort(),ck=sk.join('_'); const ex=document.querySelector(`.private-chat-window[data-chat-key="${ck}"]`); if(ex){ex.style.borderColor='#fff';setTimeout(()=>ex.style.borderColor='rgba(255,255,255,0.4)',1000);return;} try{ const{data:rs}=await window.supabaseClient.from('chat_rooms').select('id,participants').eq('room_type','private').or(`and(participants.cs.{${sk[0]}},participants.cs.{${sk[1]}})`); const v=rs?.filter(r=>r.participants?.length===2&&r.participants.includes(sk[0])&&r.participants.includes(sk[1])); let rid=v?.length?v[0].id:(await window.supabaseClient.from('chat_rooms').insert({room_type:'private',participants:sk}).select().single()).data.id; const w=document.createElement('div'); w.className='private-chat-window'; w.dataset.chatKey=ck; w.dataset.roomId=rid; w.innerHTML=`<div class="private-chat-header"><button class="private-chat-back" onclick="window.backToOnlineList('${ck}')">←</button><span style="flex:1;text-align:center;">私聊: ${tn}</span><button class="private-chat-close" onclick="window.closePrivateChat('${ck}')">×</button></div><div class="private-chat-messages"></div><div class="private-chat-input-area"><input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${ck}')"><button class="private-chat-send" onclick="window.sendPrivateMessage('${ck}')">发送</button></div>`; document.getElementById('privateChatContainer').appendChild(w); document.getElementById('onlineListHeader').style.display='none'; document.getElementById('onlineUsers').style.display='none'; window.loadPrivateMessages(ck,rid); window.subscribePrivateChat(ck,rid); w.querySelector('.private-chat-input').focus(); }catch(e){window.showMessage('私聊创建失败',false);} };
-window.backToOnlineList=function(k){document.getElementById('onlineListHeader').style.display='block';document.getElementById('onlineUsers').style.display='block';window.closePrivateChat(k);};
-window.loadPrivateMessages=async function(k,r){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(!w)return; const c=w.querySelector('.private-chat-messages'),{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',r).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50); c.innerHTML=''; data?.reverse().forEach(m=>window.appendPrivateMessage(c,m)); c.scrollTop=c.scrollHeight;};
-window.appendPrivateMessage=(c,m)=>{const is=m.sender_id===window.currentUser?.id,role=m.sender?.role||'player',el=document.createElement('div');el.className=`chat-msg ${role} ${is?'self':'other'}`;el.innerHTML=`<div class="chat-nickname">${m.sender?.nickname||'未知'}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${bjTime(m.created_at)}</div>`;c.appendChild(el);c.scrollTop=c.scrollHeight;};
-window.subscribePrivateChat=(k,r)=>{if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}const ch=window.supabaseClient.channel(`private_chat_${r.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${r}`},p=>{const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w)window.appendPrivateMessage(w.querySelector('.private-chat-messages'),p.new);}).subscribe();window.privateChatSubscriptions[k]=ch;};
-window.sendPrivateMessage=async function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(!w)return;const i=w.querySelector('.private-chat-input'),t=i.value.trim();if(!t)return;if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;}window.lastSendTime=Date.now();try{await window.supabaseClient.from('chat_messages').insert({room_id:w.dataset.roomId,sender_id:window.currentUser.id,content:t});i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}};
-window.closePrivateChat=function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w){if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}w.remove();}};
 
 init();
 </script>
