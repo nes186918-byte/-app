@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>卡了电竞欢迎您</title>
+    <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        html { background: #050b1e; }
-        body { background: transparent; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; }
-        #snow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        html { background: transparent; height: 100%; }
+        body { background: transparent; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; min-height: 100vh; position: relative; z-index: 1; }
+        #snow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
 
         .box { background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.65); margin-bottom: 15px; position: relative; z-index: 1; }
         h2 { color: #ffffff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
@@ -19,6 +19,7 @@
         .link span { color: #fff; cursor: pointer; text-decoration: underline; }
         #msg { text-align: center; margin-top: 15px; padding: 12px 24px; border-radius: 8px; display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         #app { display: none; padding-bottom: 80px; position: relative; z-index: 1; }
+        #auth { position: relative; z-index: 1; }
         .order { background: rgba(20,20,30,0.75); padding: 12px; margin-top: 10px; border-radius: 5px; border-left: 3px solid #ffffff; }
         .order-btn { margin-top: 8px; padding: 8px 10px; font-size: 13px; width: auto; margin-right: 8px; display: inline-block; border: 1px solid rgba(255,255,255,0.4); }
         .btn-green { background: #00ff88; color: #000; border: none; }
@@ -39,14 +40,15 @@
         .tab-bar button { flex: 1; padding: 8px; font-size: 13px; margin: 0; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
         .tab-btn-active { background: #fff !important; color: #000 !important; }
 
-        #chatToggleBtn { position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff69b4; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,105,180,0.5); }
+        /* 默认隐藏，登录后JS控制显示 */
+        #chatToggleBtn { display: none; position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff69b4; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,105,180,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(15,10,20,0.95); border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
         #chatMessages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         #chatInputArea { padding: 12px; border-top: 1px solid #333; display: flex; gap: 8px; flex-shrink: 0; }
         #chatInput { flex: 1; padding: 8px; margin: 0; font-size: 14px; }
         #chatSendBtn { width: auto; padding: 8px 12px; margin: 0; font-size: 14px; background: #fff; color: #000; border: none; }
-        #privateChatToggleBtn { position: fixed; left: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #00ff88; color: #000; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(0,255,136,0.5); }
+        #privateChatToggleBtn { display: none; position: fixed; left: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #00ff88; color: #000; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(0,255,136,0.5); }
         #privatePanel { position: fixed; left: 20px; bottom: 160px; width: 400px; height: 520px; background: rgba(15,10,20,0.95); border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #privatePanelHeader { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
         #onlineListHeader { padding: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 14px; text-align: center; border-bottom: 1px solid #333; flex-shrink: 0; }
@@ -90,7 +92,7 @@
 
     <div id="auth">
         <div class="box">
-            <h2>卡了电竞</h2>
+            <h2>卡了电竞欢迎您</h2>
             <input id="email" placeholder="邮箱">
             <input id="pass" type="password" placeholder="密码">
             <button onclick="window.handleLogin()">登录</button>
@@ -116,13 +118,11 @@
         <div class="box">
             <h2>派单系统</h2>
             <p id="userInfo"></p>
-
             <div id="ownerPanel" style="display:none; margin-top:10px; border:1px solid rgba(255,255,255,0.5); padding:10px;">
                 <div class="tab-bar" id="manageTabs"></div>
                 <div id="auditList"></div>
                 <div id="cancelList" style="display:none;"></div>
             </div>
-
             <div id="orderPanel" style="display:none; margin-top:10px;">
                 <select id="orderCategory">
                     <option value="跑刀">跑刀</option>
@@ -169,7 +169,7 @@
     </div>
 
 <script>
-/* ===== 蓝色雪夜 · 六角雪花 120逻辑帧/秒 ===== */
+/* ===== 蓝色雪夜 · 六角雪花 120逻辑帧/秒（全屏不透明底，独立渲染） ===== */
 (function snowNightBg(){
     const canvas = document.getElementById('snow');
     const ctx = canvas.getContext('2d');
@@ -179,7 +179,6 @@
     function resize(){
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        // 深蓝夜空渐变
         bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
         bgGradient.addColorStop(0, '#0a0e27');
         bgGradient.addColorStop(0.5, '#0d1535');
@@ -187,32 +186,23 @@
     }
     window.addEventListener('resize', resize); resize();
 
-    const TARGET_STEP = 1000 / 120; // 120ups
+    const TARGET_STEP = 1000 / 120;
 
-    // 预构建六角雪花 Path2D（单位半径=1），绘制时 scale 到实际大小
     function buildSnowPath(){
         const p = new Path2D();
-        const R = 1;
         for(let i=0; i<6; i++){
             const a = (Math.PI / 3) * i;
             const cos = Math.cos(a), sin = Math.sin(a);
-            // 主轴
-            p.moveTo(0, 0); p.lineTo(cos * R, sin * R);
-            // 末端V形分叉
-            const tipX = cos * R, tipY = sin * R;
-            const forkLen = R * 0.35;
-            const forkAngle1 = a + 0.7, forkAngle2 = a - 0.7;
-            p.moveTo(tipX, tipY);
-            p.lineTo(tipX + Math.cos(forkAngle1)*forkLen, tipY + Math.sin(forkAngle1)*forkLen);
-            p.moveTo(tipX, tipY);
-            p.lineTo(tipX + Math.cos(forkAngle2)*forkLen, tipY + Math.sin(forkAngle2)*forkLen);
-            // 中段小分叉
-            const midX = cos * R * 0.55, midY = sin * R * 0.55;
-            const mAngle1 = a + 0.9, mAngle2 = a - 0.9;
-            p.moveTo(midX, midY);
-            p.lineTo(midX + Math.cos(mAngle1)*R*0.25, midY + Math.sin(mAngle1)*R*0.25);
-            p.moveTo(midX, midY);
-            p.lineTo(midX + Math.cos(mAngle2)*R*0.25, midY + Math.sin(mAngle2)*R*0.25);
+            p.moveTo(0, 0); p.lineTo(cos, sin);
+            const tipX = cos, tipY = sin;
+            const forkLen = 0.35;
+            const fa1 = a + 0.7, fa2 = a - 0.7;
+            p.moveTo(tipX, tipY); p.lineTo(tipX + Math.cos(fa1)*forkLen, tipY + Math.sin(fa1)*forkLen);
+            p.moveTo(tipX, tipY); p.lineTo(tipX + Math.cos(fa2)*forkLen, tipY + Math.sin(fa2)*forkLen);
+            const mx = cos*0.55, my = sin*0.55;
+            const ma1 = a+0.9, ma2 = a-0.9;
+            p.moveTo(mx, my); p.lineTo(mx + Math.cos(ma1)*0.25, my + Math.sin(ma1)*0.25);
+            p.moveTo(mx, my); p.lineTo(mx + Math.cos(ma2)*0.25, my + Math.sin(ma2)*0.25);
         }
         return p;
     }
@@ -223,8 +213,8 @@
         reset(init){
             this.x = Math.random() * canvas.width;
             this.y = init ? Math.random() * canvas.height : -20;
-            this.size = Math.random() * 2.8 + 2.2;       // 实际像素半径 2.2~5
-            this.baseSpeedY = Math.random() * 0.35 + 0.18; // 雪夜慢飘
+            this.size = Math.random() * 2.8 + 2.2;
+            this.baseSpeedY = Math.random() * 0.35 + 0.18;
             this.baseSpeedX = (Math.random() - 0.5) * 0.08;
             this.alpha = Math.random() * 0.45 + 0.35;
             this.angle = Math.random() * Math.PI * 2;
@@ -238,51 +228,29 @@
             this.x += (Math.sin(this.y * this.swing + this.phase) * this.wind + this.baseSpeedX) * dtScale;
             this.angle += this.spin * dtScale;
             if(this.y > canvas.height + 25 || this.x < -30 || this.x > canvas.width + 30){
-                this.reset(false);
-                this.y = -20;
-                this.x = Math.random() * canvas.width;
+                this.reset(false); this.y = -20; this.x = Math.random() * canvas.width;
             }
         }
         draw(){
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.angle);
-            ctx.scale(this.size, this.size);
-            ctx.globalAlpha = this.alpha;
-            ctx.strokeStyle = 'rgba(190,215,255,1)';
-            ctx.lineWidth = 0.35;
-            ctx.lineCap = 'round';
-            ctx.stroke(SNOW_PATH);
-            ctx.restore();
+            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.scale(this.size, this.size);
+            ctx.globalAlpha = this.alpha; ctx.strokeStyle = 'rgba(190,215,255,1)'; ctx.lineWidth = 0.35; ctx.lineCap = 'round';
+            ctx.stroke(SNOW_PATH); ctx.restore();
         }
     }
     for(let i=0;i<200;i++) flakes.push(new Snowflake());
 
-    let lastTime = performance.now();
-    let accumulator = 0;
-
+    let lastTime = performance.now(), acc = 0;
     function loop(now){
-        let frameTime = now - lastTime;
-        if(frameTime > 250) frameTime = 250;
-        lastTime = now;
-        accumulator += frameTime;
-
-        while(accumulator >= TARGET_STEP){
-            const dtScale = TARGET_STEP / 16.6667;
-            flakes.forEach(f => f.update(dtScale));
-            accumulator -= TARGET_STEP;
-        }
-        // 深蓝夜空底
-        ctx.fillStyle = bgGradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // 远层微光（很淡的雾感）
-        flakes.forEach(f => f.draw());
-        requestAnimationFrame(loop);
+        let ft = now - lastTime; if(ft > 250) ft = 250;
+        lastTime = now; acc += ft;
+        while(acc >= TARGET_STEP){ flakes.forEach(f => f.update(TARGET_STEP/16.6667)); acc -= TARGET_STEP; }
+        ctx.fillStyle = bgGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        flakes.forEach(f => f.draw()); requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
 })();
 
-/* ========== 核心业务代码（未动） ========== */
+/* ========== 核心业务（仅改了 setView 控制按钮） ========== */
 const SUPABASE_URL = 'https://wjrkygyfciazaiwdgbfy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indqcmt5Z3lmY2lhemFpd2RnYmZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwODIwNjEsImV4cCI6MjA5OTY1ODA2MX0.LX4A8vKu5IOzHfU-YcWG8Hlgi7kSG0cMQENKDV5uIzI';
 
@@ -300,7 +268,22 @@ function init() {
 function showFatalError(msg) { document.getElementById('fatalError').style.display='block'; document.getElementById('fatalError').textContent='❌ '+msg; }
 window.showMessage = function(t,s){ const el=document.getElementById('msg'); el.textContent=t; el.style.background=s?'rgba(0,255,136,0.9)':'rgba(255,0,85,0.9)'; el.style.display='block'; setTimeout(()=>el.style.display='none',3000); };
 window.toggleLoading = s => document.getElementById('loadingOverlay').style.display = s?'flex':'none';
-window.setView = v => { document.getElementById('auth').style.display=v==='auth'?'block':'none'; document.getElementById('app').style.display=v==='app'?'block':'none'; document.getElementById('footerBar').style.display=v==='app'?'flex':'none'; };
+
+/* ===== 视图切换：雪花canvas全程不动，只管页面和按钮 ===== */
+window.setView = v => {
+    document.getElementById('auth').style.display = v==='auth' ? 'block' : 'none';
+    document.getElementById('app').style.display = v==='app' ? 'block' : 'none';
+    document.getElementById('footerBar').style.display = v==='app' ? 'flex' : 'none';
+    // 聊天按钮登录后显示，未登录隐藏
+    document.getElementById('chatToggleBtn').style.display = v==='app' ? 'block' : 'none';
+    document.getElementById('privateChatToggleBtn').style.display = v==='app' ? 'block' : 'none';
+    // 退出时收起已打开的面板
+    if(v==='auth'){
+        document.getElementById('chatWindow').style.display='none';
+        document.getElementById('privatePanel').style.display='none';
+    }
+};
+
 window.mapStatus = s => ({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消',cancelling:'取消审批中'}[s]||'未知');
 
 window.renderManageTabs = function() {
@@ -347,10 +330,7 @@ window.handleRegister = async function() {
     if(!e||!p||!n){window.showMessage('请填写完整信息',false);return;} if(r==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner');if(o?.length){window.showMessage('店长账号已存在',false);return;}}
     window.toggleLoading(true); try{const{error}=await window.supabaseClient.auth.signUp({email:e,password:p,options:{data:{nickname:n,role:r}}}); if(error){window.showMessage(error.message,false);return;} window.showMessage(r==='admin'?'注册成功请等待店长审核':'注册成功请登录',true); window.showLogin(); document.getElementById('email').value=e;}catch(e){window.showMessage(e.message,false);}finally{window.toggleLoading(false);}
 };
-window.startAutoCancelChecker = function() {
-    if(window.autoCancelTimer) clearInterval(window.autoCancelTimer);
-    window.autoCancelTimer = setInterval(async()=>{ if(!window.currentUser)return; const now=new Date().toISOString(); const{data:ex}=await window.supabaseClient.from('orders').select('id').eq('status','pending').not('auto_cancel_at','is',null).lt('auto_cancel_at',now); if(ex?.length){await window.supabaseClient.from('orders').delete().in('id',ex.map(o=>o.id)); window.loadOrders();} },30000);
-};
+window.startAutoCancelChecker = function() { if(window.autoCancelTimer) clearInterval(window.autoCancelTimer); window.autoCancelTimer = setInterval(async()=>{ if(!window.currentUser)return; const now=new Date().toISOString(); const{data:ex}=await window.supabaseClient.from('orders').select('id').eq('status','pending').not('auto_cancel_at','is',null).lt('auto_cancel_at',now); if(ex?.length){await window.supabaseClient.from('orders').delete().in('id',ex.map(o=>o.id)); window.loadOrders();} },30000); };
 window.startCancelPolling = function() { if(window.cancelPollingTimer) clearInterval(window.cancelPollingTimer); window.cancelPollingTimer=setInterval(()=>{ if(!window.currentUser||!['owner','admin'].includes(window.userProfile?.role))return; window.loadCancelRequests(true); },8000); };
 window.createOrder = async function() {
     const c=document.getElementById('orderContent').value.trim(), g=document.getElementById('orderGameId').value.trim(), p=document.getElementById('orderPrice').value.trim(), cat=document.getElementById('orderCategory').value;
@@ -393,6 +373,7 @@ window.appendPrivateMessage=(c,m)=>{const is=m.sender_id===window.currentUser?.i
 window.subscribePrivateChat=(k,r)=>{if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}const ch=window.supabaseClient.channel(`private_chat_${r.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${r}`},p=>{const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w)window.appendPrivateMessage(w.querySelector('.private-chat-messages'),p.new);}).subscribe();window.privateChatSubscriptions[k]=ch;};
 window.sendPrivateMessage=async function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(!w)return;const i=w.querySelector('.private-chat-input'),t=i.value.trim();if(!t)return;if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;}window.lastSendTime=Date.now();try{await window.supabaseClient.from('chat_messages').insert({room_id:w.dataset.roomId,sender_id:window.currentUser.id,content:t});i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}};
 window.closePrivateChat=function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w){if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}w.remove();}};
+
 init();
 </script>
 </body>
