@@ -331,27 +331,78 @@ window.showReg=()=>document.getElementById('regBox').style.display='block';windo
 /* ========== 在线状态（track 中加入 work_status） ========== */
 window.trackOnlineStatus=async function(){window.presenceChannel=window.supabaseClient.channel('online-users');window.presenceChannel.on('presence',{event:'sync'},()=>{const s=window.presenceChannel.presenceState();window.onlineUsersCache={};Object.keys(s).forEach(k=>{const u=s[k][0];if(u)window.onlineUsersCache[u.id]=u;});window.renderUserList();}).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>{if(p.id)window.onlineUsersCache[p.id]=p;});window.renderUserList();}).on('presence',{event:'leave'},({left})=>{left.forEach(p=>{if(p.id)delete window.onlineUsersCache[p.id];});window.renderUserList();}).subscribe(async(s)=>{if(s==='SUBSCRIBED')await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,work_status:window.userProfile.work_status||'online',online_at:new Date().toISOString()});});};
 
-/* ========== 用户列表（显示工作状态） ========== */
+/* ========== 用户列表（修复在线人数 Bug） ========== */
 window.loadAllProfiles=async function(){const{data}=await window.supabaseClient.from('profiles').select('id,nickname,role,work_status').eq('status','approved').neq('id',window.currentUser.id);window.allProfilesCache=data||[];window.renderUserList();window.loadMyPrivateRoomsAndUnread();};
 window.renderUserList=function(){
     const c=document.getElementById('userList');
     const meId=window.currentUser.id;
-    const onlineIds=new Set(Object.keys(window.onlineUsersCache));
-    const onlineOthers=[],offline=[];
-    window.allProfilesCache.forEach(u=>{if(u.id===meId)return;onlineIds.has(u.id)?onlineOthers.push(u):offline.push(u);});
-    const total=window.allProfilesCache.length+1;
-    document.getElementById('userListHeader').textContent=`全部用户 (在线${onlineIds.size+1}/${total})`;
-    let html='';
-    html+='<div class="user-section-label">🟢 在线</div>';
-    // 自己
-    const meRole=window.userProfile.role;
+
+    // 从 Presence 缓存中区分真正在线 vs 休息中
+    const trulyOnlineIds=new Set();
+    const restingIds=new Set();
+    Object.keys(window.onlineUsersCache).forEach(id=>{
+        const u=window.onlineUsersCache[id];
+        if(u.work_status==='resting') restingIds.add(id);
+        else trulyOnlineIds.add(id);
+    });
+
+    // 自己是否真正在线
     const meWs=window.userProfile.work_status||'online';
-    html+=`<div class="online-user-item self-item"><div class="status-dot online"></div><div class="username-text">${window.userProfile.nickname}（我）</div><span class="role-tag ${meRole}" style="background:${roleColorMap[meRole]||'#888'}">${roleNameMap[meRole]||meRole}</span><span class="role-tag" style="background:${workStatusColorMap[meWs]||'#888'}">${workStatusMap[meWs]||meWs}</span></div>`;
-    // 其他在线
-    onlineOthers.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{const unread=window.unreadMap[u.id]||0;const ws=u.work_status||'online';html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;});
-    // 离线
-    html+='<div class="user-section-label">⚪ 离线</div>';
-    offline.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{const unread=window.unreadMap[u.id]||0;const ws=u.work_status||'online';html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;});
+    const meTrulyOnline=meWs==='online';
+
+    // 分类其他用户
+    const onlineOthers=[], restingOthers=[], offline=[];
+    window.allProfilesCache.forEach(u=>{
+        if(u.id===meId) return;
+        if(trulyOnlineIds.has(u.id)) onlineOthers.push(u);
+        else if(restingIds.has(u.id)) restingOthers.push(u);
+        else offline.push(u);
+    });
+
+    // 统计真正在线人数（不再重复计算自己）
+    const trulyOnlineCount=trulyOnlineIds.size+(meTrulyOnline?1:0);
+    const total=window.allProfilesCache.length+1;
+    document.getElementById('userListHeader').textContent=`全部用户 (在线${trulyOnlineCount}/${total})`;
+
+    let html='';
+    const meRole=window.userProfile.role;
+
+    // 🟢 在线区
+    if(meTrulyOnline || onlineOthers.length>0){
+        html+='<div class="user-section-label">🟢 在线</div>';
+        if(meTrulyOnline){
+            html+=`<div class="online-user-item self-item"><div class="status-dot online"></div><div class="username-text">${window.userProfile.nickname}（我）</div><span class="role-tag ${meRole}" style="background:${roleColorMap[meRole]||'#888'}">${roleNameMap[meRole]||meRole}</span><span class="role-tag" style="background:${workStatusColorMap[meWs]||'#888'}">${workStatusMap[meWs]||meWs}</span></div>`;
+        }
+        onlineOthers.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{
+            const unread=window.unreadMap[u.id]||0;
+            const ws=u.work_status||'online';
+            html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;
+        });
+    }
+
+    // 🟡 休息中区
+    if(!meTrulyOnline || restingOthers.length>0){
+        html+='<div class="user-section-label">🟡 休息中</div>';
+        if(!meTrulyOnline){
+            html+=`<div class="online-user-item self-item"><div class="status-dot offline"></div><div class="username-text">${window.userProfile.nickname}（我）</div><span class="role-tag ${meRole}" style="background:${roleColorMap[meRole]||'#888'}">${roleNameMap[meRole]||meRole}</span><span class="role-tag" style="background:${workStatusColorMap[meWs]||'#888'}">${workStatusMap[meWs]||meWs}</span></div>`;
+        }
+        restingOthers.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{
+            const unread=window.unreadMap[u.id]||0;
+            const ws=u.work_status||'online';
+            html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;
+        });
+    }
+
+    // ⚪ 离线区
+    if(offline.length>0){
+        html+='<div class="user-section-label">⚪ 离线</div>';
+        offline.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{
+            const unread=window.unreadMap[u.id]||0;
+            const ws=u.work_status||'online';
+            html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;
+        });
+    }
+
     c.innerHTML=html;
 };
 
