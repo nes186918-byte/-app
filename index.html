@@ -6,9 +6,11 @@
     <title>卡了电竞</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
-        html { background: transparent; height: 100%; }
+        /* 🔧 修复: 确保雪花 canvas 始终在最底层且不被意外遮挡 */
+        html { background: #050b1e; height: 100%; }
         body { background: transparent; color: #fff; font-family: sans-serif; padding: 15px; margin: 0; min-height: 100vh; position: relative; z-index: 1; }
         #snow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
         .box { background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.65); margin-bottom: 15px; position: relative; z-index: 1; }
         h2 { color: #ffffff; text-align: center; margin: 0 0 15px 0; font-size: 1.2em; }
         input, select { width: 100%; padding: 12px; margin-top: 10px; border-radius: 5px; border: 1px solid #555; background: rgba(20,20,30,0.85); color: #fff; font-size: 16px; box-sizing: border-box; }
@@ -38,8 +40,10 @@
         .tab-bar { display: flex; gap: 8px; margin-bottom: 10px; }
         .tab-bar button { flex: 1; padding: 8px; font-size: 13px; margin: 0; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
         .tab-btn-active { background: #fff !important; color: #000 !important; }
+
         #restReasonModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); padding: 15px; box-sizing: border-box; z-index: 999; overflow-y: auto; }
         #restReasonModal .box { margin-top: 30px; border-color: rgba(255,165,2,0.8); }
+
         #chatToggleBtn { display: none; position: fixed; right: 20px; bottom: 90px; width: 56px; height: 56px; border-radius: 50%; background: #ff69b4; color: #fff; font-size: 22px; border: none; cursor: pointer; z-index: 1002; box-shadow: 0 4px 15px rgba(255,105,180,0.5); }
         #chatWindow { position: fixed; right: 20px; bottom: 160px; width: 350px; height: 450px; background: rgba(15,10,20,0.95); border-radius: 12px; border: 1px solid rgba(255,255,255,0.5); z-index: 1001; display: none; flex-direction: column; overflow: hidden; }
         #chatHeader { padding: 10px; background: rgba(255,255,255,0.1); color: #fff; font-weight: bold; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
@@ -91,6 +95,7 @@
 </head>
 <body>
     <canvas id="snow"></canvas>
+
     <div id="fatalError"></div>
     <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
 
@@ -151,19 +156,44 @@
         <button onclick="window.handleLogout()">退出</button>
     </div>
 
-    <div id="detailModal"><div class="box"><h2>订单详情</h2><div id="detailContent"></div><button onclick="window.closeDetailModal()">关闭</button></div></div>
-    <div id="restReasonModal"><div class="box"><h2>申请下线休息</h2><p style="color:#ccc;font-size:14px;margin-bottom:8px;">请填写休息原因（可选）：</p><input id="restReasonInput" placeholder="例如：吃饭、睡觉、有事等" style="margin-top:0;"><button class="btn-orange" onclick="window.confirmRestSubmit()" style="margin-top:12px;">提交申请</button><button onclick="window.closeRestModal()" style="margin-top:8px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid #555;">取消</button></div></div>
+    <div id="detailModal">
+        <div class="box"><h2>订单详情</h2><div id="detailContent"></div><button onclick="window.closeDetailModal()">关闭</button></div>
+    </div>
+
+    <div id="restReasonModal">
+        <div class="box">
+            <h2>申请下线休息</h2>
+            <p style="color:#ccc;font-size:14px;margin-bottom:8px;">请填写休息原因（可选）：</p>
+            <input id="restReasonInput" placeholder="例如：吃饭、睡觉、有事等" style="margin-top:0;">
+            <button class="btn-orange" onclick="window.confirmRestSubmit()" style="margin-top:12px;">提交申请</button>
+            <button onclick="window.closeRestModal()" style="margin-top:8px;background:rgba(255,255,255,0.2);color:#fff;border:1px solid #555;">取消</button>
+        </div>
+    </div>
 
     <div id="msg"></div>
     <button id="chatToggleBtn" onclick="window.toggleChat()">💬</button>
-    <div id="chatWindow"><div id="chatHeader">公共聊天室</div><div id="chatMessages"></div><div id="chatInputArea"><input id="chatInput" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendChatMessage()"><button id="chatSendBtn" onclick="window.sendChatMessage()">发送</button></div></div>
+    <div id="chatWindow">
+        <div id="chatHeader">公共聊天室</div>
+        <div id="chatMessages"></div>
+        <div id="chatInputArea">
+            <input id="chatInput" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendChatMessage()">
+            <button id="chatSendBtn" onclick="window.sendChatMessage()">发送</button>
+        </div>
+    </div>
     <button id="privateChatToggleBtn" onclick="window.togglePrivatePanel()">👥</button>
-    <div id="privatePanel"><div id="privatePanelHeader">私聊</div><div id="userListHeader">全部用户</div><div id="userList"></div><div id="privateChatContainer"></div></div>
+    <div id="privatePanel">
+        <div id="privatePanelHeader">私聊</div>
+        <div id="userListHeader">全部用户</div>
+        <div id="userList"></div>
+        <div id="privateChatContainer"></div>
+    </div>
 
 <script>
 /* 雪花背景 */
 (function snowNightBg(){
-    const canvas = document.getElementById('snow'); const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('snow');
+    if(!canvas) return; // 🔧 修复: 防空指针
+    const ctx = canvas.getContext('2d');
     let bgGradient = null; let flakes = [];
     function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; bgGradient=ctx.createLinearGradient(0,0,0,canvas.height); bgGradient.addColorStop(0,'#0a0e27'); bgGradient.addColorStop(0.5,'#0d1535'); bgGradient.addColorStop(1,'#050b1e'); }
     window.addEventListener('resize', resize); resize();
@@ -173,7 +203,15 @@
     class Snowflake{constructor(){this.reset(true);}reset(init){this.x=Math.random()*canvas.width;this.y=init?Math.random()*canvas.height:-20;this.size=Math.random()*2.8+2.2;this.baseSpeedY=Math.random()*0.35+0.18;this.baseSpeedX=(Math.random()-0.5)*0.08;this.alpha=Math.random()*0.45+0.35;this.angle=Math.random()*Math.PI*2;this.spin=(Math.random()-0.5)*0.015;this.swing=Math.random()*0.005+0.003;this.phase=Math.random()*Math.PI*2;this.wind=Math.random()*0.18+0.04;}update(dtScale){this.y+=this.baseSpeedY*dtScale;this.x+=(Math.sin(this.y*this.swing+this.phase)*this.wind+this.baseSpeedX)*dtScale;this.angle+=this.spin*dtScale;if(this.y>canvas.height+25||this.x<-30||this.x>canvas.width+30){this.reset(false);this.y=-20;this.x=Math.random()*canvas.width;}}draw(){ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);ctx.scale(this.size,this.size);ctx.globalAlpha=this.alpha;ctx.strokeStyle='rgba(190,215,255,1)';ctx.lineWidth=0.35;ctx.lineCap='round';ctx.stroke(SNOW_PATH);ctx.restore();}}
     for(let i=0;i<200;i++) flakes.push(new Snowflake());
     let lastTime=performance.now(),acc=0;
-    function loop(now){let ft=now-lastTime;if(ft>250)ft=250;lastTime=now;acc+=ft;while(acc>=TARGET_STEP){flakes.forEach(f=>f.update(TARGET_STEP/16.6667));acc-=TARGET_STEP;}ctx.fillStyle=bgGradient;ctx.fillRect(0,0,canvas.width,canvas.height);flakes.forEach(f=>f.draw());requestAnimationFrame(loop);}
+    // 🔧 修复: loop 加 try-catch，防止单帧报错导致整个动画停止
+    function loop(now){
+        try {
+            let ft=now-lastTime;if(ft>250)ft=250;lastTime=now;acc+=ft;
+            while(acc>=TARGET_STEP){flakes.forEach(f=>f.update(TARGET_STEP/16.6667));acc-=TARGET_STEP;}
+            ctx.fillStyle=bgGradient;ctx.fillRect(0,0,canvas.width,canvas.height);flakes.forEach(f=>f.draw());
+        } catch(e) { console.error('雪花动画帧错误:', e); }
+        requestAnimationFrame(loop);
+    }
     requestAnimationFrame(loop);
 })();
 
@@ -194,20 +232,36 @@ window.onlineUsersCache={};window.privateChatSubscriptions={};
 window.autoCancelTimer=null;window.cancelPollingTimer=null;
 window.allProfilesCache=[];window.myPrivateRooms=[];window.unreadMap={};window.globalPrivateSubscriptions={};
 window.profileChangeSubscription=null;window.orderSubscription=null;
-window.profileInsertSubscription=null;window.profileUpdateAllSubscription=null;
-window.restRequestSubscription=null;window.cancelRequestSubscription=null;
+window.profileInsertSubscription=null;window.restRequestSubscription=null;window.cancelRequestSubscription=null;
 window.countdownTimers=[];
 
 function init(){
     const params=new URLSearchParams(window.location.search);
-    if(params.get('type')==='signup'&&params.get('token')){window.showMessage('✅ 邮箱验证成功！请登录',true);window.history.replaceState({},document.title,window.location.pathname);}
-    if(params.get('error')){window.showMessage('❌ 验证链接已过期或无效，请重新注册',false);window.history.replaceState({},document.title,window.location.pathname);}
-    if(typeof window.supabase==='undefined'){showFatalError('无法加载系统组件');return;}
-    try{window.supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);autoLogin();}catch(e){showFatalError('系统初始化失败：'+e.message);}
+    if(params.get('type')==='signup'&&params.get('token')){
+        window.showMessage('✅ 邮箱验证成功！请登录',true);
+        window.history.replaceState({},document.title,window.location.pathname);
+    }
+    if(params.get('error')){
+        window.showMessage('❌ 验证链接已过期或无效，请重新注册',false);
+        window.history.replaceState({},document.title,window.location.pathname);
+    }
+
+    if(typeof window.supabase==='undefined'){showFatalError('无法加载系统组件，请检查网络');return;}
+    try{
+        window.supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+        // 🔧 修复: autoLogin 加 .catch() 防止 unhandled rejection 导致页面卡死
+        autoLogin().catch(err => {
+            console.error('自动登录失败:', err);
+            showFatalError('自动登录失败：' + err.message + '，请手动登录');
+            window.setView('auth');
+        });
+    }
+    catch(e){showFatalError('系统初始化失败：'+e.message);}
 }
 function showFatalError(msg){document.getElementById('fatalError').style.display='block';document.getElementById('fatalError').textContent='❌ '+msg;}
 window.showMessage=function(t,s){const el=document.getElementById('msg');el.textContent=t;el.style.background=s?'rgba(0,255,136,0.9)':'rgba(255,0,85,0.9)';el.style.display='block';setTimeout(()=>el.style.display='none',3000);};
 window.toggleLoading=s=>document.getElementById('loadingOverlay').style.display=s?'flex':'none';
+
 window.setView=v=>{
     document.getElementById('auth').style.display=v==='auth'?'block':'none';
     document.getElementById('app').style.display=v==='app'?'block':'none';
@@ -216,7 +270,6 @@ window.setView=v=>{
     document.getElementById('privateChatToggleBtn').style.display=v==='app'?'block':'none';
     if(v==='auth'){document.getElementById('chatWindow').style.display='none';document.getElementById('privatePanel').style.display='none';}
 };
-window.mapStatus=s=>({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消',cancelling:'取消审批中'}[s]||'未知');
 
 /* ========== 管理面板 Tab ========== */
 window.renderManageTabs=function(){
@@ -281,10 +334,12 @@ window.toggleWorkStatus=async function(){
     window.showMessage(`已切换为${workStatusMap[newStatus]}`,true);
     window.updateUI();
     if(window.presenceChannel) await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,work_status:newStatus,online_at:new Date().toISOString()});
-    // 🔧 主动刷新本地 profiles 缓存，确保自己界面也同步
-    window.loadAllProfiles();
 };
-window.openRestModal=function(){document.getElementById('restReasonInput').value='';document.getElementById('restReasonModal').style.display='block';setTimeout(()=>document.getElementById('restReasonInput').focus(),100);};
+window.openRestModal=function(){
+    document.getElementById('restReasonInput').value='';
+    document.getElementById('restReasonModal').style.display='block';
+    setTimeout(()=>document.getElementById('restReasonInput').focus(),100);
+};
 window.closeRestModal=function(){ document.getElementById('restReasonModal').style.display='none'; };
 window.confirmRestSubmit=async function(){
     const reason=document.getElementById('restReasonInput').value.trim()||'无';
@@ -308,10 +363,99 @@ window.approveRest=async function(rid,uid){if(!confirm('批准休息？'))return
 window.rejectRest=async function(rid){if(!confirm('驳回？'))return;await window.supabaseClient.from('rest_requests').update({status:'rejected'}).eq('id',rid);window.showMessage('已驳回',true);window.loadRestRequests();};
 
 /* ========== 登录/注册 ========== */
-window.autoLogin=async function(){const{data:{session}}=await window.supabaseClient.auth.getSession();if(!session){window.setView('auth');return;}let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',session.user.id).maybeSingle();if(!p){const m=session.user.user_metadata||{};let role=m.role||'player',st='approved';if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.setView('auth');return;}}else if(role==='admin')st='pending';const{data:np}=await window.supabaseClient.from('profiles').insert({id:session.user.id,email:session.user.email,nickname:m.nickname||session.user.email.split('@')[0],role,status:st}).select().single();if(!np){window.setView('auth');return;}p=np;}if(p.status!=='approved'){window.setView('auth');return;}window.currentUser=session.user;await window.supabaseClient.from('profiles').update({work_status:'online'}).eq('id',session.user.id);p.work_status='online';window.userProfile=p;window.updateUI();window.setView('app');window.loadOrders();window.initChat();window.trackOnlineStatus();window.loadAllProfiles();window.subscribeProfileChanges();window.subscribeOrders();window.startAutoCancelChecker();window.showMessage(`欢迎 ${p.nickname}`,true);};
-window.handleLogin=async function(){const e=document.getElementById('email').value.trim(),pw=document.getElementById('pass').value.trim();if(!e||!pw){window.showMessage('请输入邮箱和密码',false);return;}window.toggleLoading(true);try{const{data,error}=await window.supabaseClient.auth.signInWithPassword({email:e,password:pw});if(error){window.showMessage(error.message,false);return;}let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',data.user.id).maybeSingle();if(!p){const m=data.user.user_metadata||{};let role=m.role||'player',st='approved';if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.showMessage('店长账号已存在',false);return;}}else if(role==='admin')st='pending';const{data:np}=await window.supabaseClient.from('profiles').insert({id:data.user.id,email:data.user.email,nickname:m.nickname||e.split('@')[0],role,status:st}).select().single();if(!np){window.showMessage('创建资料失败',false);return;}p=np;}if(p&&p.status!=='approved'){window.showMessage('账号审核中',false);return;}window.currentUser=data.user;await window.supabaseClient.from('profiles').update({work_status:'online'}).eq('id',data.user.id);p.work_status='online';window.userProfile=p;window.updateUI();window.setView('app');window.loadOrders();window.initChat();window.trackOnlineStatus();window.loadAllProfiles();window.subscribeProfileChanges();window.subscribeOrders();window.startAutoCancelChecker();window.showMessage(`欢迎 ${p.nickname}`,true);document.getElementById('pass').value='';}catch(e){window.showMessage(e.message,false);}finally{window.toggleLoading(false);}};
-window.handleRegister=async function(){const e=document.getElementById('regEmail').value.trim(),p=document.getElementById('regPass').value.trim(),n=document.getElementById('regName').value.trim(),r=document.getElementById('regRole').value;if(!e||!p||!n){window.showMessage('请填写完整信息',false);return;}if(r==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner');if(o?.length){window.showMessage('店长账号已存在',false);return;}}window.toggleLoading(true);try{const{error}=await window.supabaseClient.auth.signUp({email:e,password:p,options:{data:{nickname:n,role:r},emailRedirectTo:'https://nes186918-byte.github.io/-app/verify-success.html'}});if(error){window.showMessage(error.message,false);return;}window.showMessage(r==='admin'?'注册成功请等待店长审核':'注册成功，请查收邮箱验证邮件',true);window.showLogin();document.getElementById('email').value=e;}catch(e){window.showMessage(e.message,false);}finally{window.toggleLoading(false);}};
+// 🔧 修复: autoLogin 整体加 try-catch，确保任何错误都 fallback 到 auth 界面
+window.autoLogin=async function(){
+    try {
+        const{data:{session}}=await window.supabaseClient.auth.getSession();
+        if(!session){window.setView('auth');return;}
+        let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',session.user.id).maybeSingle();
+        if(!p){
+            const m=session.user.user_metadata||{};
+            let role=m.role||'player',st='approved';
+            if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.setView('auth');return;}}
+            else if(role==='admin')st='pending';
+            const{data:np}=await window.supabaseClient.from('profiles').insert({id:session.user.id,email:session.user.email,nickname:m.nickname||session.user.email.split('@')[0],role,status:st}).select().single();
+            if(!np){window.setView('auth');return;}
+            p=np;
+        }
+        if(p.status!=='approved'){window.setView('auth');return;}
+        window.currentUser=session.user;
+        await window.supabaseClient.from('profiles').update({work_status:'online'}).eq('id',session.user.id);
+        p.work_status='online';
+        window.userProfile=p;
+        window.updateUI();
+        window.setView('app');
+        window.loadOrders();
+        window.initChat();
+        window.trackOnlineStatus();
+        window.loadAllProfiles();
+        window.subscribeProfileChanges();
+        window.subscribeOrders();
+        window.startAutoCancelChecker();
+        window.showMessage(`欢迎 ${p.nickname}`,true);
+    } catch(err) {
+        console.error('autoLogin 内部错误:', err);
+        window.setView('auth');
+        window.showMessage('自动登录异常，请手动登录', false);
+    }
+};
+
+window.handleLogin=async function(){
+    const e=document.getElementById('email').value.trim(),pw=document.getElementById('pass').value.trim();
+    if(!e||!pw){window.showMessage('请输入邮箱和密码',false);return;}
+    // 🔧 修复: 防御性检查
+    if(!window.supabaseClient){window.showMessage('系统未就绪，请刷新页面',false);return;}
+    window.toggleLoading(true);
+    try{
+        const{data,error}=await window.supabaseClient.auth.signInWithPassword({email:e,password:pw});
+        if(error){window.showMessage(error.message,false);return;}
+        let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',data.user.id).maybeSingle();
+        if(!p){
+            const m=data.user.user_metadata||{};
+            let role=m.role||'player',st='approved';
+            if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner');if(o?.length){window.showMessage('店长账号已存在',false);return;}}
+            else if(role==='admin')st='pending';
+            const{data:np}=await window.supabaseClient.from('profiles').insert({id:data.user.id,email:data.user.email,nickname:m.nickname||e.split('@')[0],role,status:st}).select().single();
+            if(!np){window.showMessage('创建资料失败',false);return;}
+            p=np;
+        }
+        if(p&&p.status!=='approved'){window.showMessage('账号审核中',false);return;}
+        window.currentUser=data.user;
+        await window.supabaseClient.from('profiles').update({work_status:'online'}).eq('id',data.user.id);
+        p.work_status='online';
+        window.userProfile=p;
+        window.updateUI();
+        window.setView('app');
+        window.loadOrders();
+        window.initChat();
+        window.trackOnlineStatus();
+        window.loadAllProfiles();
+        window.subscribeProfileChanges();
+        window.subscribeOrders();
+        window.startAutoCancelChecker();
+        window.showMessage(`欢迎 ${p.nickname}`,true);
+        document.getElementById('pass').value='';
+    }catch(e){window.showMessage('登录失败: '+e.message,false);}
+    finally{window.toggleLoading(false);}
+};
+
+window.handleRegister=async function(){
+    const e=document.getElementById('regEmail').value.trim(),p=document.getElementById('regPass').value.trim(),n=document.getElementById('regName').value.trim(),r=document.getElementById('regRole').value;
+    if(!e||!p||!n){window.showMessage('请填写完整信息',false);return;}
+    if(r==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner');if(o?.length){window.showMessage('店长账号已存在',false);return;}}
+    window.toggleLoading(true);
+    try{
+        const{error}=await window.supabaseClient.auth.signUp({email:e,password:p,options:{data:{nickname:n,role:r},emailRedirectTo:'https://nes186918-byte.github.io/-app/verify-success.html'}});
+        if(error){window.showMessage(error.message,false);return;}
+        window.showMessage(r==='admin'?'注册成功请等待店长审核':'注册成功，请查收邮箱验证邮件',true);
+        window.showLogin();
+        document.getElementById('email').value=e;
+    }catch(e){window.showMessage(e.message,false);}
+    finally{window.toggleLoading(false);}
+};
+
 window.startAutoCancelChecker=function(){if(window.autoCancelTimer)clearInterval(window.autoCancelTimer);window.autoCancelTimer=setInterval(async()=>{if(!window.currentUser)return;const now=new Date().toISOString();const{data:ex}=await window.supabaseClient.from('orders').select('id').eq('status','pending').not('auto_cancel_at','is',null).lt('auto_cancel_at',now);if(ex?.length){await window.supabaseClient.from('orders').delete().in('id',ex.map(o=>o.id));window.loadOrders();}},30000);};
+
 window.createOrder=async function(){const c=document.getElementById('orderContent').value.trim(),g=document.getElementById('orderGameId').value.trim(),p=document.getElementById('orderPrice').value.trim(),cat=document.getElementById('orderCategory').value;if(!c||!g||!p){window.showMessage('请填写完整订单信息',false);return;}try{const exp=new Date(Date.now()+15*60000).toISOString();await window.supabaseClient.from('orders').insert({sender_id:window.currentUser.id,content:c,game_id:g,price:parseFloat(p),status:'pending',category:cat,auto_cancel_at:exp});window.showMessage('订单发布成功（15分钟无人接单自动取消）',true);document.getElementById('orderContent').value='';document.getElementById('orderGameId').value='';document.getElementById('orderPrice').value='';window.loadOrders();}catch(e){window.showMessage(e.message,false);}};
 
 /* ========== 订单列表 + 实时订阅 + 动态倒计时 ========== */
@@ -340,15 +484,26 @@ window.loadOrders=async function(){if(!window.currentUser||!window.userProfile)r
     }).join('');
     window.startCountdownTimers(orders);
 };
+
 window.startCountdownTimers=function(orders){
-    window.countdownTimers.forEach(t=>clearInterval(t));window.countdownTimers=[];
+    window.countdownTimers.forEach(t=>clearInterval(t));
+    window.countdownTimers=[];
     orders.forEach(o=>{
         if(!o.auto_cancel_at)return;
-        const el=document.getElementById(`countdown-${o.id}`);if(!el)return;
-        const update=()=>{const r=new Date(o.auto_cancel_at)-new Date();if(r<=0){el.textContent='⏰ 已过期';return false;}el.textContent=`⏰ ${Math.floor(r/60000)}分${Math.floor((r%60000)/1000)}秒后自动取消`;return true;};
-        update();const timer=setInterval(()=>{if(!update()){clearInterval(timer);}},1000);window.countdownTimers.push(timer);
+        const el=document.getElementById(`countdown-${o.id}`);
+        if(!el)return;
+        const update=()=>{
+            const r=new Date(o.auto_cancel_at)-new Date();
+            if(r<=0){el.textContent='⏰ 已过期';return false;}
+            el.textContent=`⏰ ${Math.floor(r/60000)}分${Math.floor((r%60000)/1000)}秒后自动取消`;
+            return true;
+        };
+        update();
+        const timer=setInterval(()=>{if(!update()){clearInterval(timer);}},1000);
+        window.countdownTimers.push(timer);
     });
 };
+
 window.subscribeOrders=function(){
     if(window.orderSubscription)return;
     window.orderSubscription=window.supabaseClient.channel('orders_realtime')
@@ -357,16 +512,25 @@ window.subscribeOrders=function(){
         .on('postgres_changes',{event:'DELETE',schema:'public',table:'orders'},()=>window.loadOrders())
         .subscribe();
 };
-window takeOrder=async function(id){if(!window.currentUser?.id){window.handleLogout();return;}const{data,error}=await window.supabaseClient.from('orders').update({worker_id:window.currentUser.id,status:'accepted'}).eq('id',id).eq('status','pending').is('worker_id',null).select();if(error){window.showMessage(error.message,false);return;}if(!data?.length){window.showMessage('订单已被接走',false);window.loadOrders();return;}window.showMessage('接单成功',true);window.loadOrders();};
+
+window.takeOrder=async function(id){if(!window.currentUser?.id){window.handleLogout();return;}const{data,error}=await window.supabaseClient.from('orders').update({worker_id:window.currentUser.id,status:'accepted'}).eq('id',id).eq('status','pending').is('worker_id',null).select();if(error){window.showMessage(error.message,false);return;}if(!data?.length){window.showMessage('订单已被接走',false);window.loadOrders();return;}window.showMessage('接单成功',true);window.loadOrders();};
 window.completeOrder=async function(id){if(!confirm('确认完成订单？'))return;await window.supabaseClient.from('orders').update({status:'completed'}).eq('id',id).eq('worker_id',window.currentUser.id).eq('status','accepted');window.showMessage('已结单',true);window.loadOrders();window.closeDetailModal();};
 window.deleteOrder=async function(id){if(!confirm('确认取消？'))return;await window.supabaseClient.from('orders').delete().eq('id',id);window.showMessage('已取消',true);window.loadOrders();window.closeDetailModal();};
 window.requestCancelOrder=async function(id){const r=prompt('取消原因（发给店长/管理员）：');if(r===null)return;try{const{data:c}=await window.supabaseClient.from('orders').select('id,status,sender_id').eq('id',id).maybeSingle();if(!c){window.showMessage('订单不存在',false);return;}if(c.sender_id!==window.currentUser.id){window.showMessage('只能取消自己的订单',false);return;}if(c.status!=='accepted'){window.showMessage('当前状态为'+window.mapStatus(c.status),false);return;}const{u}=await window.supabaseClient.from('orders').update({status:'cancelling'}).eq('id',id).eq('sender_id',window.currentUser.id).select('id').maybeSingle();if(!u){window.showMessage('修改失败，请确认RLS已关闭',false);return;}const oid=typeof id==='string'&&!isNaN(id)?Number(id):id;const ie=await window.supabaseClient.from('cancel_requests').insert({order_id:oid,requester_id:window.currentUser.id,reason:r||'无',status:'pending'});if(ie.error){await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id',id);window.showMessage(ie.error.message,false);return;}window.showMessage('申请已提交，管理员将实时收到',true);window.loadOrders();}catch(e){window.showMessage(e.message,false);}};
 
 /* ========== 取消申请 - 实时订阅 ========== */
 window.loadCancelRequests=async function(silent=false){if(!['owner','admin'].includes(window.userProfile?.role))return;const{data:reqs}=await window.supabaseClient.from('cancel_requests').select('*').eq('status','pending').order('created_at',{ascending:false});const bd=document.getElementById('cancelBadge');if(bd)bd.textContent=reqs?.length?`(${reqs.length})`:'';const el=document.getElementById('cancelList');if(!el||(silent&&el.style.display==='none'))return;if(!reqs?.length){el.innerHTML='<div style="color:#aaa;">暂无取消申请</div>';return;}const oids=[...new Set(reqs.map(r=>r.order_id))],{data:ors}=await window.supabaseClient.from('orders').select('id,content,game_id').in('id',oids);const om=Object.fromEntries(ors?.map(o=>[o.id,o])||[]);const uids=[...new Set(reqs.map(r=>r.requester_id).filter(Boolean))],{data:us}=await window.supabaseClient.from('profiles').select('id,nickname').in('id',uids);const um=Object.fromEntries(us?.map(u=>[u.id,u.nickname])||[]);el.innerHTML=reqs.map(r=>`<div class="order" style="border-left-color:#ffa502;"><div><b>申请者:</b> ${um[r.requester_id]||'未知'}</div><div><b>内容:</b> ${om[r.order_id]?.content||'<span style="color:#888;">订单已删除</span>'}</div><div><b>游戏ID:</b> ${om[r.order_id]?.game_id||'-'}</div><div><b>原因:</b> ${r.reason}</div><button class="order-btn btn-green" onclick="window.approveCancel('${r.id}',${r.order_id})">同意取消</button><button class="order-btn btn-red" onclick="window.reject('${r.id}',${r.order_id})">驳回</button></div>`).join('');};
-window.subscribeCancelRequests=function(){if(window.cancelRequestSubscription)return;window.cancelRequestSubscription=window.supabaseClient.channel('cancel_request_realtime').on('postgres_changes',{event:'INSERT',schema:'public',table:'cancel_requests'},()=>{if(['owner','admin'].includes(window.userProfile?.role)) window.loadCancelRequests();}).subscribe();};
+window.subscribeCancelRequests=function(){
+    if(window.cancelRequestSubscription)return;
+    window.cancelRequestSubscription=window.supabaseClient.channel('cancel_request_realtime')
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'cancel_requests'},()=>{
+            if(['owner','admin'].includes(window.userProfile?.role)) window.loadCancelRequests();
+        })
+        .subscribe();
+};
 window.approveCancel=async function(rid,oid){if(!confirm('同意取消？订单将彻底删除。'))return;await window.supabaseClient.from('orders').delete().eq('id',Number(oid));await window.supabaseClient.from('cancel_requests').update({status:'approved'}).eq('id',rid);window.showMessage('已取消并移除',true);window.loadCancelRequests();window.loadOrders();};
 window.rejectCancel=async function(rid,oid){if(!confirm('驳回？订单恢复已接单'))return;await window.supabaseClient.from('orders').update({status:'accepted'}).eq('id',Number(oid));await window.supabaseClient.from('cancel_requests').update({status:'rejected'}).eq('id',rid);window.showMessage('已驳回',true);window.loadCancelRequests();if(window.loadOrders)window.loadOrders();};window.reject=window.rejectCancel;
+
 window.showOrderDetail=async function(id){const{data:o}=await window.supabaseClient.from('orders').select('*').eq('id',id).single();const io=o.sender_id===window.currentUser.id,iw=o.worker_id===window.currentUser.id,cd=(io&&o.status==='pending')||(iw&&o.status==='accepted'),crq=io&&o.status==='accepted',ctg=o.category?`<span class="category-tag">${o.category}</span>`:'';document.getElementById('detailContent').innerHTML=`<div><b>分类:</b> ${o.category||'无'}</div><div><b>内容:</b> ${o.content} ${ctg}</div><div><b>游戏ID:</b> ${o.game_id}</div><div><b>价格:</b> ¥${o.price}</div><div><b>状态:</b> ${window.mapStatus(o.status)}</div><div><b>发单:</b> ${window.senderMap?.[o.sender_id]||'未知'}</div><div><b>接单:</b> ${o.worker_id?(window.workerMap?.[o.worker_id]||'无'):'无'}</div>${cd?'<button class="order-btn btn-red" onclick="window.deleteOrder(\''+o.id+'\')">取消</button>':''}${crq?'<button class="order-btn btn-orange" onclick="window.requestCancelOrder(\''+o.id+'\')">申请取消</button>':''}`;document.getElementById('detailModal').style.display='block';};
 window.closeDetailModal=()=>document.getElementById('detailModal').style.display='none';
 window.loadAuditList=async function(){if(window.userProfile.role!=='owner')return;const{data:a}=await window.supabaseClient.from('profiles').select('*').eq('role','admin').eq('status','pending').order('created_at',{ascending:false});const el=document.getElementById('auditList');if(!a?.length){el.innerHTML='<div style="color:#aaa;">暂无待审核</div>';return;}el.innerHTML=a.map(x=>`<div class="order"><div><b>${x.nickname}</b>(${x.email})</div><button class="order-btn btn-purple" onclick="window.approveAdmin('${x.id}')">批准</button></div>`).join('');};
@@ -376,7 +540,6 @@ window.handleLogout=async function(){
     if(window.chatSubscription)window.supabaseClient.removeChannel(window.chatSubscription);
     if(window.profileChangeSubscription)window.supabaseClient.removeChannel(window.profileChangeSubscription);
     if(window.profileInsertSubscription)window.supabaseClient.removeChannel(window.profileInsertSubscription);
-    if(window.profileUpdateAllSubscription)window.supabaseClient.removeChannel(window.profileUpdateAllSubscription);
     if(window.restRequestSubscription)window.supabaseClient.removeChannel(window.restRequestSubscription);
     if(window.cancelRequestSubscription)window.supabaseClient.removeChannel(window.cancelRequestSubscription);
     if(window.orderSubscription)window.supabaseClient.removeChannel(window.orderSubscription);
@@ -408,7 +571,9 @@ window.renderUserList=function(){
         if(onlineIdSet.has(u.id)){
             if(realWs==='resting') onlineResting.push({...u, work_status: realWs});
             else onlineActive.push({...u, work_status: realWs});
-        } else { offlineList.push(u); }
+        } else {
+            offlineList.push(u);
+        }
     });
     let trulyOnlineCount=0;
     Object.keys(window.onlineUsersCache).forEach(id=>{if(window.onlineUsersCache[id].work_status!=='resting') trulyOnlineCount++;});
@@ -433,10 +598,9 @@ window.renderUserList=function(){
     c.innerHTML=html;
 };
 
-/* ========== profiles 变化监听（含全局 UPDATE）========== */
+/* ========== profiles 变化监听 ========== */
 window.subscribeProfileChanges=function(){
     const meId=window.currentUser.id;
-    // 自己的 profile UPDATE
     window.profileChangeSubscription=window.supabaseClient.channel('profile_changes')
         .on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles',filter:`id=eq.${meId}`},payload=>{
             const newWs=payload.new.work_status;
@@ -449,62 +613,173 @@ window.subscribeProfileChanges=function(){
             }
         }).subscribe();
 
-    // 新用户注册
     window.profileInsertSubscription=window.supabaseClient.channel('profile_inserts')
         .on('postgres_changes',{event:'INSERT',schema:'public',table:'profiles'},payload=>{
-            if(payload.new.role==='admin' && payload.new.status==='pending'){if(window.userProfile?.role==='owner') window.loadAuditList();}
-            window.loadAllProfiles();
-        }).subscribe();
-
-    // 🔧 全局 profile UPDATE —— 任何人改 work_status 都实时推给所有人
-    window.profileUpdateAllSubscription=window.supabaseClient.channel('profile_updates_all')
-        .on('postgres_changes',{event:'UPDATE',schema:'public',table:'profiles'},payload=>{
-            // 刷新用户缓存和列表（别人的状态变化会实时反映）
+            if(payload.new.role==='admin' && payload.new.status==='pending'){
+                if(window.userProfile?.role==='owner') window.loadAuditList();
+            }
             window.loadAllProfiles();
         }).subscribe();
 };
 
 /* ========== 休息申请实时订阅 ========== */
-window.subscribeRestRequests=function(){if(window.restRequestSubscription)return;window.restRequestSubscription=window.supabaseClient.channel('rest_request_realtime').on('postgres_changes',{event:'INSERT',schema:'public',table:'rest_requests'},()=>{if(window.userProfile?.role==='owner') window.loadRestRequests();}).subscribe();};
+window.subscribeRestRequests=function(){
+    if(window.restRequestSubscription)return;
+    window.restRequestSubscription=window.supabaseClient.channel('rest_request_realtime')
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'rest_requests'},()=>{
+            if(window.userProfile?.role==='owner') window.loadRestRequests();
+        })
+        .subscribe();
+};
 
 /* ========== 未读红点 ========== */
 function pvReadKey(roomId){return 'pv_read_'+roomId;}
 window.getPeerIdFromRoom=room=>{if(!room.participants)return null;return room.participants.find(id=>id!==window.currentUser.id);};
 window.loadMyPrivateRoomsAndUnread=async function(){
     const me=window.currentUser.id;
-    const{data:rooms}=await window.supabaseClient.from('chat_rooms').select('id,participants').eq('room_type','private').contains('participants',[me]);
-    window.myPrivateRooms=rooms||[];window.unreadMap={};
+    try {
+        const{data:rooms}=await window.supabaseClient.from('chat_rooms').select('id,participants').eq('room_type','private').contains('participants',[me]);
+        window.myPrivateRooms=rooms||[];
+    } catch(e) { console.error('加载私聊房间失败:', e); window.myPrivateRooms=[]; }
+    window.unreadMap={};
     for(const room of window.myPrivateRooms){const readTs=localStorage.getItem(pvReadKey(room.id))||'1970-01-01';const{data:msgs}=await window.supabaseClient.from('chat_messages').select('sender_id').eq('room_id',room.id).neq('sender_id',me).gt('created_at',readTs).limit(1);if(msgs?.length){const peer=window.getPeerIdFromRoom(room);if(peer)window.unreadMap[peer]=(window.unreadMap[peer]||0)+1;}}
     window.renderUserList();window.subscribeAllMyPrivateRooms();
 };
 window.subscribeAllMyPrivateRooms=function(){const me=window.currentUser.id;window.myPrivateRooms.forEach(room=>{if(window.globalPrivateSubscriptions[room.id])return;const ch=window.supabaseClient.channel(`global_pm_${room.id.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${room.id}`},p=>{if(p.new.sender_id===me)return;const peer=window.getPeerIdFromRoom(room);if(!peer)return;const container=document.getElementById('privateChatContainer');const activeWin=container.querySelector('.private-chat-window');if(activeWin&&activeWin.dataset.roomId===room.id)return;window.unreadMap[peer]=(window.unreadMap[peer]||0)+1;window.renderUserList();}).subscribe();window.globalPrivateSubscriptions[room.id]=ch;});};
 window.clearUnreadForPeer=(peerId,roomId)=>{window.unreadMap[peerId]=0;localStorage.setItem(pvReadKey(roomId),new Date().toISOString());window.renderUserList();};
 
-/* ========== 私聊 ========== */
+/* ========== 私聊 — 🔧 修复创建失败问题 ========== */
 window.togglePrivatePanel=function(){const p=document.getElementById('privatePanel');if(p.style.display==='flex'){p.style.display='none';document.getElementById('privateChatContainer').style.display='none';}else{p.style.display='flex';document.getElementById('privateChatContainer').style.display='none';document.getElementById('userListHeader').style.display='block';document.getElementById('userList').style.display='block';window.renderUserList();}};
-window.openPrivateChat=async function(tid,tn,tr){if(tid===window.currentUser.id)return;const sk=[window.currentUser.id,tid].sort(),ck=sk.join('_');const container=document.getElementById('privateChatContainer');document.getElementById('userListHeader').style.display='none';document.getElementById('userList').style.display='none';container.style.display='flex';const ex=container.querySelector(`.private-chat-window[data-chat-key="${ck}"]`);if(ex){ex.style.display='flex';container.querySelectorAll('.private-chat-window').forEach(w=>{if(w!==ex)w.style.display='none';});return;}container.querySelectorAll('.private-chat-window').forEach(w=>w.style.display='none');let rid=null;const v=window.myPrivateRooms.filter(r=>r.participants?.length===2&&r.participants.includes(sk[0])&&r.participants.includes(sk[1]));if(v.length){rid=v[0].id;}else{try{const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'private',participants:sk}).select().single();rid=nr.id;window.myPrivateRooms.push({id:rid,participants:sk});}catch(e){window.showMessage('私聊创建失败: '+e.message,false);return;}}const w=document.createElement('div');w.className='private-chat-window';w.style.display='flex';w.dataset.chatKey=ck;w.dataset.roomId=rid;w.dataset.peerId=tid;const tagName=roleNameMap[tr]||tr;w.innerHTML=`<div class="private-chat-header"><button class="private-chat-back" onclick="window.backToUserList()">←</button><span style="flex:1;text-align:center;">${tn}（${tagName}）</span><button class="private-chat-close" onclick="window.closePrivateChat('${ck}')">×</button></div><div class="private-chat-messages"></div><div class="private-chat-input-area"><input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${ck}')"><button class="private-chat-send" onclick="window.sendPrivateMessage('${ck}')">发送</button></div>`;container.appendChild(w);window.clearUnreadForPeer(tid,rid);window.loadPrivateMessages(ck,rid);window.subscribePrivateChat(ck,rid);w.querySelector('.private-chat-input').focus();};
+window.openPrivateChat=async function(tid,tn,tr){
+    if(tid===window.currentUser.id)return;
+    const sk=[window.currentUser.id,tid].sort(),ck=sk.join('_');
+    const container=document.getElementById('privateChatContainer');
+    document.getElementById('userListHeader').style.display='none';
+    document.getElementById('userList').style.display='none';
+    container.style.display='flex';
+    const ex=container.querySelector(`.private-chat-window[data-chat-key="${ck}"]`);
+    if(ex){ex.style.display='flex';container.querySelectorAll('.private-chat-window').forEach(w=>{if(w!==ex)w.style.display='none';});return;}
+    container.querySelectorAll('.private-chat-window').forEach(w=>w.style.display='none');
+    let rid=null;
+    const v=window.myPrivateRooms.filter(r=>r.participants?.length===2&&r.participants.includes(sk[0])&&r.participants.includes(sk[1]));
+    if(v.length){
+        rid=v[0].id;
+    }else{
+        try{
+            const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'private',participants:sk}).select().single();
+            rid=nr.id;
+            window.myPrivateRooms.push({id:rid,participants:sk});
+        }catch(e){
+            // 🔧 修复: 如果 insert 失败（如唯一约束冲突），重新查询已有房间
+            console.warn('创建私聊房间失败，尝试查找已有房间:', e.message);
+            try {
+                const{data:existing}=await window.supabaseClient.from('chat_rooms').select('id,participants').eq('room_type','private').contains('participants',[window.currentUser.id]);
+                if(existing?.length){
+                    window.myPrivateRooms=existing;
+                    const found=existing.filter(r=>r.participants?.length===2&&r.participants.includes(sk[0])&&r.participants.includes(sk[1]));
+                    if(found.length){rid=found[0].id;}
+                }
+            } catch(e2) { console.error('重试查找房间也失败:', e2); }
+            if(!rid){
+                window.showMessage('私聊创建失败: '+e.message,false);
+                // 🔧 修复: 创建失败时不留空白面板，回到用户列表
+                window.backToUserList();
+                return;
+            }
+        }
+    }
+    const w=document.createElement('div');
+    w.className='private-chat-window';
+    w.style.display='flex';
+    w.dataset.chatKey=ck;
+    w.dataset.roomId=rid;
+    w.dataset.peerId=tid;
+    const tagName=roleNameMap[tr]||tr;
+    w.innerHTML=`<div class="private-chat-header"><button class="private-chat-back" onclick="window.backToUserList()">←</button><span style="flex:1;text-align:center;">${tn}（${tagName}）</span><button class="private-chat-close" onclick="window.closePrivateChat('${ck}')">×</button></div><div class="private-chat-messages"></div><div class="private-chat-input-area"><input class="private-chat-input" placeholder="输入消息..." onkeypress="if(event.key==='Enter')window.sendPrivateMessage('${ck}')"><button class="private-chat-send" onclick="window.sendPrivateMessage('${ck}')">发送</button></div>`;
+    container.appendChild(w);
+    window.clearUnreadForPeer(tid,rid);
+    window.loadPrivateMessages(ck,rid);
+    window.subscribePrivateChat(ck,rid);
+    w.querySelector('.private-chat-input').focus();
+};
 window.backToUserList=function(){document.getElementById('privateChatContainer').style.display='none';document.getElementById('privateChatContainer').innerHTML='';document.getElementById('userListHeader').style.display='block';document.getElementById('userList').style.display='block';};
 window.loadPrivateMessages=async function(k,r){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(!w)return;const c=w.querySelector('.private-chat-messages');const{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',r).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50);c.innerHTML='';data?.reverse().forEach(m=>window.appendPrivateMessage(c,m));c.scrollTop=c.scrollHeight;};
+
 window.appendPrivateMessage=(c,m)=>{
     const is=m.sender_id===window.currentUser?.id;
     let senderNickname='未知',senderRole='player';
-    if(is){senderNickname=window.userProfile?.nickname||'未知';senderRole=window.userProfile?.role||'player';}else{const found=window.allProfilesCache.find(u=>u.id===m.sender_id);if(found){senderNickname=found.nickname;senderRole=found.role;}}
-    const el=document.createElement('div');el.className=`chat-msg ${senderRole} ${is?'self':'other'}`;
+    if(is){
+        senderNickname=window.userProfile?.nickname||'未知';
+        senderRole=window.userProfile?.role||'player';
+    } else {
+        const found=window.allProfilesCache.find(u=>u.id===m.sender_id);
+        if(found){senderNickname=found.nickname;senderRole=found.role;}
+    }
+    const el=document.createElement('div');
+    el.className=`chat-msg ${senderRole} ${is?'self':'other'}`;
     el.innerHTML=`<div class="chat-nickname">${senderNickname}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${bjTime(m.created_at)}</div>`;
     c.appendChild(el);c.scrollTop=c.scrollHeight;
 };
-window.subscribePrivateChat=(k,r)=>{if(window.privateChatSubscriptions[r])return;const ch=window.supabaseClient.channel(`pm_open_${r.replace(/-/g,'_')}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${r}`},p=>{const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w){const msg={...p.new};if(p.new.sender_id===window.currentUser.id){msg.sender={nickname:window.userProfile.nickname,role:window.userProfile.role};}else{const found=window.allProfilesCache.find(u=>u.id===p.new.sender_id);msg.sender=found?{nickname:found.nickname,role:found.role}:{nickname:'未知',role:'player'};}window.appendPrivateMessage(w.querySelector('.private-chat-messages'),msg);}}).subscribe();window.privateChatSubscriptions[r]=ch;};
+
+window.subscribePrivateChat=(k,r)=>{
+    if(window.privateChatSubscriptions[r])return;
+    const ch=window.supabaseClient.channel(`pm_open_${r.replace(/-/g,'_')}`)
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${r}`},p=>{
+            const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);
+            if(w){
+                const msg={...p.new};
+                if(p.new.sender_id===window.currentUser.id){
+                    msg.sender={nickname:window.userProfile.nickname,role:window.userProfile.role};
+                } else {
+                    const found=window.allProfilesCache.find(u=>u.id===p.new.sender_id);
+                    msg.sender=found?{nickname:found.nickname,role:found.role}:{nickname:'未知',role:'player'};
+                }
+                window.appendPrivateMessage(w.querySelector('.private-chat-messages'),msg);
+            }
+        }).subscribe();
+    window.privateChatSubscriptions[r]=ch;
+};
 window.sendPrivateMessage=async function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(!w)return;const i=w.querySelector('.private-chat-input'),t=i.value.trim();if(!t)return;if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;}window.lastSendTime=Date.now();try{await window.supabaseClient.from('chat_messages').insert({room_id:w.dataset.roomId,sender_id:window.currentUser.id,content:t});i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}};
 window.closePrivateChat=function(k){const w=document.querySelector(`.private-chat-window[data-chat-key="${k}"]`);if(w){if(window.privateChatSubscriptions[k]){window.supabaseClient.removeChannel(window.privateChatSubscriptions[k]);delete window.privateChatSubscriptions[k];}w.remove();if(!document.querySelector('.private-chat-window'))window.backToUserList();}};
 
 /* ========== 公聊 ========== */
-window.initChat=async function(){if(!window.currentUser)return;try{if(window.chatSubscription){window.supabaseClient.removeChannel(window.chatSubscription);window.chatSubscription=null;}let{data:rm}=await window.supabaseClient.from('chat_rooms').select('id').eq('room_type','public').single();if(!rm){const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'public'}).select().single();rm=nr;}window.currentChatRoomId=rm.id;await window.loadPublicMessages();const sid=rm.id.replace(/-/g,'_');window.chatSubscription=window.supabaseClient.channel(`public_chat_${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${rm.id}`},p=>{const msg={...p.new};if(p.new.sender_id===window.currentUser.id){msg.sender={nickname:window.userProfile.nickname,role:window.userProfile.role};}else{const found=window.allProfilesCache.find(u=>u.id===p.new.sender_id);msg.sender=found?{nickname:found.nickname,role:found.role}:{nickname:'未知',role:'player'};}window.appendPublicMessage(msg);}).subscribe();}catch(e){console.error(e);}};
+window.initChat=async function(){if(!window.currentUser)return;try{if(window.chatSubscription){window.supabaseClient.removeChannel(window.chatSubscription);window.chatSubscription=null;}let{data:rm}=await window.supabaseClient.from('chat_rooms').select('id').eq('room_type','public').single();if(!rm){const{data:nr}=await window.supabaseClient.from('chat_rooms').insert({room_type:'public'}).select().single();rm=nr;}window.currentChatRoomId=rm.id;await window.loadPublicMessages();const sid=rm.id.replace(/-/g,'_');window.chatSubscription=window.supabaseClient.channel(`public_chat_${sid}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`room_id=eq.${rm.id}`},p=>{
+            const msg={...p.new};
+            if(p.new.sender_id===window.currentUser.id){
+                msg.sender={nickname:window.userProfile.nickname,role:window.userProfile.role};
+            } else {
+                const found=window.allProfilesCache.find(u=>u.id===p.new.sender_id);
+                msg.sender=found?{nickname:found.nickname,role:found.role}:{nickname:'未知',role:'player'};
+            }
+            window.appendPublicMessage(msg);
+        }).subscribe();}catch(e){console.error(e);}};
 window.loadPublicMessages=async function(){if(!window.currentChatRoomId)return;const{data}=await window.supabaseClient.from('chat_messages').select('*,sender:sender_id(nickname,role)').eq('room_id',window.currentChatRoomId).eq('is_deleted',false).order('created_at',{ascending:false}).limit(50);const c=document.getElementById('chatMessages');c.innerHTML='';data?.reverse().forEach(m=>window.appendPublicMessage(m));c.scrollTop=c.scrollHeight;};
-window.appendPublicMessage=function(m){const c=document.getElementById('chatMessages');const is=m.sender_id===window.currentUser?.id;let senderNickname='未知',senderRole='player';if(is){senderNickname=window.userProfile?.nickname||'未知';senderRole=window.userProfile?.role||'player';}else{const found=window.allProfilesCache.find(u=>u.id===m.sender_id);if(found){senderNickname=found.nickname;senderRole=found.role;}}const el=document.createElement('div');el.className=`chat-msg ${senderRole} ${is?'self':'other'}`;el.innerHTML=`<div class="chat-nickname">${senderNickname}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${bjTime(m.created_at)}</div>`;c.appendChild(el);c.scrollTop=c.scrollHeight;};
-window.sendChatMessage=async function(){const i=document.getElementById('chatInput'),t=i.value.trim();if(!t)return;if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;}window.lastSendTime=Date.now();try{await window.supabaseClient.from('chat_messages').insert({room_id:window.currentChatRoomId,sender_id:window.currentUser.id,content:t});i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}};
+
+window.appendPublicMessage=function(m){
+    const c=document.getElementById('chatMessages');
+    const is=m.sender_id===window.currentUser?.id;
+    let senderNickname='未知',senderRole='player';
+    if(is){
+        senderNickname=window.userProfile?.nickname||'未知';
+        senderRole=window.userProfile?.role||'player';
+    } else {
+        const found=window.allProfilesCache.find(u=>u.id===m.sender_id);
+        if(found){senderNickname=found.nickname;senderRole=found.role;}
+    }
+    const el=document.createElement('div');
+    el.className=`chat-msg ${senderRole} ${is?'self':'other'}`;
+    el.innerHTML=`<div class="chat-nickname">${senderNickname}</div><div class="chat-content">${m.content.replace(/</g,'&lt;')}</div><div class="chat-time">${bjTime(m.created_at)}</div>`;
+    c.appendChild(el);c.scrollTop=c.scrollHeight;
+};
+window.sendChatMessage=async function(){const i=document.getElementById('chatInput'),t=i.value.trim();if(!t)return;if(Date.now()-window.lastSendTime<5000){window.showMessage('5秒后再发',false);return;}window.lastSendTime=Date.now();try{await window.supabaseClient.from('chatMessage').insert({room_id:window.currentChatRoomId,sender_id:window.currentUser.id,content:t});i.value='';}catch(e){window.showMessage('发送失败',false);window.lastSendTime=0;}};
 window.toggleChat=function(){const w=document.getElementById('chatWindow');w.style.display=w.style.display==='flex'?'none':'flex';if(w.style.display==='flex'){document.getElementById('chatInput').focus();window.loadPublicMessages();}};
 
-init();
+// 🔧 修复: 确保 DOM 完全就绪后再初始化
+if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', init);
+}else{
+    init();
+}
 </script>
 </body>
 </html>
