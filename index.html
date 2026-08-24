@@ -125,6 +125,7 @@
             <div id="ownerPanel" style="display:none; margin-top:10px; border:1px solid rgba(255,255,255,0.5); padding:10px;">
                 <div class="tab-bar" id="manageTabs"></div>
                 <div id="auditList"></div>
+                <div id="restList" style="display:none;"></div>
                 <div id="cancelList" style="display:none;"></div>
             </div>
             <div id="orderPanel" style="display:none; margin-top:10px;">
@@ -198,6 +199,9 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // 🏷️ 身份汉化
 const roleNameMap={owner:'店长',admin:'管理员',worker:'打手',player:'玩家'};
 const roleColorMap={owner:'#ff00ff',admin:'#ff69b4',worker:'#00f0ff',player:'#00ff88'};
+// 🏷️ 工作状态
+const workStatusMap={online:'在线',resting:'休息中'};
+const workStatusColorMap={online:'#00ff88',resting:'#ffa502'};
 
 window.supabaseClient=null;window.currentUser=null;window.userProfile=null;
 window.senderMap={};window.workerMap={};window.currentChatRoomId=null;
@@ -221,16 +225,88 @@ window.setView=v=>{
 };
 window.mapStatus=s=>({pending:'待接单',accepted:'已接单',completed:'已完成',cancelled:'已取消',cancelling:'取消审批中'}[s]||'未知');
 
-window.renderManageTabs=function(){const isOwner=window.userProfile.role==='owner';const t=document.getElementById('manageTabs');t.innerHTML='';if(isOwner)t.innerHTML+=`<button id="tabAudit" class="tab-btn-active" onclick="window.switchManageTab('audit')">待审管理员</button>`;t.innerHTML+=`<button id="tabCancel" class="${isOwner?'':'tab-btn-active'}" onclick="window.switchManageTab('cancel')">订单取消申请 <span id="cancelBadge" style="color:#ff4757;"></span></button>`;document.getElementById('auditList').style.display=isOwner?'block':'none';document.getElementById('cancelList').style.display=isOwner?'none':'block';if(isOwner)window.loadAuditList();window.loadCancelRequests();};
-window.switchManageTab=function(tab){const io=window.userProfile.role==='owner';if(io){document.getElementById('tabAudit').classList.toggle('tab-btn-active',tab==='audit');document.getElementById('auditList').style.display=tab==='audit'?'block':'none';}document.getElementById('tabCancel').classList.toggle('tab-btn-active',tab==='cancel');document.getElementById('cancelList').style.display=tab==='cancel'?'block':'none';if(tab==='cancel')window.loadCancelRequests();};
+/* ========== 管理面板 Tab（新增休息审批） ========== */
+window.renderManageTabs=function(){
+    const isOwner=window.userProfile.role==='owner';
+    const t=document.getElementById('manageTabs');t.innerHTML='';
+    if(isOwner){
+        t.innerHTML+=`<button id="tabAudit" class="tab-btn-active" onclick="window.switchManageTab('audit')">待审管理员</button>`;
+        t.innerHTML+=`<button id="tabRest" onclick="window.switchManageTab('rest')">休息审批 <span id="restBadge" style="color:#ff4757;"></span></button>`;
+    }
+    t.innerHTML+=`<button id="tabCancel" class="${isOwner?'':'tab-btn-active'}" onclick="window.switchManageTab('cancel')">订单取消申请 <span id="cancelBadge" style="color:#ff4757;"></span></button>`;
+    document.getElementById('auditList').style.display=isOwner?'block':'none';
+    document.getElementById('restList').style.display='none';
+    document.getElementById('cancelList').style.display=isOwner?'none':'block';
+    if(isOwner)window.loadAuditList();
+    window.loadCancelRequests();
+    if(isOwner)window.loadRestRequests();
+};
+window.switchManageTab=function(tab){
+    const io=window.userProfile.role==='owner';
+    if(io){
+        document.getElementById('tabAudit').classList.toggle('tab-btn-active',tab==='audit');
+        document.getElementById('auditList').style.display=tab==='audit'?'block':'none';
+        document.getElementById('tabRest').classList.toggle('tab-btn-active',tab==='rest');
+        document.getElementById('restList').style.display=tab==='rest'?'block':'none';
+    }
+    document.getElementById('tabCancel').classList.toggle('tab-btn-active',tab==='cancel');
+    document.getElementById('cancelList').style.display=tab==='cancel'?'block':'none';
+    if(tab==='cancel')window.loadCancelRequests();
+    if(tab==='rest')window.loadRestRequests();
+};
+
+/* ========== UI 更新（加工作状态按钮） ========== */
 window.updateUI=function(){
-    document.getElementById('userInfo').textContent=`欢迎: ${window.userProfile.nickname}（${roleNameMap[window.userProfile.role]||window.userProfile.role}）`;
+    let workStatusHtml='';
+    if(window.userProfile.role==='owner'){
+        const currentStatus=window.userProfile.work_status||'online';
+        const btnText=currentStatus==='online'?'切换为休息':'切换为上线';
+        workStatusHtml=` <button onclick="window.toggleWorkStatus()" style="margin-top:5px;padding:5px 10px;font-size:12px;width:auto;display:inline-block;">${btnText}</button>`;
+    } else if(['worker','admin'].includes(window.userProfile.role)){
+        const currentStatus=window.userProfile.work_status||'online';
+        if(currentStatus==='online'){
+            workStatusHtml=` <button onclick="window.requestRest()" style="margin-top:5px;padding:5px 10px;font-size:12px;width:auto;display:inline-block;">申请下线休息</button>`;
+        } else {
+            workStatusHtml=` <span style="color:#ffa502;font-size:12px;">(休息中)</span>`;
+        }
+    }
+    document.getElementById('userInfo').innerHTML=`欢迎: ${window.userProfile.nickname}（${roleNameMap[window.userProfile.role]||window.userProfile.role}）${workStatusHtml}`;
     document.getElementById('footerUser').textContent=window.userProfile.nickname;
     document.getElementById('orderPanel').style.display=(['owner','player','admin'].includes(window.userProfile.role))?'block':'none';
     const im=['owner','admin'].includes(window.userProfile.role);
     document.getElementById('ownerPanel').style.display=im?'block':'none';
     if(im){window.renderManageTabs();window.startCancelPolling();}
 };
+
+/* ========== 工作状态切换/申请 ========== */
+window.toggleWorkStatus=async function(){
+    const newStatus=(window.userProfile.work_status||'online')==='online'?'resting':'online';
+    await window.supabaseClient.from('profiles').update({work_status:newStatus}).eq('id',window.currentUser.id);
+    window.userProfile.work_status=newStatus;
+    window.showMessage(`已切换为${workStatusMap[newStatus]}`,true);
+    window.updateUI();
+    if(window.presenceChannel) await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,work_status:newStatus,online_at:new Date().toISOString()});
+};
+window.requestRest=async function(){
+    const reason=prompt('申请休息原因（可选）：')||'无';
+    try{await window.supabaseClient.from('rest_requests').insert({user_id:window.currentUser.id,reason:reason,status:'pending'});window.showMessage('申请已提交，等待店长审批',true);}catch(e){window.showMessage('申请失败',false);}
+};
+
+/* ========== 休息审批（店长） ========== */
+window.loadRestRequests=async function(silent=false){
+    if(window.userProfile.role!=='owner')return;
+    const{data:reqs}=await window.supabaseClient.from('rest_requests').select('*').eq('status','pending').order('created_at',{ascending:false});
+    const bd=document.getElementById('restBadge');if(bd)bd.textContent=reqs?.length?`(${reqs.length})`:'';
+    const el=document.getElementById('restList');if(!el||(silent&&el.style.display==='none'))return;
+    if(!reqs?.length){el.innerHTML='<div style="color:#aaa;">暂无休息申请</div>';return;}
+    const uids=[...new Set(reqs.map(r=>r.user_id))],{data:us}=await window.supabaseClient.from('profiles').select('id,nickname,role').in('id',uids);
+    const um=Object.fromEntries(us?.map(u=>[u.id,u])||[]);
+    el.innerHTML=reqs.map(r=>{const u=um[r.user_id]||{};return`<div class="order" style="border-left-color:#ffa502;"><div><b>申请者:</b> ${u.nickname||'未知'}（${roleNameMap[u.role]||u.role||''}）</div><div><b>原因:</b> ${r.reason}</div><button class="order-btn btn-green" onclick="window.approveRest('${r.id}','${r.user_id}')">批准</button><button class="order-btn btn-red" onclick="window.rejectRest('${r.id}')">驳回</button></div>`;}).join('');
+};
+window.approveRest=async function(rid,uid){if(!confirm('批准休息？'))return;await window.supabaseClient.from('profiles').update({work_status:'resting'}).eq('id',uid);await window.supabaseClient.from('rest_requests').update({status:'approved'}).eq('id',rid);window.showMessage('已批准休息',true);window.loadRestRequests();window.loadAllProfiles();};
+window.rejectRest=async function(rid){if(!confirm('驳回？'))return;await window.supabaseClient.from('rest_requests').update({status:'rejected'}).eq('id',rid);window.showMessage('已驳回',true);window.loadRestRequests();};
+
+/* ========== 登录/注册（原样，仅确保 work_status 被加载） ========== */
 window.autoLogin=async function(){const{data:{session}}=await window.supabaseClient.auth.getSession();if(!session){window.setView('auth');return;}let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',session.user.id).maybeSingle();if(!p){const m=session.user.user_metadata||{};let role=m.role||'player',st='approved';if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.setView('auth');return;}}else if(role==='admin')st='pending';const{data:np}=await window.supabaseClient.from('profiles').insert({id:session.user.id,email:session.user.email,nickname:m.nickname||session.user.email.split('@')[0],role,status:st}).select().single();if(!np){window.setView('auth');return;}p=np;}if(p.status!=='approved'){window.setView('auth');return;}window.currentUser=session.user;window.userProfile=p;window.updateUI();window.setView('app');window.loadOrders();window.initChat();window.trackOnlineStatus();window.loadAllProfiles();window.startAutoCancelChecker();window.showMessage(`欢迎 ${p.nickname}`,true);};
 window.handleLogin=async function(){const e=document.getElementById('email').value.trim(),pw=document.getElementById('pass').value.trim();if(!e||!pw){window.showMessage('请输入邮箱和密码',false);return;}window.toggleLoading(true);try{const{data,error}=await window.supabaseClient.auth.signInWithPassword({email:e,password:pw});if(error){window.showMessage(error.message,false);return;}let{data:p}=await window.supabaseClient.from('profiles').select('*').eq('id',data.user.id).maybeSingle();if(!p){const m=data.user.user_metadata||{};let role=m.role||'player',st='approved';if(role==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner').eq('status','approved');if(o?.length){window.showMessage('店长账号已存在',false);return;}}else if(role==='admin')st='pending';const{data:np}=await window.supabaseClient.from('profiles').insert({id:data.user.id,email:data.user.email,nickname:m.nickname||e.split('@')[0],role,status:st}).select().single();if(!np){window.showMessage('创建资料失败',false);return;}p=np;}if(p&&p.status!=='approved'){window.showMessage('账号审核中',false);return;}window.currentUser=data.user;window.userProfile=p;window.updateUI();window.setView('app');window.loadOrders();window.initChat();window.trackOnlineStatus();window.loadAllProfiles();window.startAutoCancelChecker();window.showMessage(`欢迎 ${p.nickname}`,true);document.getElementById('pass').value='';}catch(e){window.showMessage(e.message,false);}finally{window.toggleLoading(false);}};
 window.handleRegister=async function(){const e=document.getElementById('regEmail').value.trim(),p=document.getElementById('regPass').value.trim(),n=document.getElementById('regName').value.trim(),r=document.getElementById('regRole').value;if(!e||!p||!n){window.showMessage('请填写完整信息',false);return;}if(r==='owner'){const{data:o}=await window.supabaseClient.from('profiles').select('id').eq('role','owner');if(o?.length){window.showMessage('店长账号已存在',false);return;}}window.toggleLoading(true);try{const{error}=await window.supabaseClient.auth.signUp({email:e,password:p,options:{data:{nickname:n,role:r}}});if(error){window.showMessage(error.message,false);return;}window.showMessage(r==='admin'?'注册成功请等待店长审核':'注册成功请登录',true);window.showLogin();document.getElementById('email').value=e;}catch(e){window.showMessage(e.message,false);}finally{window.toggleLoading(false);}};
@@ -252,11 +328,11 @@ window.approveAdmin=async function(id){if(!confirm('批准？'))return;await win
 window.handleLogout=async function(){if(window.presenceChannel)window.supabaseClient.removeChannel(window.presenceChannel);if(window.chatSubscription)window.supabaseClient.removeChannel(window.chatSubscription);Object.values(window.globalPrivateSubscriptions).forEach(s=>window.supabaseClient.removeChannel(s));Object.values(window.privateChatSubscriptions).forEach(s=>window.supabaseClient.removeChannel(s));window.globalPrivateSubscriptions={};window.privateChatSubscriptions={};if(window.autoCancelTimer)clearInterval(window.autoCancelTimer);if(window.cancelPollingTimer)clearInterval(window.cancelPollingTimer);await window.supabaseClient.auth.signOut();window.currentUser=null;window.userProfile=null;window.setView('auth');window.showMessage('已退出',true);};
 window.showReg=()=>document.getElementById('regBox').style.display='block';window.showLogin=()=>document.getElementById('regBox').style.display='none';
 
-/* ========== 在线状态 ========== */
-window.trackOnlineStatus=async function(){window.presenceChannel=window.supabaseClient.channel('online-users');window.presenceChannel.on('presence',{event:'sync'},()=>{const s=window.presenceChannel.presenceState();window.onlineUsersCache={};Object.keys(s).forEach(k=>{const u=s[k][0];if(u)window.onlineUsersCache[u.id]=u;});window.renderUserList();}).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>{if(p.id)window.onlineUsersCache[p.id]=p;});window.renderUserList();}).on('presence',{event:'leave'},({left})=>{left.forEach(p=>{if(p.id)delete window.onlineUsersCache[p.id];});window.renderUserList();}).subscribe(async(s)=>{if(s==='SUBSCRIBED')await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,online_at:new Date().toISOString()});});};
+/* ========== 在线状态（track 中加入 work_status） ========== */
+window.trackOnlineStatus=async function(){window.presenceChannel=window.supabaseClient.channel('online-users');window.presenceChannel.on('presence',{event:'sync'},()=>{const s=window.presenceChannel.presenceState();window.onlineUsersCache={};Object.keys(s).forEach(k=>{const u=s[k][0];if(u)window.onlineUsersCache[u.id]=u;});window.renderUserList();}).on('presence',{event:'join'},({newPresences})=>{newPresences.forEach(p=>{if(p.id)window.onlineUsersCache[p.id]=p;});window.renderUserList();}).on('presence',{event:'leave'},({left})=>{left.forEach(p=>{if(p.id)delete window.onlineUsersCache[p.id];});window.renderUserList();}).subscribe(async(s)=>{if(s==='SUBSCRIBED')await window.presenceChannel.track({id:window.currentUser.id,nickname:window.userProfile.nickname,role:window.userProfile.role,work_status:window.userProfile.work_status||'online',online_at:new Date().toISOString()});});};
 
-/* ========== 用户列表（自己在线排第一 + 汉化） ========== */
-window.loadAllProfiles=async function(){const{data}=await window.supabaseClient.from('profiles').select('id,nickname,role').eq('status','approved').neq('id',window.currentUser.id);window.allProfilesCache=data||[];window.renderUserList();window.loadMyPrivateRoomsAndUnread();};
+/* ========== 用户列表（显示工作状态） ========== */
+window.loadAllProfiles=async function(){const{data}=await window.supabaseClient.from('profiles').select('id,nickname,role,work_status').eq('status','approved').neq('id',window.currentUser.id);window.allProfilesCache=data||[];window.renderUserList();window.loadMyPrivateRoomsAndUnread();};
 window.renderUserList=function(){
     const c=document.getElementById('userList');
     const meId=window.currentUser.id;
@@ -269,12 +345,13 @@ window.renderUserList=function(){
     html+='<div class="user-section-label">🟢 在线</div>';
     // 自己
     const meRole=window.userProfile.role;
-    html+=`<div class="online-user-item self-item"><div class="status-dot online"></div><div class="username-text">${window.userProfile.nickname}（我）</div><span class="role-tag ${meRole}" style="background:${roleColorMap[meRole]||'#888'}">${roleNameMap[meRole]||meRole}</span></div>`;
+    const meWs=window.userProfile.work_status||'online';
+    html+=`<div class="online-user-item self-item"><div class="status-dot online"></div><div class="username-text">${window.userProfile.nickname}（我）</div><span class="role-tag ${meRole}" style="background:${roleColorMap[meRole]||'#888'}">${roleNameMap[meRole]||meRole}</span><span class="role-tag" style="background:${workStatusColorMap[meWs]||'#888'}">${workStatusMap[meWs]||meWs}</span></div>`;
     // 其他在线
-    onlineOthers.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{const unread=window.unreadMap[u.id]||0;html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;});
+    onlineOthers.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{const unread=window.unreadMap[u.id]||0;const ws=u.work_status||'online';html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot online"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;});
     // 离线
     html+='<div class="user-section-label">⚪ 离线</div>';
-    offline.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{const unread=window.unreadMap[u.id]||0;html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;});
+    offline.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{const unread=window.unreadMap[u.id]||0;const ws=u.work_status||'online';html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]||ws}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;});
     c.innerHTML=html;
 };
 
