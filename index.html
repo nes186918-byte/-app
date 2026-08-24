@@ -357,15 +357,13 @@ window.renderUserList=function(){
         }
     });
 
-    // 统计：真正"在线且非休息"的人数 = Presence 里的人数 - 其中状态为 resting 的人数
-    // 自己如果在线且非休息，也算进去
+    // 统计：真正"在线且非休息"的人数
     let trulyOnlineCount=0;
     Object.keys(window.onlineUsersCache).forEach(id=>{
         const u=window.onlineUsersCache[id];
         if(u.work_status!=='resting') trulyOnlineCount++;
     });
     if(!onlineIdSet.has(meId) && meWs==='online'){
-        // 自己不在 Presence 里但状态是在线（不应该发生，但兜底）
         trulyOnlineCount++;
     }
     const total=window.allProfilesCache.length+1;
@@ -397,13 +395,12 @@ window.renderUserList=function(){
         });
     }
 
-    // ⚪ 离线区
+    // ⚪ 离线区 —— 已移除工作状态标签（不再显示"在线"）
     if(offlineList.length>0){
         html+='<div class="user-section-label">⚪ 离线</div>';
         offlineList.sort((a,b)=>a.nickname.localeCompare(b.nickname)).forEach(u=>{
             const unread=window.unreadMap[u.id]||0;
-            const ws=u.work_status||'online';
-            html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span><span class="role-tag" style="background:${workStatusColorMap[ws]||'#888'}">${workStatusMap[ws]}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;
+            html+=`<div class="online-user-item" onclick="window.openPrivateChat('${u.id}','${u.nickname}','${u.role}')"><div class="status-dot offline"></div><div class="username-text">${u.nickname}</div><span class="role-tag ${u.role}" style="background:${roleColorMap[u.role]||'#888'}">${roleNameMap[u.role]||u.role}</span>${unread?`<span class="unread-badge">${unread}</span>`:''}</div>`;
         });
     }
 
